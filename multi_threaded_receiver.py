@@ -71,25 +71,7 @@ class ThreadedServer(object):
                     # print(str(time.clock()) + ' ' + str(msg[3]))
                     queue_size_mutex.release()
                 except:
-                    # print(msg)
                     continue
-                """
-                while True:
-                    if new_msg:
-                        msglen = int(msg[:HEADERSIZE])
-                        print("new msg len: {}".format(msglen))
-                        new_msg = False
-                    full_msg += msg.decode("utf-8")
-                    if len(full_msg)-HEADERSIZE == msglen:
-                        new_msg = True
-                        broadcasting_time = full_msg[HEADERSIZE:]
-                        print(broadcasting_time)
-                        full_msg = ''
-                        msg = client.send(bytes("THIS_IS_NOT_A_ACK","utf-8"))
-                        THROUGHPUTS_DICT[self.host_number] += msglen
-                        break
-                    msg = client.recv(16)
-                """
             else:
                 client.close()
                 # THROUGHPUTS_DICT[self.host_number] = self.throughput_dict
@@ -198,7 +180,7 @@ if __name__ == "__main__":
         SERVER_BW = int(argv[3])
     if len(argv) > 4:
         SERVER_RTT = int(argv[4])
-    active_sessions = NUMBER_OF_RENO_HOSTS + NUMBER_OF_VEGAS_HOSTS
+    active_sessions = NUMBER_OF_RENO_HOSTS + NUMBER_OF_VEGAS_HOSTS -1
     for port_number in range(PORT_NUMBER, PORT_NUMBER + NUMBER_OF_RENO_HOSTS + NUMBER_OF_VEGAS_HOSTS):
         THROUGHPUTS_DICT[port_number - PORT_NUMBER] = 0
         NOT_CUMMULATIVE_THROUGHPUTS_DICT[port_number - PORT_NUMBER] = 0

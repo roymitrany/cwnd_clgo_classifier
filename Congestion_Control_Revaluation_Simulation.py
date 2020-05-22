@@ -8,6 +8,7 @@ Reno_VS_Vegas_simulation topology:
    vegas_host_i----+
 
 """
+from signal import SIGINT
 
 from mininet.net import Mininet
 from mininet.node import Node, OVSKernelSwitch, Controller, RemoteController
@@ -15,6 +16,8 @@ from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.topo import Topo
 from mininet.log import setLogLevel, info
+from mininet.util import pmonitor
+
 from collections import OrderedDict
 
 # Global hosts definitions:
@@ -34,7 +37,7 @@ SERVER_PORT_NUMBER = 5430
 # Global link's parameters:
 QUEUE_SIZE = "109" #"1514"#"1514" # TCP packet size = 1514 bytes.
 RTT = '110ms'		# r--srv link. when it was 100ms id didnt work!!!
-BottleneckBW = 209 #0.8 # 100 mbit/s.
+BottleneckBW = 1000 #0.8 # 100 mbit/s.
 host_BW = 500
 host_RTT = "1ms"
 
@@ -125,42 +128,35 @@ def main():
                   link=TCLink,
                   autoSetMacs = True)  
     net.start()
+    # We will always keep this command here in case we want to xterm hosts during test "exit" command
+    # from CLI prompt will let the program continue to run
+    #CLI(net)
     r = net['r']
-    #r.cmd('tc qdisc replace dev r-srv root pfifo limit {}'.format(QUEUE_SIZE))
     srv = net['srv']
-    for node in [r, srv]: 
-        node.cmd('/usr/sbin/sshd')
-    for host in reno_hosts:
-        net[host].cmd('/usr/sbin/sshd')
-    for host in vegas_hosts:
-        net[host].cmd('/usr/sbin/sshd')
-
+    popens = {}
 
     # Runing synchronized simulation:
     host_number = 0
 
     SERVER_ADDRESS = AS_ADDR_PREFIX + str(NUMBER_OF_RENO_HOSTS + NUMBER_OF_VEGAS_HOSTS) + '.10'
-    print(ADDRESSES_DICT)
-    #srv.cmd('xterm -e ./srv.sh {0} {1} &'.format(NUMBER_OF_RENO_HOSTS, NUMBER_OF_VEGAS_HOSTS))
-    ret = srv.cmd('./srv.sh {0} {1} &'.format(NUMBER_OF_RENO_HOSTS, NUMBER_OF_VEGAS_HOSTS))
-    print ("--------------------returned" + ret)
-    CLI(net)
-    print("RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR")
-     #r.cmd('tshark -i r-srv -w /tmp/test.pcap -F libpcap&')
+    cmd = './srv.sh {0} {1}'.format(NUMBER_OF_RENO_HOSTS, NUMBER_OF_VEGAS_HOSTS)
+    popens[srv] = srv.popen(cmd)
+    #ret = srv.cmd()
+    #r.cmd('tshark -i r-srv -w /tmp/test.pcap -F libpcap&')
     for host in reno_hosts:
         net[host].cmd('./host.sh {0} {1} {2} {3} {4}&'.format(SERVER_ADDRESS, SERVER_PORT_NUMBER + host_number, "reno", host_BW, 0.01))
         host_number = host_number + 1
-        print("QQQQQQQ" + str(SERVER_PORT_NUMBER) + str(host_number))
     for host in vegas_hosts:
         net[host].cmd('./host.sh {0} {1} {2} {3} {4}&'.format(SERVER_ADDRESS, SERVER_PORT_NUMBER + host_number, "vegas",  host_BW, 0.01))
         host_number = host_number + 1
-    r.cmd('./r.sh {0} {1} '.format(NUMBER_OF_RENO_HOSTS + NUMBER_OF_VEGAS_HOSTS, ADDRESS_LIST))
-
-    #Reno_VS_Vegas_Graphs.waitForSimulationToFinish()
-    
-    #Reno_VS_Vegas_Graphs.printGraphs(ADDRESSES_DICT, NUMBER_OF_RENO_HOSTS, NUMBER_OF_VEGAS_HOSTS)
-
-    #CLI(net)
+    r.cmd('./r.sh {0} {1} &'.format(NUMBER_OF_RENO_HOSTS + NUMBER_OF_VEGAS_HOSTS, ADDRESS_LIST))
+    q_proc = r.popen('python queue_len_poller.py r-srv /tmp/sigroy.txt')
+    for server, line in pmonitor(popens): #TODO check efficiency
+        if server:
+            continue
+    # Stop the queue monitor in the router
+    q_proc.send_signal(SIGINT)
+    #CLI(net) # Closing CLI prompt that enables us to save wireshark results if needed
     net.stop()
 setLogLevel('info')
 main()
