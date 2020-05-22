@@ -180,7 +180,7 @@ if __name__ == "__main__":
         SERVER_BW = int(argv[3])
     if len(argv) > 4:
         SERVER_RTT = int(argv[4])
-    active_sessions = NUMBER_OF_RENO_HOSTS + NUMBER_OF_VEGAS_HOSTS -1
+    active_sessions = NUMBER_OF_RENO_HOSTS + NUMBER_OF_VEGAS_HOSTS
     for port_number in range(PORT_NUMBER, PORT_NUMBER + NUMBER_OF_RENO_HOSTS + NUMBER_OF_VEGAS_HOSTS):
         THROUGHPUTS_DICT[port_number - PORT_NUMBER] = 0
         NOT_CUMMULATIVE_THROUGHPUTS_DICT[port_number - PORT_NUMBER] = 0
