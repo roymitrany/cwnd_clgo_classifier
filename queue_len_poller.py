@@ -27,8 +27,13 @@ if __name__ == '__main__':
         #print (output[0])
         match = re.search("backlog\s+(\d+[kK]?)b\s+(\d+)p", output[0])
         if match:
-            queue_len_bytes_list.append (match.group(1))
+            if output[0].find("K") == -1:
+                queue_len_bytes_list.append (match.group(1))
+            else:
+                num = int(match.group(1)[0:-1])*1000
+                queue_len_bytes_list.append(str(num))
             queue_len_packets_list.append(match.group(2))
+
         time.sleep(0.01)
 
 
