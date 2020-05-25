@@ -62,7 +62,7 @@ class RenoVSVegasTopo(Topo):
         for host_number in range(0, self.num_of_reno_hosts):
             self.add_host("reno", host_number)
             self.addLink(self.host_list[host_number], self.rtr,
-                         intfName1="host_int",
+                         intfName1="host_int", # we keep the same if name to make tshark run easier
                          intfName2='r-reno_' + str(host_number),
                          params2={'ip': self.as_addr_prefix + str(host_number) + '.1/24'},
                          bw=self.host_bw, delay=self.host_delay
@@ -73,19 +73,19 @@ class RenoVSVegasTopo(Topo):
         for host_number in range(self.num_of_reno_hosts, self.num_of_reno_hosts + self.num_of_vegas_hosts):
             self.add_host("vegas", host_number)
             self.addLink(self.host_list[host_number], self.rtr,
-                         intfName1 = 'vegas_' + str(host_number) + '-r',
+                         intfName1 = 'host_int',
                          intfName2 = 'r-vegas_' + str(host_number),
                          params2 = {'ip' : self.as_addr_prefix + str(host_number) + '.1/24'},
                          bw = self.host_bw,
                          delay = self.host_delay
                          )
+        #intfName1 = 'vegas_' + str(host_number) + '-r',
 
         # The Server (the receiver) configuration:
         srv_addr = self.as_addr_prefix + str(self.num_of_reno_hosts + self.num_of_vegas_hosts) + '.10'
         self.srv = self.addHost('srv', ip = srv_addr + '/24',
                                 defaultRoute = "via " + self.as_addr_prefix + str(self.num_of_reno_hosts + self.num_of_vegas_hosts) + '.1')
-        s0 = self.addSwitch('s0')
-        self.addLink(s0, self.rtr, intfName1 = 'srv-r',
+        self.addLink(self.srv, self.rtr, intfName1 = 'srv-r',
                      intfName2 = 'r-srv',
                      params2 = {
                          'ip' : self.as_addr_prefix + str(self.num_of_reno_hosts + self.num_of_vegas_hosts) + '.1/24',
@@ -93,6 +93,4 @@ class RenoVSVegasTopo(Topo):
                      },
                      bw = self.srv_bw,
                      max_queue_size=int(self.rtr_queue_size))
-
-        self.addLink(s0, self.srv, cls=TCLink)
 
