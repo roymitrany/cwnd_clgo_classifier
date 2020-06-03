@@ -9,7 +9,6 @@ topology enables one to pass in '--topo=mytopo' from the command line.
 """
 from logging import info
 
-from mininet.link import TCLink
 from mininet.node import Node
 from mininet.topo import Topo
 
@@ -77,6 +76,7 @@ class RenoVSVegasTopo(Topo):
                          intfName2 = 'r-vegas_' + str(host_number),
                          params2 = {'ip' : self.as_addr_prefix + str(host_number) + '.1/24'},
                          bw = self.host_bw,
+                         use_tbf=True,
                          delay = self.host_delay
                          )
         #intfName1 = 'vegas_' + str(host_number) + '-r',
@@ -92,5 +92,7 @@ class RenoVSVegasTopo(Topo):
                          'delay' : str(self.srv_delay)
                      },
                      bw = self.srv_bw,
+                     use_tbf = True,
                      max_queue_size=int(self.rtr_queue_size))
+
 
