@@ -15,12 +15,14 @@ from mininet.util import pmonitor
 
 from mytopo import RenoVSVegasTopo
 
+
 class TcpAlgo(Enum):
     reno = 1
     cubic = 2
     vegas = 3
     westwood = 4
     bbr = 5
+
 
 class Iperf3Tester:
     def __init__(self, topo, test_name, seconds=10):
@@ -88,13 +90,15 @@ class Iperf3Tester:
             srv_procs.append(srv.popen(srv_cmd))
 
             # run tshark in client  side, save it into pcap file. Is a separate pcap per client
-            pcap_file_name = os.path.join(self.res_dirname, "client_%s.pcap" % client)
-            cmd = 'tshark -i host_int -f "port %d" -w %s&' % (test_port, pcap_file_name)
+            capture_file_name = os.path.join(self.res_dirname, "client_%s.txt" % client)
+            # cmd = 'tshark -i host_int -f "port %d" -w %s&' % (test_port, pcap_file_name)
+            cmd = "tcpdump 'tcp port %d'>%s&" % (test_port, capture_file_name)
             (self.net.getNodeByName(client)).cmd(cmd)
 
             # run tshark in server  side, save it into pcap file. Is a separate pcap per client
-            pcap_file_name = os.path.join(self.res_dirname, "server_%s.pcap" % client)
-            cmd = 'tshark -i srv-r -f "port %d" -w %s&' % (test_port, pcap_file_name)
+            capture_file_name = os.path.join(self.res_dirname, "server_%s.txt" % client)
+            # cmd = 'tshark -i srv-r -f "port %d" -w %s&' % (test_port, pcap_file_name)
+            cmd = "tcpdump 'tcp port %d'>%s&" % (test_port, capture_file_name)
             srv.cmd(cmd)
             test_count += 1
 
@@ -121,7 +125,7 @@ class Iperf3Tester:
         sleep(10)
         for process in srv_procs:
             process.send_signal(SIGINT)
-        #for process in tshark_procs:
+        # for process in tshark_procs:
         #    process.send_signal(SIGINT)
         #    process.send_signal(SIGINT)
         q_proc.send_signal(SIGINT)
@@ -134,6 +138,6 @@ if __name__ == '__main__':
     num_of_reno = num_of_vegas = 4
     setLogLevel('info')
     # bw is in Mbps, delay in msec, queue size in packets
-    rv_topo = RenoVSVegasTopo(num_of_reno, num_of_vegas, host_bw = 100, srv_bw=209, srv_delay=0, rtr_queue_size=100)
+    rv_topo = RenoVSVegasTopo(num_of_reno, num_of_vegas, host_bw=100, srv_bw=209, srv_delay=0, rtr_queue_size=100)
     tester = Iperf3Tester(rv_topo, "%s_%s" % (str(num_of_reno), str(num_of_reno)), 10)
     tester.start_test()
