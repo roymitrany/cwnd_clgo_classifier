@@ -9,7 +9,6 @@ Congestion control reavluation classification topology:
 
 """
 from logging import info
-from mininet.link import TCLink
 from mininet.node import Node
 from mininet.topo import Topo
 

@@ -14,6 +14,8 @@ from mininet.node import OVSController
 from mininet.util import pmonitor
 
 from simulation_topology import SimulationTopology
+from tcp_statistics import TcpStatistics
+
 
 class TcpAlgorithm(Enum):
     reno = 1
@@ -22,6 +24,7 @@ class TcpAlgorithm(Enum):
     westwood = 4
     bbr = 5
 
+
 class Iperf3Simulator:
     def __init__(self, simulation_topology, simulation_name, seconds=10):
         """
@@ -29,15 +32,17 @@ class Iperf3Simulator:
         :param simulation_name: the results folder will contain the test name
         :param seconds: The test duration
         """
+        self.file_captures = []
         self.simulation_topology = simulation_topology
         self.net = Mininet(simulation_topology, controller=OVSController, link=TCLink, autoSetMacs=True)
         self.seconds = seconds
         self.simulation_name = simulation_name
         tn = datetime.now()
-        time_str = str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(tn.minute) + "-" + str(tn.second)
+        time_str = str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
+            tn.minute) + "-" + str(tn.second)
 
         # Create results directory, with name includes num of reno num of vegas and time
-        self.res_dirname = os.path.join(os.getcwd(), "results", self.simulation_name + "@" + time_str)        
+        self.res_dirname = os.path.join(os.getcwd(), "results", self.simulation_name + "@" + time_str)
         os.mkdir(self.res_dirname, 0o777);
 
         # Set results file names
@@ -55,7 +60,7 @@ class Iperf3Simulator:
 
     def StartSimulation(self):
         self.net.start()
-        #CLI(self.net)
+        # CLI(self.net)
         # Modify TCP algorithms (because iperf3 does not support vegas in -C parameter):
         for host_number in range(0, self.simulation_topology.num_of_reno_hosts):
             self.SetCongestionControlAlgorithm(host_number, TcpAlgorithm.reno)
@@ -67,7 +72,7 @@ class Iperf3Simulator:
         srv_ip = srv.IP()
         popens = {}
         srv_procs = []
-        
+
         # Auxiliary loop- including iperf for the servers and initializing monotoring functions using "tcpdump":
         client_counter = 0
         for client in self.simulation_topology.host_list:
@@ -88,7 +93,7 @@ class Iperf3Simulator:
             cmd = 'tshark -i srv-r -f "port %d" -w %s&' % (test_port, pcap_file_name)
             srv.cmd(cmd)
             """
-            
+
             # Throughput measuring- using tcpdump:
             # Running tcpdump on client side, saving to txt file (a separate txt file for each client):
             capture_filename = os.path.join(self.res_dirname, "client_%s.txt" % client)
@@ -96,18 +101,19 @@ class Iperf3Simulator:
             (self.net.getNodeByName(client)).cmd(cmd)
             # Running tcpdump on server side, saving to txt file (a separate txt file for each client):
             capture_filename = os.path.join(self.res_dirname, "server_%s.txt" % client)
+            self.file_captures.append(capture_filename)
             cmd = "tcpdump 'tcp port %d'>%s&" % (test_port, capture_filename)
             srv.cmd(cmd)
             client_counter += 1
-            
-        sleep(10)        
+
+        sleep(10)
         # Traffic generation loop:
         client_counter = 0
         for client in self.simulation_topology.host_list:
             cmd = 'iperf3 -c %s -t %d -p %d' % (srv_ip, self.seconds, 5201 + client_counter)
             popens[client] = (self.net.getNodeByName(client)).popen(cmd)
             client_counter += 1
-            
+
         rtr = self.net.getNodeByName(self.simulation_topology.rtr)
 
         # Gather statistics from the router:
@@ -127,12 +133,25 @@ class Iperf3Simulator:
 
         self.net.stop()
 
+
 if __name__ == '__main__':
     # Tell mininet to print useful information
     num_of_reno = num_of_vegas = 4
+    queue_size = 1000
     setLogLevel('info')
-    # bw is in Mbps, delay in msec, queue size in packets
-    simulation_topology = SimulationTopology(num_of_reno, num_of_vegas, host_bw=100, srv_bw=200, srv_delay=15000, rtr_queue_size=10000)
-    simulation_name = "%s_reno_hosts_%s_vegas_hosts" % (str(num_of_reno), str(num_of_vegas))
-    simulator = Iperf3Simulator(simulation_topology, simulation_name, 10)
-    simulator.StartSimulation()
+    for queue_size in [100]:
+        for num_of_reno in range(4,5):
+            num_of_vegas = 8-num_of_reno
+            # bw is in Mbps, delay in msec, queue size in packets
+            simulation_topology = SimulationTopology(num_of_reno, num_of_vegas, host_bw=100, srv_bw=200, srv_delay=15000,
+                                                     rtr_queue_size=queue_size)
+            simulation_name = "%d_reno_%d_vegas_%d_qsize" % (num_of_reno, num_of_vegas, queue_size)
+            simulator = Iperf3Simulator(simulation_topology, simulation_name, 10)
+            simulator.StartSimulation()
+            tcp_stat = TcpStatistics(
+                title='Throughput - %d Reno, %d vegas, %d queue len' % (num_of_reno, num_of_vegas, queue_size),
+                plot_file=os.path.join(simulator.res_dirname, 'Throughput.png'))
+            for filename in simulator.file_captures:
+                tcp_stat.parse_dump_file(filename)
+            tcp_stat.create_plot()
+
