@@ -60,7 +60,7 @@ class Iperf3Simulator:
 
     def StartSimulation(self):
         self.net.start()
-        # CLI(self.net)
+        CLI(self.net)
         # Modify TCP algorithms (because iperf3 does not support vegas in -C parameter):
         for host_number in range(0, self.simulation_topology.num_of_reno_hosts):
             self.SetCongestionControlAlgorithm(host_number, TcpAlgorithm.reno)
@@ -72,6 +72,7 @@ class Iperf3Simulator:
         srv_ip = srv.IP()
         popens = {}
         srv_procs = []
+        rtr = self.net.getNodeByName(self.simulation_topology.rtr)
 
         # Auxiliary loop- including iperf for the servers and initializing monotoring functions using "tcpdump":
         client_counter = 0
@@ -97,13 +98,14 @@ class Iperf3Simulator:
             # Throughput measuring- using tcpdump:
             # Running tcpdump on client side, saving to txt file (a separate txt file for each client):
             capture_filename = os.path.join(self.res_dirname, "client_%s.txt" % client)
-            cmd = "tcpdump 'tcp port %d'>%s&" % (test_port, capture_filename)
-            (self.net.getNodeByName(client)).cmd(cmd)
+            interface_name = "r-%s" % client
+            cmd = "tcpdump -i %s 'tcp port %d'>%s&" % (interface_name, test_port, capture_filename)
+            rtr.cmd(cmd)
             # Running tcpdump on server side, saving to txt file (a separate txt file for each client):
             capture_filename = os.path.join(self.res_dirname, "server_%s.txt" % client)
             self.file_captures.append(capture_filename)
-            cmd = "tcpdump 'tcp port %d'>%s&" % (test_port, capture_filename)
-            srv.cmd(cmd)
+            cmd = "tcpdump -i r-srv 'tcp port %d'>%s&" % (test_port, capture_filename)
+            rtr.cmd(cmd)
             client_counter += 1
 
         sleep(10)
@@ -113,8 +115,6 @@ class Iperf3Simulator:
             cmd = 'iperf3 -c %s -t %d -p %d' % (srv_ip, self.seconds, 5201 + client_counter)
             popens[client] = (self.net.getNodeByName(client)).popen(cmd)
             client_counter += 1
-
-        rtr = self.net.getNodeByName(self.simulation_topology.rtr)
 
         # Gather statistics from the router:
         q_proc = rtr.popen('python queue_statistics.py r-srv %s' % self.rtr_q_filename)
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     num_of_reno = num_of_vegas = 4
     queue_size = 1000
     setLogLevel('info')
-    for queue_size in [100]:
+    for queue_size in [300]:
         for num_of_reno in range(4,5):
             num_of_vegas = 8-num_of_reno
             # bw is in Mbps, delay in msec, queue size in packets
@@ -150,7 +150,8 @@ if __name__ == '__main__':
             simulator.StartSimulation()
             tcp_stat = TcpStatistics(
                 title='Throughput - %d Reno, %d vegas, %d queue len' % (num_of_reno, num_of_vegas, queue_size),
-                plot_file=os.path.join(simulator.res_dirname, 'Throughput.png'))
+                plot_file=os.path.join(simulator.res_dirname, 'Throughput.png'),
+                plot_file2 = os.path.join(simulator.res_dirname, 'tsval.png'))
             for filename in simulator.file_captures:
                 tcp_stat.parse_dump_file(filename)
             tcp_stat.create_plot()
