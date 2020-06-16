@@ -9,6 +9,7 @@ Congestion control reavluation classification topology:
 
 """
 from logging import info
+from mininet.link import TCLink
 from mininet.node import Node
 from mininet.topo import Topo
 
@@ -25,8 +26,7 @@ class LinuxRouter(Node):
         super(LinuxRouter, self).terminate()
 
 class SimulationTopology(Topo):
-    def __init__(self, num_of_reno_hosts, num_of_vegas_hosts, host_bw = None, host_delay = None,
-                 srv_bw = None, srv_delay = None, rtr_queue_size = None):
+    def __init__(self, num_of_reno_hosts, num_of_vegas_hosts, host_bw = None, host_delay = None, srv_bw = None, srv_delay = None, rtr_queue_size = None):
         self.num_of_reno_hosts = num_of_reno_hosts
         self.num_of_vegas_hosts = num_of_vegas_hosts
         self.host_bw = host_bw
@@ -58,10 +58,12 @@ class SimulationTopology(Topo):
         for host_number in range(0, self.num_of_reno_hosts):
             self.add_host("reno", host_number)
             self.addLink(self.host_list[host_number], self.rtr,
-                         intfName1="host_int", # we keep the same if name to make tshark run easier
+                         intfName1="host_int", # We keep the same intfName to make tshark run easier.
                          intfName2='r-reno_' + str(host_number),
                          params2={'ip': self.as_addr_prefix + str(host_number) + '.1/24'},
-                         bw=self.host_bw, delay=self.host_delay
+                         bw=self.host_bw,
+                         use_tbf=True,
+                         delay=self.host_delay
                          )
         #intfName1 = 'reno_' + str(host_number) + '-r',
 
@@ -82,7 +84,8 @@ class SimulationTopology(Topo):
         srv_addr = self.as_addr_prefix + str(self.num_of_reno_hosts + self.num_of_vegas_hosts) + '.10'
         self.srv = self.addHost('srv', ip = srv_addr + '/24',
                                 defaultRoute = "via " + self.as_addr_prefix + str(self.num_of_reno_hosts + self.num_of_vegas_hosts) + '.1')
-        self.addLink(self.srv, self.rtr, intfName1 = 'srv-r',
+        self.addLink(self.srv, self.rtr,
+                     intfName1 = 'srv-r',
                      intfName2 = 'r-srv',
                      params2 = {
                          'ip' : self.as_addr_prefix + str(self.num_of_reno_hosts + self.num_of_vegas_hosts) + '.1/24',
@@ -90,5 +93,5 @@ class SimulationTopology(Topo):
                      },
                      bw = self.srv_bw,
                      use_tbf = True,
-                     max_queue_size=int(self.rtr_queue_size))
-
+                     max_queue_size=int(self.rtr_queue_size)
+                     )
