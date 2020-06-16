@@ -1,6 +1,8 @@
 import os
 import json
 import re
+from typing import Dict
+
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 
@@ -19,12 +21,6 @@ from cycler import cycler
 from simulation_topology import SimulationTopology
 from tcp_statistics import TcpStatistics
 
-class TcpAlgorithm(Enum):
-    reno = 1
-    cubic = 2
-    vegas = 3
-    westwood = 4
-    bbr = 5
 
 class Iperf3Simulator:
     def __init__(self, simulation_topology, simulation_name, seconds=10):
@@ -39,37 +35,33 @@ class Iperf3Simulator:
         self.seconds = seconds
         self.simulation_name = simulation_name
         tn = datetime.now()
-        time_str = str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(tn.minute) + "-" + str(tn.second)
+        time_str = str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
+            tn.minute) + "-" + str(tn.second)
 
-        # Create results directory, with name includes num of reno num of vegas and time:
+        # Create results directory, with name includes num of clients for each algo, and time:
         self.res_dirname = os.path.join(os.getcwd(), "results", self.simulation_name + "@" + time_str)
-        os.mkdir(self.res_dirname, 0o777);
+        os.mkdir(self.res_dirname, 0o777)
 
         # Set results file names:
         self.iperf_out_filename = os.path.join(self.res_dirname, "iperf_output.txt")
         self.rtr_q_filename = os.path.join(self.res_dirname, "rtr_q.txt")
 
-        # Set congestion control algorithm: (SetCongestionControlAlgorithm doesn't always work)
-        self.congestion_control_algorithm = ["reno", "vegas", "BBR", "cubic"]
 
-    def SetCongestionControlAlgorithm(self, host_idx, tcp_algo):
+    def SetCongestionControlAlgorithm(self, host, tcp_algo):
         """
         :param tcp_algo: a member of TcpAlgorithm enum e.g. TcpAlgorithm.westwood
         """
-
-        host = self.simulation_topology.host_list[host_idx]
-        cmd = 'echo %s > /proc/sys/net/ipv4/tcp_congestion_control' % tcp_algo.name
+        cmd = 'echo %s > /proc/sys/net/ipv4/tcp_congestion_control' % tcp_algo
         self.net.getNodeByName(host).cmd(cmd)
 
     def StartSimulation(self):
         self.net.start()
         CLI(self.net)
         # Modify TCP algorithms (because iperf3 does not support vegas in -C parameter):
-        for host_number in range(0, self.simulation_topology.num_of_reno_hosts):
-            self.SetCongestionControlAlgorithm(host_number, TcpAlgorithm.reno)
-        for host_number in range(self.simulation_topology.num_of_reno_hosts,
-                                 self.simulation_topology.num_of_reno_hosts + self.simulation_topology.num_of_vegas_hosts):
-            self.SetCongestionControlAlgorithm(host_number, TcpAlgorithm.vegas)
+
+        for host in self.simulation_topology.host_list:
+            cwnd_algo = host[0:host.find("_")]
+            self.SetCongestionControlAlgorithm(host, cwnd_algo)
 
         srv = self.net.getNodeByName(self.simulation_topology.srv)
         srv_ip = srv.IP()
@@ -115,11 +107,9 @@ class Iperf3Simulator:
         # Traffic generation loop:
         client_counter = 0
         for client in self.simulation_topology.host_list:
+            cwnd_algo = client[0:client.find("_")]
             # cmd = 'iperf3 -c %s -t %d -p %d -C %s' % (srv_ip, self.seconds, 5201 + client_counter, self.congestion_control_algorithm[client_counter % 2])
-            for host_number in range(0, self.simulation_topology.num_of_reno_hosts):
-                cmd = 'iperf3 -c %s -t %d -p %d -C %s' % (srv_ip, self.seconds, 5201 + client_counter, self.congestion_control_algorithm[0])
-            for host_number in range(self.simulation_topology.num_of_reno_hosts, self.simulation_topology.num_of_reno_hosts + self.simulation_topology.num_of_vegas_hosts):
-                cmd = 'iperf3 -c %s -t %d -p %d -C %s' % (srv_ip, self.seconds, 5201 + client_counter, self.congestion_control_algorithm[3])
+            cmd = 'iperf3 -c %s -t %d -p %d -C %s' % (srv_ip, self.seconds, 5201 + client_counter,cwnd_algo)
             popens[client] = (self.net.getNodeByName(client)).popen(cmd)
             client_counter += 1
 
@@ -139,6 +129,7 @@ class Iperf3Simulator:
         q_proc.send_signal(SIGINT)
         # CLI(self.net)
         self.net.stop()
+
     """
     def GenerateIntervalQueue(self, start, step, count):
         return [start + i * step for i in xrange(count)]
@@ -173,30 +164,38 @@ class Iperf3Simulator:
         plt.show()
     """
 
+
+def create_sim_name(cwnd_algo_dict):
+    name=''
+    if len(cwnd_algo_dict)==0:
+        return "WTF"
+    for key, val in cwnd_algo_dict.items():
+        name += "%d_%s_" %(val, key)
+    return name[0:-1]
+
 if __name__ == '__main__':
     # Simulation's parameters initializing:
-    num_of_reno = num_of_vegas = 5 # Deafult values.
     host_bw = 100
     host_delay = 10e3
     srv_bw = 500
     srv_delay = 20e3
     tcp_packet_size = 2806
-    queue_size = 2 * (srv_bw * srv_delay) / tcp_packet_size # Rule of thumb: queue_size = (bw [Mbit/sec] * RTT [sec]) / size_of_packet.
+    algo_dict = {}
+    algo_dict['reno']=4
+    algo_dict['vegas']=3
+    algo_dict['cubic']=3
+    queue_size = 2 * (
+                srv_bw * srv_delay) / tcp_packet_size  # Rule of thumb: queue_size = (bw [Mbit/sec] * RTT [sec]) / size_of_packet.
     # Tell mininet to print useful information:
     setLogLevel('info')
-    for queue_size in [300]:
-        for num_of_reno in range(4,5):
-            num_of_vegas = 8-num_of_reno
-            # bw is in Mbps, delay in msec, queue size in packets
-            simulation_topology = SimulationTopology(num_of_reno, num_of_vegas, host_bw=100, srv_bw=200, srv_delay=15000,                                                     rtr_queue_size=queue_size)
-            simulation_name = "%d_reno_%d_vegas_%d_qsize" % (num_of_reno, num_of_vegas, queue_size)
-            simulator = Iperf3Simulator(simulation_topology, simulation_name, 10)
-            simulator.StartSimulation()
-            tcp_stat = TcpStatistics(
-                title='Throughput - %d Reno, %d vegas, %d queue len' % (num_of_reno, num_of_vegas, queue_size),
-                plot_file=os.path.join(simulator.res_dirname, 'Throughput.png'),
-                plot_file2 = os.path.join(simulator.res_dirname, 'tsval.png'))
-            for filename in simulator.file_captures:
-                tcp_stat.parse_dump_file(filename)
-            tcp_stat.create_plot()
 
+    # bw is in Mbps, delay in msec, queue size in packets
+    simulation_topology = SimulationTopology(algo_dict, host_bw=100, srv_bw=200,
+                                             srv_delay=15000, rtr_queue_size=queue_size)
+    simulation_name = create_sim_name(algo_dict)
+    simulator = Iperf3Simulator(simulation_topology, simulation_name, 10)
+    simulator.StartSimulation()
+    tcp_stat = TcpStatistics(plot_file=os.path.join(simulator.res_dirname, 'Graphs.png'))
+    for filename in simulator.file_captures:
+        tcp_stat.parse_dump_file(filename)
+    tcp_stat.create_plot()

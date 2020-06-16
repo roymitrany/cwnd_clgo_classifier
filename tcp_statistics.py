@@ -5,11 +5,18 @@ from matplotlib.legend import DraggableLegend
 
 
 class TcpStatistics:
-    def __init__(self, title="Throughput", plot_file="TheGraph.png", plot_file2="TheGraph2.png"):
+    def __init__(self, plot_file="Graph.png"):
 
         # Clear plt before starting new statistics, otherwise it add up to the previous one
         plt.cla()
         plt.clf()
+
+        fig, (ax1, ax2) = plt.subplots(2, figsize=(10, 10))
+        fig.suptitle('Everything')
+        self.throughput_ax = ax1
+        self.TSVal_ax = ax2
+        plt.grid(True)
+
         '''
         2D Dictionary with amount of transferred data in each cell
         The time column will be the x axis.
@@ -21,9 +28,9 @@ class TcpStatistics:
         start_time+0.2      length      length      length
         '''
         self.length_dict_of_dicts = {}
+        self.ts_val_dict_of_lists = {}
+        self.last_ts_val_dict = {}
 
-        self.ax = plt.gca()
-        self.title = title
         self.plot_file = plot_file
 
     def get_key(self, src_addr, src_port, dst_addr, dst_port):
@@ -42,15 +49,9 @@ class TcpStatistics:
         # Parse a single line from TCP dump file, return important values only:
         # Example of a single line:
         # 13:53:23.615538 IP tcpip.48286 > 10.0.8.10.5205: Flags [.], ack 1, win 83, options [nop,nop,TS val 3487210525 ecr 3732313601], length 0
-        search_obj = re.search(r'(\S+) IP (\S+) > (\S+): Flags.* length (\d+)', line)
         #search_obj = re.search(r'(\S+) IP (\S+) > (\S+): Flags.* length (\d+)', line)
-    # Parse a single line from TCP dump file, return important values only
-    # Example of a single line:
-    # 13:53:23.615538 IP tcpip.48286 > 10.0.8.10.5205: Flags [.], ack 1, win 83, options [nop,nop,TS val 3487210525 ecr 3732313601], length 0
-    # @return:
-    def parse_line(self, line):
         search_obj = re.search(r'(\S+) IP (\S+) > (\S+): Flags.*TS val (\d+) .* length (\d+)', line)
-        if search_obj == None:
+        if search_obj is None:
             return '0', '0', '0', '0'
 
         # Extract the interesting variables
@@ -77,12 +78,12 @@ class TcpStatistics:
         count = 0
         # Strips the newline character
         for line in lines:
-            conn_index, time_str, length = self.parse_line(line)
+            conn_index, time_str, length, ts_val = self.parse_line(line)
             if int(length) == 0:  # ACK only, ignore
                 continue
 
             ##### Process packet length
-            # for length, take only 100th of a second from the time string
+            # for length, take only 10th of a second from the time string
             rounded_time_obj = re.search(r'(\S+\.\d)', time_str)  # TODO: There must be a better way to do this
             rounded_time = rounded_time_obj.group(1)
 
@@ -98,57 +99,51 @@ class TcpStatistics:
             self.length_dict_of_dicts[conn_index][rounded_time] += int(length)
 
             #### Process TS Val
-            if not conn_index in self.ts_val_dict_of_dicts.keys():
-                ts_val_dict = {}
-                self.ts_val_dict_of_dicts[conn_index] = ts_val_dict
-                self.ts_val_dict_of_dicts[conn_index]['0'] = float(ts_val) #The first packet will set the baseline time
-            self.ts_val_dict_of_dicts[conn_index][time_str] = float(ts_val)-self.ts_val_dict_of_dicts[conn_index]['0']
+            if not conn_index in self.ts_val_dict_of_lists.keys():
+                ts_val_list = []
+                self.ts_val_dict_of_lists[conn_index] = ts_val_list
+                self.last_ts_val_dict[conn_index]=float(ts_val) # Initialize the first element
+            self.ts_val_dict_of_lists[conn_index].append(float(ts_val) - self.last_ts_val_dict[conn_index])
+            self.last_ts_val_dict[conn_index] = float(ts_val)
 
-    # Convert the 2D dictionary to a plot, using DataFrame
+            # Convert the 2D dictionary to a plot, using DataFrame
     def create_plot(self):
         # Convert the 2D dictionary to a plot, using DataFrame:
         # Get rid of all the short connections (not interesting)
         del_list = []
-        for conn_id, conn_dict in self.ts_val_dict_of_dicts.items():
-            if len(conn_dict.keys()) < 20:
+        for conn_id, conn_dict in self.length_dict_of_dicts.items():
+            if len(conn_dict.keys()) < 10:
                 del_list.append(conn_id)
         for key in del_list:
             del self.length_dict_of_dicts[key]
-            del self.ts_val_dict_of_dicts[key]
+            del self.ts_val_dict_of_lists[key]
 
         ### Plot the throughput
         # Create a DataFrame out of the dictionaries
         df = pd.DataFrame(self.length_dict_of_dicts)
         df = df.fillna(0.0)
 
-        # Convert throughput from (Bytes /0.1 sec) to Mbps
-        df = df.mul(8 / 100000)
-
-        print(df)
-        df = df.fillna(0.0)
-
         # Convert throughput from (Bytes /0.1 sec) to Mbps:
         df = df.div(100000 / 8)
 
-        df.plot(kind='line', ax=self.ax, title=self.title)
-        plt.legend().set_draggable(True)
-        plt.grid(True)
-        plt.xlabel('time')
-        plt.ylabel('Throughput (Mbps)')
-        plt.title = self.title
-        plt.savefig(self.plot_file, dpi=600)
+        df.plot(kind='line', ax=self.throughput_ax, title='Throughput')
+        self.throughput_ax.set(xlabel='time', ylabel='Throughput (Mbps)')
+        self.throughput_ax.legend(loc='upper center', shadow=True, fontsize='xx-small')
 
         ### Plot the timestamp
-        df1 = pd.DataFrame(self.ts_val_dict_of_dicts)
-        df1 = df.fillna(0.0)
-        print(df1)
-        df1.plot(kind='line', ax=self.ax, title="TS Val")
-        plt.legend().set_draggable(True)
-        plt.grid(True)
-        plt.xlabel('time')
-        plt.ylabel('timestamp(ms)')
-        plt.title = self.title
-        plt.savefig(self.plot_file2, dpi=600)
+        # Create a list of Series from the TS Val lists
+        s_list = []
+        for key, l in self.ts_val_dict_of_lists.items():
+            s = pd.Series(l, name=key)
+            s_list.append(s)
+         # create the data frame
+        df = pd.concat(s_list, axis=1)
+        # df = df.fillna(0.0)
+        df.to_csv("df1.csv")
+        df.plot(kind='line', ax=self.TSVal_ax, title="TS Val")
+        self.TSVal_ax.legend(loc='upper center', shadow=True, fontsize='xx-small')
+        self.TSVal_ax.set(xlabel='packet num', ylabel='Delta time(ms)')
+        plt.savefig(self.plot_file, dpi=600)
 
 
 
@@ -156,13 +151,13 @@ class TcpStatistics:
 # For testing only: (the class is called by simulation_implementation.py)
 if __name__ == '__main__':
     tcp_stat = TcpStatistics()
-    filename = "results/4_reno_4_vegas_10000_qsize@6.8.2020@16-50-18/client_vegas_4.txt"
+    filename = "test_input.txt"
     tcp_stat.parse_dump_file(filename)
-    filename = "results/4_reno_4_vegas_10000_qsize@6.8.2020@16-50-18/client_reno_0.txt"
+    '''filename = "results/4_reno_4_vegas_10000_qsize@6.8.2020@16-50-18/client_reno_0.txt"
     tcp_stat.parse_dump_file(filename)
     filename = "results/4_reno_4_vegas_10000_qsize@6.8.2020@16-50-18/client_reno_1.txt"
     tcp_stat.parse_dump_file(filename)
     filename = "results/4_reno_4_vegas_10000_qsize@6.8.2020@16-50-18/client_reno_2.txt"
-    tcp_stat.parse_dump_file(filename)
+    tcp_stat.parse_dump_file(filename)'''
     tcp_stat.create_plot()
     plt.show()
