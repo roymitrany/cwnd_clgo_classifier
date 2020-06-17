@@ -1,11 +1,13 @@
 import re
+from typing import Dict
+
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.legend import DraggableLegend
 
 
 class TcpStatistics:
-    def __init__(self, plot_file="Graph.png"):
+    def __init__(self, port_algo_dict, plot_file="Graph.png"):
 
         # Clear plt before starting new statistics, otherwise it add up to the previous one
         plt.cla()
@@ -30,12 +32,23 @@ class TcpStatistics:
         self.length_dict_of_dicts = {}
         self.ts_val_dict_of_lists = {}
         self.last_ts_val_dict = {}
+        self.q_len_bytes_dict = {}
+        self.q_len_packets_dict = {}
 
         self.plot_file = plot_file
+        self.port_algo_dict:Dict = port_algo_dict
 
     def get_key(self, src_addr, src_port, dst_addr, dst_port):
-        # Determine a unique key string for the connection:
-        return "%s_%s_%s_%s" % (src_addr, src_port, dst_addr, dst_port)
+        # Check if we can tell the used algo (we should)
+        if (int(src_port) in self.port_algo_dict.keys()):
+            algo_str = self.port_algo_dict[int(src_port)] + '_'
+        elif (int(dst_port) in self.port_algo_dict.keys()):
+            algo_str = self.port_algo_dict[int(dst_port)] + '_'
+        else:
+            algo_str = ''
+
+            # Determine a unique key string for the connection:
+        return "%s%s_%s_%s_%s" % (algo_str,src_addr, src_port, dst_addr, dst_port)
 
     def parse_ip_port(self, ipp_str):
         # Auxiliary function to separate the IP from the port in tcpdump parsing:
@@ -67,6 +80,8 @@ class TcpStatistics:
             # Look for the dictionary element. If it does not exist, create one
             conn_index = self.get_key(src_ip, src_port, dst_ip, dst_port)
             return conn_index, time_str, length, ts_val
+        else:
+            return '0', '0', '0', '0'
 
     # Parse a tcpdump file, line by line
     def parse_dump_file(self, file_name):
@@ -84,7 +99,7 @@ class TcpStatistics:
 
             ##### Process packet length
             # for length, take only 10th of a second from the time string
-            rounded_time_obj = re.search(r'(\S+\.\d)', time_str)  # TODO: There must be a better way to do this
+            rounded_time_obj = re.search(r'(\S+\.\d)', time_str)
             rounded_time = rounded_time_obj.group(1)
 
             # If needed, add an entry for the connection (a new column)
@@ -107,6 +122,28 @@ class TcpStatistics:
             self.last_ts_val_dict[conn_index] = float(ts_val)
 
             # Convert the 2D dictionary to a plot, using DataFrame
+    def parse_q_len(self, file_name):
+        # Using readlines()
+        file1 = open(file_name, 'r')
+        lines = file1.readlines()
+
+        count = 0
+        # Strips the newline character
+        for line in lines:
+            conn_index, time_str, length, ts_val = self.parse_line(line)
+            search_obj = re.search(r'(\S+)\s+(\S+)\s+(\S+)', line)
+            if search_obj is None:
+                continue
+
+            # Extract the interesting variables
+            time_str = search_obj.group(1)
+            num_of_bytes_str = search_obj.group(2)
+            num_of_packets_str = search_obj.group(3)
+            if int (num_of_packets_str) == 0:
+                continue
+            self.q_len_bytes_dict[time_str] = int(num_of_bytes_str)
+            self.q_len_packets_dict[time_str] = int(num_of_packets_str)
+
     def create_plot(self):
         # Convert the 2D dictionary to a plot, using DataFrame:
         # Get rid of all the short connections (not interesting)
@@ -121,14 +158,26 @@ class TcpStatistics:
         ### Plot the throughput
         # Create a DataFrame out of the dictionaries
         df = pd.DataFrame(self.length_dict_of_dicts)
+
         df = df.fillna(0.0)
 
         # Convert throughput from (Bytes /0.1 sec) to Mbps:
         df = df.div(100000 / 8)
+        print(df)
 
         df.plot(kind='line', ax=self.throughput_ax, title='Throughput')
         self.throughput_ax.set(xlabel='time', ylabel='Throughput (Mbps)')
         self.throughput_ax.legend(loc='upper center', shadow=True, fontsize='xx-small')
+
+        # Create queue len data frame
+        s = pd.Series(self.q_len_bytes_dict)
+        s.index.name = 'Time'
+        print(s)
+        q_len_bytes_df = pd.DataFrame(s)
+        print(q_len_bytes_df)
+
+        ax3 = self.throughput_ax.twinx()  # instantiate a second axes that shares the same x-axis
+        q_len_bytes_df.plot(kind='line', ax=ax3)
 
         ### Plot the timestamp
         # Create a list of Series from the TS Val lists
@@ -148,11 +197,15 @@ class TcpStatistics:
 
 
 
+
 # For testing only: (the class is called by simulation_implementation.py)
 if __name__ == '__main__':
-    tcp_stat = TcpStatistics()
+    port_algo_dict={'5201':'reno'}
+    tcp_stat = TcpStatistics(port_algo_dict)
     filename = "test_input.txt"
     tcp_stat.parse_dump_file(filename)
+    q_filname = "test_qlen.txt"
+    tcp_stat.parse_q_len(q_filname)
     '''filename = "results/4_reno_4_vegas_10000_qsize@6.8.2020@16-50-18/client_reno_0.txt"
     tcp_stat.parse_dump_file(filename)
     filename = "results/4_reno_4_vegas_10000_qsize@6.8.2020@16-50-18/client_reno_1.txt"

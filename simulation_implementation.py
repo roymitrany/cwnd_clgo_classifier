@@ -46,6 +46,8 @@ class Iperf3Simulator:
         self.iperf_out_filename = os.path.join(self.res_dirname, "iperf_output.txt")
         self.rtr_q_filename = os.path.join(self.res_dirname, "rtr_q.txt")
 
+        self.port_algo_dict = {}
+
 
     def SetCongestionControlAlgorithm(self, host, tcp_algo):
         """
@@ -57,11 +59,6 @@ class Iperf3Simulator:
     def StartSimulation(self):
         self.net.start()
         CLI(self.net)
-        # Modify TCP algorithms (because iperf3 does not support vegas in -C parameter):
-
-        for host in self.simulation_topology.host_list:
-            cwnd_algo = host[0:host.find("_")]
-            self.SetCongestionControlAlgorithm(host, cwnd_algo)
 
         srv = self.net.getNodeByName(self.simulation_topology.srv)
         srv_ip = srv.IP()
@@ -72,7 +69,15 @@ class Iperf3Simulator:
         # Auxiliary loop- including iperf for the servers and initializing monotoring functions using "tcpdump":
         client_counter = 0
         for client in self.simulation_topology.host_list:
+            # Modify TCP algorithms (because iperf3 does not support vegas in -C parameter):
+            cwnd_algo = client[0:client.find("_")]
+            self.SetCongestionControlAlgorithm(client, cwnd_algo)
+
             test_port = (5201 + client_counter)
+
+            # Map test port to algo. This will serve us in results processing
+            self.port_algo_dict[test_port] = cwnd_algo
+
             # In iperf3, each test should have its own server. We have to terminate them at the end,
             # otherwise they are stuck in the system, so we keep the proc nums in a list.
             srv_cmd = 'iperf3 -s -p %d &' % test_port
@@ -96,6 +101,7 @@ class Iperf3Simulator:
             interface_name = "r-%s" % client
             cmd = "tcpdump -i %s 'tcp port %d'>%s&" % (interface_name, test_port, capture_filename)
             rtr.cmd(cmd)
+
             # Running tcpdump on server side, saving to txt file (a separate txt file for each client):
             capture_filename = os.path.join(self.res_dirname, "server_%s.txt" % client)
             self.file_captures.append(capture_filename)
@@ -193,9 +199,10 @@ if __name__ == '__main__':
     simulation_topology = SimulationTopology(algo_dict, host_bw=100, srv_bw=200,
                                              srv_delay=15000, rtr_queue_size=queue_size)
     simulation_name = create_sim_name(algo_dict)
-    simulator = Iperf3Simulator(simulation_topology, simulation_name, 10)
+    simulator = Iperf3Simulator(simulation_topology, simulation_name, 60)
     simulator.StartSimulation()
-    tcp_stat = TcpStatistics(plot_file=os.path.join(simulator.res_dirname, 'Graphs.png'))
+    tcp_stat = TcpStatistics(simulator.port_algo_dict, plot_file=os.path.join(simulator.res_dirname, 'Graphs.png'))
     for filename in simulator.file_captures:
         tcp_stat.parse_dump_file(filename)
+    tcp_stat.parse_q_len(simulator.rtr_q_filename)
     tcp_stat.create_plot()
