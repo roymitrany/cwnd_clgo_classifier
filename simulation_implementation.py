@@ -18,8 +18,10 @@ from mininet.node import OVSController
 from mininet.util import pmonitor
 from cycler import cycler
 
+from plotter import Plotter
 from simulation_topology import SimulationTopology
-from tcp_statistics import TcpStatistics
+from tc_qlen_statistics import TcQlenStatistics
+from tcpdump_statistics import TcpdumpStatistics
 
 
 class Iperf3Simulator:
@@ -109,7 +111,7 @@ class Iperf3Simulator:
             rtr.cmd(cmd)
             client_counter += 1
 
-        sleep(10)
+        sleep(5)
         # Traffic generation loop:
         client_counter = 0
         for client in self.simulation_topology.host_list:
@@ -129,7 +131,7 @@ class Iperf3Simulator:
             if client:
                 print('<%s>: %s' % (client, line), )
         # Kill the server's iperf -s processes, the router's queue monitor and tcpdumps:
-        sleep(10)
+        sleep(5)
         for process in srv_procs:
             process.send_signal(SIGINT)
         q_proc.send_signal(SIGINT)
@@ -187,9 +189,10 @@ if __name__ == '__main__':
     srv_delay = 20e3
     tcp_packet_size = 2806
     algo_dict = {}
-    algo_dict['reno']=4
-    algo_dict['vegas']=3
     algo_dict['cubic']=3
+    algo_dict['reno']=2
+    algo_dict['vegas']=3
+
     queue_size = 2 * (
                 srv_bw * srv_delay) / tcp_packet_size  # Rule of thumb: queue_size = (bw [Mbit/sec] * RTT [sec]) / size_of_packet.
     # Tell mininet to print useful information:
@@ -199,10 +202,13 @@ if __name__ == '__main__':
     simulation_topology = SimulationTopology(algo_dict, host_bw=100, srv_bw=200,
                                              srv_delay=15000, rtr_queue_size=queue_size)
     simulation_name = create_sim_name(algo_dict)
-    simulator = Iperf3Simulator(simulation_topology, simulation_name, 60)
+    simulator = Iperf3Simulator(simulation_topology, simulation_name, 10)
     simulator.StartSimulation()
-    tcp_stat = TcpStatistics(simulator.port_algo_dict, plot_file=os.path.join(simulator.res_dirname, 'Graphs.png'))
+    tcp_stat = TcpdumpStatistics(simulator.port_algo_dict, )
     for filename in simulator.file_captures:
         tcp_stat.parse_dump_file(filename)
-    tcp_stat.parse_q_len(simulator.rtr_q_filename)
-    tcp_stat.create_plot()
+    tc_qlen_stat = TcQlenStatistics(simulator.rtr_q_filename)
+    plotter:Plotter = Plotter(plot_file=os.path.join(simulator.res_dirname, 'Graphs.png'))
+    plotter.create_throughput_plot(tcp_stat, tc_qlen_stat)
+    plotter.create_ts_val_plot(tcp_stat)
+    plotter.save_and_show()
