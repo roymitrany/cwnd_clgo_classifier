@@ -1,14 +1,12 @@
 import re
 
-
-class TcQlenStatistics:
+class TcQdiscStatistics:
     def __init__(self, file_name):
         self.q_len_bytes_dict = {}
         self.q_len_packets_dict = {}
-        self.parse_q_len(file_name)
+        self.parse_tc_qdisc_file(file_name)
 
-
-    def parse_q_len(self, file_name):
+    def parse_tc_qdisc_file(self, file_name):
         # Using readlines()
         file1 = open(file_name, 'r')
         lines = file1.readlines()

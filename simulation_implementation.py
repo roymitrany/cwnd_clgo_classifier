@@ -156,7 +156,7 @@ if __name__ == '__main__':
     algo_dict['reno'] = 0
     algo_dict['vegas'] = 2
     # algo_dict['BBR'] = 2
-    simulation_duration = 60 # seconds.
+    simulation_duration = 10 # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
     total_delay = 2 * (host_delay + srv_delay)
     queue_size =  2 * (srv_bw * total_delay) / tcp_packet_size  # Rule of thumb: queue_size = (bw [Mbit/sec] * RTT [sec]) / size_of_packet.

@@ -55,7 +55,7 @@ class SimulationTopology(Topo):
 
     def build(self, **_opts):
         # The router configuration:
-        self.rtr = self.addNode('r', cls=LinuxRouter)
+        self.rtr = self.addNode('a', cls=LinuxRouter)
 
         # Hosts configuration:
         host_number = 0

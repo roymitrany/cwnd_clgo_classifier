@@ -8,12 +8,10 @@ import time
 
 run = True
 
-
 def signal_handler(signal, frame):
     global run
     # print ("exiting")
     run = False
-
 
 if __name__ == '__main__':
     queue_len_bytes_dict = {}
