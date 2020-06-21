@@ -59,7 +59,7 @@ class Iperf3Simulator:
 
     def StartSimulation(self):
         self.net.start()
-        CLI(self.net)
+        #CLI(self.net)
 
         srv = self.net.getNodeByName(self.simulation_topology.srv)
         srv_ip = srv.IP()
@@ -142,7 +142,7 @@ class Iperf3Simulator:
         for process in srv_procs:
             process.send_signal(SIGINT)
         q_proc.send_signal(SIGINT)
-        # CLI(self.net)
+        #CLI(self.net)
         self.net.stop()
 
 
@@ -164,7 +164,7 @@ if __name__ == '__main__':
     tcp_packet_size = 2806
     algo_dict = {}
     algo_dict['cubic'] = 1
-    algo_dict['reno'] = 0
+    algo_dict['reno'] = 4
     algo_dict['vegas'] = 2
     # algo_dict['BBR'] = 2
     simulation_duration = 10  # seconds.
@@ -188,5 +188,6 @@ if __name__ == '__main__':
                                                plot_fig_name="host_bw_%s_host_delay_%s_srv_bw_%s_srv_delay_%s_queue_size_%s.png" % (
                                                host_bw, host_delay, srv_bw, srv_delay, queue_size))
     graph_implementation.create_throughput_plot(tcpdump_statistsics, tc_qdisc_statistics)
+    graph_implementation.create_drop_plot(tc_qdisc_statistics)
     graph_implementation.create_ts_val_plot(tcpdump_statistsics)
     graph_implementation.save_and_show()

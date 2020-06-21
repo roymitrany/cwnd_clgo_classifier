@@ -15,11 +15,16 @@ class GraphImplementation:
         # plt.cla() # Clear the current axes.
         # plt.clf() # Clear the current figure.
 
-        fig, (ax1, ax2) = plt.subplots(2, figsize=(10, 10))
+        fig, (ax1, ax2, ax3) = plt.subplots(3, figsize=(10, 10))
         # fig.suptitle('Congestion Control Algorithms Statistics')
         fig.suptitle(plot_fig_name)
+        ax1.set(xlabel='time', ylabel='Throughput (Mbps)')
+        ax2.set(xlabel='time', ylabel='Number of drops')
+        ax3.set(xlabel='num of packets', ylabel='Delta Time (ms)')
         self.throughput_ax = ax1
-        self.TSVal_ax = ax2
+        self.drop_ax = ax2
+        self.TSVal_ax = ax3
+
         plt.grid(True)
 
         self.plot_file_name = plot_file_name
@@ -50,13 +55,35 @@ class GraphImplementation:
         queue_length_dataframe = pd.DataFrame(queue_length_series)
 
         ax3 = self.throughput_ax.twinx()  # instantiate a second axes that shares the same x-axis.
-        ax3.set(xlabel='time', ylabel='Throughput (Mbps)')
+        ax3.set(xlabel='time', ylabel='Number of packets')
         ax3.legend(loc='upper center', shadow=True, fontsize='xx-small')
         # cm = plt.get_cmap('gist_rainbow')
         # ax3.set_prop_cycle('color',plt.cm.Spectral(np.linspace(0,1,30)))
         cm = cycler('color', 'r')
         ax3.set_prop_cycle(cm)
         queue_length_dataframe.plot(kind='line', ax=ax3)
+
+    def create_drop_plot(self, tc_qdisc_statistics):
+
+        # Create drops data frame:
+        drops_series = pd.Series(tc_qdisc_statistics.q_drops_dict)
+        drops_series.index.name = 'Time'
+        drops_dataframe = pd.DataFrame(drops_series)
+        drops_dataframe.plot(kind='line', ax=self.drop_ax, title='Drops')
+
+
+        # Create queue length data frame:
+        queue_length_series = pd.Series(tc_qdisc_statistics.q_len_packets_dict)
+        queue_length_series.index.name = 'Time'
+        queue_length_dataframe = pd.DataFrame(queue_length_series)
+
+        ax4 = self.drop_ax.twinx()  # instantiate a second axes that shares the same x-axis.
+        ax4.set(xlabel='time', ylabel='Number of packets')
+        #ax4.legend(loc='upper center', shadow=True, fontsize='xx-small')
+        cm = cycler('color', 'r')
+        ax4.set_prop_cycle(cm)
+        queue_length_dataframe.plot(kind='line', ax=ax4)
+
 
     def create_ts_val_plot(self, tcpdump_statistsics):
         ### Plot the TS Val:
