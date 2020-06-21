@@ -37,7 +37,8 @@ class Iperf3Simulator:
         self.seconds = seconds
         self.simulation_name = simulation_name
         tn = datetime.now()
-        time_str = str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(tn.minute) + "-" + str(tn.second)
+        time_str = str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
+            tn.minute) + "-" + str(tn.second)
 
         # Create results directory, with name includes num of clients for each algo, and time:
         self.res_dirname = os.path.join(os.getcwd(), "results", self.simulation_name + "@" + time_str)
@@ -58,7 +59,7 @@ class Iperf3Simulator:
 
     def StartSimulation(self):
         self.net.start()
-        # CLI(self.net)
+        CLI(self.net)
 
         srv = self.net.getNodeByName(self.simulation_topology.srv)
         srv_ip = srv.IP()
@@ -109,6 +110,14 @@ class Iperf3Simulator:
             rtr.cmd(cmd)
             client_counter += 1
 
+            # Disable TSO for the client
+            cmd = "ethtool -K %s-r tso off" % client
+            self.net.getNodeByName(client).cmd(cmd)
+
+        # Disable TSO for router
+        cmd = "ethtool -K r-srv tso off"
+        rtr.cmd(cmd)
+
         sleep(5)
         # Traffic generation loop:
         client_counter = 0
@@ -136,13 +145,15 @@ class Iperf3Simulator:
         # CLI(self.net)
         self.net.stop()
 
+
 def create_sim_name(cwnd_algo_dict):
-    name=''
-    if len(cwnd_algo_dict)==0:
+    name = ''
+    if len(cwnd_algo_dict) == 0:
         return "WTF"
     for key, val in cwnd_algo_dict.items():
-        name += "%d_%s_" %(val, key)
+        name += "%d_%s_" % (val, key)
     return name[0:-1]
+
 
 if __name__ == '__main__':
     # Simulation's parameters initializing:
@@ -156,14 +167,16 @@ if __name__ == '__main__':
     algo_dict['reno'] = 0
     algo_dict['vegas'] = 2
     # algo_dict['BBR'] = 2
-    simulation_duration = 10 # seconds.
+    simulation_duration = 10  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
     total_delay = 2 * (host_delay + srv_delay)
-    queue_size =  2 * (srv_bw * total_delay) / tcp_packet_size  # Rule of thumb: queue_size = (bw [Mbit/sec] * RTT [sec]) / size_of_packet.
+    queue_size = 2 * (
+                srv_bw * total_delay) / tcp_packet_size  # Rule of thumb: queue_size = (bw [Mbit/sec] * RTT [sec]) / size_of_packet.
     # Tell mininet to print useful information:
     setLogLevel('info')
     # bw is in Mbps, delay in msec, queue size in packets:
-    simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw, srv_bw=srv_bw, srv_delay=srv_delay, rtr_queue_size=queue_size)
+    simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw, srv_bw=srv_bw,
+                                             srv_delay=srv_delay, rtr_queue_size=queue_size)
     simulation_name = create_sim_name(algo_dict)
     simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration)
     simulator.StartSimulation()
@@ -171,7 +184,9 @@ if __name__ == '__main__':
     for filename in simulator.file_captures:
         tcpdump_statistsics.parse_tcpdump_file(filename)
     tc_qdisc_statistics = TcQdiscStatistics(simulator.rtr_q_filename)
-    graph_implementation = GraphImplementation(plot_file_name=os.path.join(simulator.res_dirname, 'Graphs.png'), plot_fig_name="host_bw_%s_host_delay_%s_srv_bw_%s_srv_delay_%s_queue_size_%s.png" % (host_bw, host_delay, srv_bw, srv_delay, queue_size))
+    graph_implementation = GraphImplementation(plot_file_name=os.path.join(simulator.res_dirname, 'Graphs.png'),
+                                               plot_fig_name="host_bw_%s_host_delay_%s_srv_bw_%s_srv_delay_%s_queue_size_%s.png" % (
+                                               host_bw, host_delay, srv_bw, srv_delay, queue_size))
     graph_implementation.create_throughput_plot(tcpdump_statistsics, tc_qdisc_statistics)
     graph_implementation.create_ts_val_plot(tcpdump_statistsics)
     graph_implementation.save_and_show()

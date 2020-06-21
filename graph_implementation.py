@@ -45,7 +45,7 @@ class GraphImplementation:
         throughput_dataframe.plot(kind='line', ax=self.throughput_ax, title='Throughput')
 
         # Create queue length data frame:
-        queue_length_series = pd.Series(tc_qdisc_statistics.q_len_bytes_dict)
+        queue_length_series = pd.Series(tc_qdisc_statistics.q_len_packets_dict)
         queue_length_series.index.name = 'Time'
         queue_length_dataframe = pd.DataFrame(queue_length_series)
 
