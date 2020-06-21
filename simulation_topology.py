@@ -9,15 +9,15 @@ Congestion control reavluation classification topology:
 
 """
 from logging import info
-from typing import Dict
+from dictionaries  import Dict
 
+# from mininet.link import TCLink
 from mininet.node import Node
 from mininet.topo import Topo
 
 
 class LinuxRouter(Node):
     "A Node with IP forwarding enabled."
-
     def config(self, **params):
         super(LinuxRouter, self).config(**params)
         # Enable forwarding on the router
@@ -31,7 +31,7 @@ class LinuxRouter(Node):
 
 class SimulationTopology(Topo):
     def __init__(self, algo_dict, host_bw=None, host_delay=None, srv_bw=None, srv_delay=None, rtr_queue_size=None):
-        self.algo_dict: Dict[str, int] = algo_dict
+        self.algo_dict = algo_dict
         self.host_bw = host_bw
         self.host_delay = host_delay
         self.srv_bw = srv_bw
@@ -58,7 +58,7 @@ class SimulationTopology(Topo):
         self.rtr = self.addNode('r', cls=LinuxRouter)
 
         # Hosts configuration:
-        host_number: int = 0
+        host_number = 0
         for key, val in self.algo_dict.items():
             for h in range(0, val):
                 self.add_host(key, host_number)
