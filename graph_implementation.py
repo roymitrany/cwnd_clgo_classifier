@@ -109,7 +109,7 @@ class GraphImplementation:
 if __name__ == '__main__':
     port_algo_dict = {'5201': 'reno'}
     tcp_stat = TcpdumpStatistics(port_algo_dict)
-    filename = "test_input.txt"
+    filename = "test_files/test_input.txt"
     tcp_stat.parse_dump_file(filename)
     q_filname = "test_qlen.txt"
     tcp_stat.parse_q_len(q_filname)
