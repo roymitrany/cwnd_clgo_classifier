@@ -9,12 +9,12 @@ from matplotlib import cycler
 from tcpdump_statistics import TcpdumpStatistics
 
 
-def fix_time(rounded_time_str):
+'''def fix_time(rounded_time_str):
     z = datetime.strptime(rounded_time_str, "%H:%M:%S.%f")
     time_in_tenth = int(10 * (z.hour * 3600 + z.minute * 60 + z.second + z.microsecond / 1000000))
     date_time = datetime.fromtimestamp(time_in_tenth / 10)
     time = date_time.strftime("%H:%M:%S.%f")[0:-5]
-    return time
+    return time'''
 
 
 class SingleConnStatistics:
@@ -40,7 +40,7 @@ class SingleConnStatistics:
         # Add qdisc columns, only for existinf keys
         qdisc_df = pd.read_csv(rtr_q_filename, sep="\t", header=None)
         qdisc_df.columns = ['Time', 'Total Bytes in Queue', 'Num of Packets', 'Num of Drops']
-        qdisc_df['Time'] = qdisc_df['Time'].map(lambda time: fix_time(time))
+        #qdisc_df['Time'] = qdisc_df['Time'].map(lambda time: fix_time(time))
         qdisc_df = qdisc_df.set_index('Time')
         totals_df = totals_df.join(qdisc_df, lsuffix='_caller')
         return totals_df
@@ -52,38 +52,21 @@ class SingleConnStatistics:
         last_time_in_tenth = -1
         total_bytes = 0
         # Strips the newline character
-        count=0
+        count = 0
         for line in lines:
-            count+=1
-            if count%1000 == 0:
-                print('&',end='')
-                if count%30000 == 0:
+            count += 1
+            if count % 1000 == 0:
+                print('&', end='')
+                if count % 30000 == 0:
                     print(count)
             conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line)
             if int(length) == 0:  # ACK only, ignore
                 continue
             total_bytes += int(length)
             # Take only 10th of a second from the time string:
-            rounded_time_obj = re.search(r'(\S+\.\d)', time_str)
-            rounded_time_str = rounded_time_obj.group(1)
-            # convert the time to float
-            z = datetime.strptime(rounded_time_str, "%H:%M:%S.%f")
-            time_in_tenth = int(10 * (z.hour * 3600 + z.minute * 60 + z.second + z.microsecond / 1000000))
+            rounded_time_str = time_str[0:-5]
 
-            # Make sure that there are no gaps in the time dictionary. If there is, fill with last total
-            if (time_in_tenth > last_time_in_tenth) + 1 and (last_time_in_tenth != -1):
-                last_date_time = datetime.fromtimestamp(last_time_in_tenth / 10)
-                last_time = last_date_time.strftime("%H:%M:%S.%f")[0:-5]
-                for t in range(last_time_in_tenth + 1, time_in_tenth):
-                    date_time = datetime.fromtimestamp(t / 10)
-                    date_time.replace(tzinfo=None)
-                    time = date_time.strftime("%H:%M:%S.%f")[0:-5]
-                    totals_dict[time] = totals_dict[last_time]
-            last_time_in_tenth = time_in_tenth
-
-            date_time = datetime.fromtimestamp(time_in_tenth / 10)
-            time = date_time.strftime("%H:%M:%S.%f")[0:-5]
-            totals_dict[time] = total_bytes
+            totals_dict[rounded_time_str] = total_bytes
 
         return totals_dict
 
@@ -94,7 +77,7 @@ class SingleConnStatistics:
         lines = file.readlines()
         lines = self.reduce_lines(lines)
         lines = self.reduce_retransmissions(lines)
-        return SingleConnStatistics.parse_dump_lines(lines)
+        return self.parse_dump_lines(lines)
 
     def create_plots(self, graph_file_name):
 
@@ -132,10 +115,10 @@ class SingleConnStatistics:
         count = 0
         conn_count = {}
         for line in lines:
-            count+=1
-            if count%1000 == 0:
-                print('-',end='')
-                if count%30000 == 0:
+            count += 1
+            if count % 1000 == 0:
+                print('-', end='')
+                if count % 30000 == 0:
                     print(count)
             # Ignore if length is 0
             if int(line.find('length 0')) > 0:  # ACK only, ignore
@@ -150,13 +133,13 @@ class SingleConnStatistics:
         our_conn_index = max(conn_count, key=conn_count.get)
 
         count = 0
-        reduced_lines=[]
+        reduced_lines = []
         # loop on file again and remove all the lines that are not interesting
         for line in lines:
-            count+=1
-            if count%1000 == 0:
-                print('+',end='')
-                if count%30000 == 0:
+            count += 1
+            if count % 1000 == 0:
+                print('+', end='')
+                if count % 30000 == 0:
                     print(count)
             conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line, {})
             if conn_index == our_conn_index:
@@ -165,6 +148,7 @@ class SingleConnStatistics:
         return reduced_lines
 
         # 09:17:58.297429 IP 10.0.1.10.44848 > 10.0.10.10.5202: Flags [.], seq 1486:2934, ack 1, win 83, options [nop,nop,TS val 4277329349 ecr 645803186], length 1448
+
     def reduce_retransmissions(self, lines):
         # The method assumes single connection. If lines are from multiple connections, thwo messages
         # from two different connections with the same seq number will be interpreted as retransmissions
@@ -172,10 +156,10 @@ class SingleConnStatistics:
         transmission_dict = {}
         count = 0
         for line in lines:
-            count+=1
-            if count%1000 == 0:
-                print('^',end='')
-                if count%30000 == 0:
+            count += 1
+            if count % 1000 == 0:
+                print('^', end='')
+                if count % 30000 == 0:
                     print(count)
             search_obj = re.search(r'.*seq (\d+).* length (\d+)', line)
             # All lines with no seq or no data should be automatically not reduced
@@ -183,13 +167,14 @@ class SingleConnStatistics:
                 reduced_lines.append(line)
                 continue
             length = search_obj.group(2)
-            if int(length)==0:
+            if int(length) == 0:
                 reduced_lines.append(line)
                 continue
 
             seq = int(search_obj.group(1))
             transmission_dict[seq] = line
-        return reduced_lines+list(transmission_dict.values())
+        return reduced_lines + list(transmission_dict.values())
+
 
 if __name__ == '__main__':
 
@@ -207,4 +192,4 @@ if __name__ == '__main__':
         graph_file_name = "test_files/BIQ.png"
     # in_file = "test_files/in_short.txt"
     # out_file = "test_files/out_short.txt"
-    q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file,graph_file_name)
+    q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name)
