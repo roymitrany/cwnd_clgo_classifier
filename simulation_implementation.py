@@ -157,21 +157,21 @@ def create_sim_name(cwnd_algo_dict):
 
 if __name__ == '__main__':
     # Simulation's parameters initializing:
-    host_bw = 50
+    host_bw = 500
     host_delay = 5e3
-    srv_bw = 10
+    srv_bw = 100
     srv_delay = 5e3
     tcp_packet_size = 2806
     algo_dict = {}
     algo_dict['cubic'] = 1
-    algo_dict['reno'] = 4
-    algo_dict['vegas'] = 2
+    algo_dict['reno'] = 0
+    algo_dict['vegas'] = 0
     # algo_dict['BBR'] = 2
     simulation_duration = 60  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
     total_delay = 2 * (host_delay + srv_delay)
-    queue_size = 2 * (
-                srv_bw * total_delay) / tcp_packet_size  # Rule of thumb: queue_size = (bw [Mbit/sec] * RTT [sec]) / size_of_packet.
+    queue_size = 300 #2 * (
+                #srv_bw * total_delay) / tcp_packet_size  # Rule of thumb: queue_size = (bw [Mbit/sec] * RTT [sec]) / size_of_packet.
     # Tell mininet to print useful information:
     setLogLevel('info')
     # bw is in Mbps, delay in msec, queue size in packets:

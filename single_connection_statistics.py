@@ -52,7 +52,13 @@ class SingleConnStatistics:
         last_time_in_tenth = -1
         total_bytes = 0
         # Strips the newline character
+        count=0
         for line in lines:
+            count+=1
+            if count%1000 == 0:
+                print('&',end='')
+                if count%30000 == 0:
+                    print(count)
             conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line)
             if int(length) == 0:  # ACK only, ignore
                 continue
@@ -84,19 +90,18 @@ class SingleConnStatistics:
     def parse_dump_file(self, file_name):
 
         # Using readlines()
-        print("=============1")
         file = open(file_name, 'r')
-        print("=============2")
         lines = file.readlines()
-        print("=============3")
         lines = self.reduce_lines(lines)
-        print("=============4")
+        lines = self.reduce_retransmissions(lines)
         return SingleConnStatistics.parse_dump_lines(lines)
 
     def create_plots(self, graph_file_name):
 
+        print("=======CP1=============")
         fig, (throughput_ax, q_disc_ax) = plt.subplots(2, figsize=(10, 10))
-        self.conn_df.plot(kind='line', ax=throughput_ax, y=['In Throughput', 'Out Throughput'])
+        self.conn_df.plot(kind='line', ax=throughput_ax, y=['In Throughput', 'Out Throughput'],
+                          title="Throughput vs. Bytes in Queue")
         throughput_ax.legend(loc=2)
         throughput_ax.set(xlabel='time', ylabel='Throughput (Mbps)')
         throughput_ax.grid()
@@ -106,6 +111,7 @@ class SingleConnStatistics:
         ax4.set(ylabel='Bytes')
         self.conn_df.plot(kind='line', ax=ax4, y=['Conn. Bytes in Queue'])
         ax4.legend(loc=1)
+        print("=======CP2=============")
 
         self.conn_df.plot(kind='line', ax=q_disc_ax, y=['Num of Drops'], color="red")
         q_disc_ax.set(ylabel='Drops (pkts)')
@@ -113,44 +119,77 @@ class SingleConnStatistics:
         q_disc_ax.legend(loc=2)
         ax5 = q_disc_ax.twinx()  # instantiate a second axes that shares the same x-axis.
         ax5.set(ylabel='Bytes')
-        self.conn_df.plot(kind='line', ax=ax5, y=['Conn. Bytes in Queue', 'Total Bytes in Queue'])
+        self.conn_df.plot(kind='line', ax=ax5, y=['Conn. Bytes in Queue', 'Total Bytes in Queue'],
+                          title="Drops vs. Bytes in Queue")
         ax5.legend(loc=1)
+        print("=======CP3=============")
         plt.savefig(graph_file_name)
         plt.show()
 
     @staticmethod
     def reduce_lines(lines):
-        print("=========================%d" % len(lines))
         # Take out all lines with length 0
-        for line in lines:
-            conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line, {})
-            if int(length) == 0:  # ACK only, ignore
-                lines.remove(line)
-        print("=============31")
-
-        # Keep only the most common connection
+        count = 0
         conn_count = {}
         for line in lines:
+            count+=1
+            if count%1000 == 0:
+                print('-',end='')
+                if count%30000 == 0:
+                    print(count)
+            # Ignore if length is 0
+            if int(line.find('length 0')) > 0:  # ACK only, ignore
+                continue
             conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line, {})
             if conn_index in conn_count.keys():
                 conn_count[conn_index] += 1
             else:
                 conn_count[conn_index] = 1
-        print("=============32")
 
         # extract the connection index
         our_conn_index = max(conn_count, key=conn_count.get)
 
+        count = 0
+        reduced_lines=[]
         # loop on file again and remove all the lines that are not interesting
         for line in lines:
+            count+=1
+            if count%1000 == 0:
+                print('+',end='')
+                if count%30000 == 0:
+                    print(count)
             conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line, {})
-            if conn_index != our_conn_index:
-                lines.remove(line)
-        print("=============33")
+            if conn_index == our_conn_index:
+                reduced_lines.append(line)
 
-        # TODO: reduce retransmissions
-        return lines
+        return reduced_lines
 
+        # 09:17:58.297429 IP 10.0.1.10.44848 > 10.0.10.10.5202: Flags [.], seq 1486:2934, ack 1, win 83, options [nop,nop,TS val 4277329349 ecr 645803186], length 1448
+    def reduce_retransmissions(self, lines):
+        # The method assumes single connection. If lines are from multiple connections, thwo messages
+        # from two different connections with the same seq number will be interpreted as retransmissions
+        reduced_lines = []
+        transmission_dict = {}
+        count = 0
+        for line in lines:
+            count+=1
+            if count%1000 == 0:
+                print('^',end='')
+                if count%30000 == 0:
+                    print(count)
+            search_obj = re.search(r'.*seq (\d+).* length (\d+)', line)
+            # All lines with no seq or no data should be automatically not reduced
+            if search_obj is None:
+                reduced_lines.append(line)
+                continue
+            length = search_obj.group(2)
+            if int(length)==0:
+                reduced_lines.append(line)
+                continue
+
+            seq = int(search_obj.group(1))
+            transmission_dict[seq] = line
+        return reduced_lines+list(transmission_dict.values())
 
 if __name__ == '__main__':
 
