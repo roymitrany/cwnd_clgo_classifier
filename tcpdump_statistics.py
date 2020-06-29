@@ -8,8 +8,8 @@ class TcpdumpStatistics:
         2D Dictionary with amount of transferred data in each cell
         The time column will be the x axis.
         if no data passed for a connection in a specific slot, 0 will be marked
-        Time                conn_1      conn_2      conn_3
-        ----                ------      ------      ------
+        Time                conn_1          conn_2          conn_3
+        ----                ------          ------          ------
         start_time          throughput      throughput      throughput
         start_time+0.1      throughput      throughput      throughput
         start_time+0.2      throughput      throughput      throughput
@@ -68,7 +68,6 @@ class TcpdumpStatistics:
 
     def parse_tcpdump_file(self, file_name):
         # Parse a tcpdump file, line by line:
-        # Using readlines():
         file1 = open(file_name, 'r')
         lines = file1.readlines()
 
@@ -85,18 +84,18 @@ class TcpdumpStatistics:
             rounded_time = rounded_time_obj.group(1)
 
             # If needed, add an entry for the connection (a new column):
-            if not conn_index in self.throughput_dict_of_dicts.keys():
+            if not conn_index in self.throughput_dict_of_dicts:
                 conn_throughput_dict = {}
                 self.throughput_dict_of_dicts[conn_index] = conn_throughput_dict
 
             # If needed, add a value for the specific time (a new cell):
-            if not rounded_time in self.throughput_dict_of_dicts[conn_index].keys():
+            if not rounded_time in self.throughput_dict_of_dicts[conn_index]:
                 self.throughput_dict_of_dicts[conn_index][rounded_time] = 0
 
             self.throughput_dict_of_dicts[conn_index][rounded_time] += int(throughput)
 
             #### Process TS Val:
-            if not conn_index in self.ts_val_dict_of_lists.keys():
+            if not conn_index in self.ts_val_dict_of_lists:
                 ts_val_list = []
                 self.ts_val_dict_of_lists[conn_index] = ts_val_list
                 self.last_ts_val_dict[conn_index] = float(ts_val)  # Initialize the first element:

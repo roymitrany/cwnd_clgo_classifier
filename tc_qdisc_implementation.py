@@ -24,11 +24,13 @@ if __name__ == '__main__':
     results_filename = argv[2]
     signal.signal(signal.SIGINT, signal_handler)
     last_dropped = 0
+    results_file = open(results_filename, 'w')
+    output_file = open("q_disc_debug.txt", 'w')
     while run:
         p = Popen(["/sbin/tc", "-s", "qdisc", "show", "dev", if_name], stdout=subprocess.PIPE,
                   universal_newlines=True)
         output = p.communicate()
-
+        output_file.write(output[0])
         # parse queue length
         match = re.search(r'dropped\s+(\d+).*backlog\s+(\d+[kK]?)b\s+(\d+)p', output[0], re.DOTALL)
         if match:
@@ -42,13 +44,14 @@ if __name__ == '__main__':
                 num = int(match.group(2)[0:-1]) * 1000
                 num_of_bytes = str(num)
             num_of_packets = match.group(3)
+            time_str = datetime.now().strftime("%H:%M:%S.%f")[:-5]
+            results_file.write("%s\t%s\t%s\t%d\n" % (time_str, num_of_bytes, num_of_packets, drops))
+
             queue_len_bytes_dict[datetime.now().strftime("%H:%M:%S.%f")[:-5]] = "%s\t%s\t%d" % (
                 num_of_bytes, num_of_packets, drops)
 
 
         time.sleep(0.1)
     # SIGINT was called. Save all results in a file:
-    with open(results_filename, 'w') as outfile:
-        for key, val in queue_len_bytes_dict.items():
-            outfile.write("%s\t%s\n" % (key, val))
-    outfile.close()
+    results_file.close()
+    output_file.close()

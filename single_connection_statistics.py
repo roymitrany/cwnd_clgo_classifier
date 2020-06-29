@@ -2,38 +2,101 @@ import re
 import sys
 
 import pandas as pd
-from datetime import datetime
 import matplotlib.pyplot as plt
-from matplotlib import cycler
+
+from matplotlib import cycler, gridspec
 
 from tcpdump_statistics import TcpdumpStatistics
 
 
 class SingleConnStatistics:
     def __init__(self, ingress_file_name, egress_file_name, rtr_q_filename, graph_file_name):
-        self.conn_df = self.create_df(ingress_file_name, egress_file_name, rtr_q_filename)
+        self.conn_df = self.rolling_df = None
+
+        self.build_df(ingress_file_name, egress_file_name, rtr_q_filename)
         print(self.conn_df)
+        # self.create_plots(graph_file_name)
         self.create_plots(graph_file_name)
 
-    def create_df(self, ingress_file_name, egress_file_name, rtr_q_filename):
-        in_throughput_df = self.parse_dump_file(ingress_file_name)
-        out_throughput_df = self.parse_dump_file(egress_file_name)
-        connection_df = pd.concat([in_throughput_df, out_throughput_df], axis=1)  # Outer join between in and out df
-        connection_df.columns = ['In Throughput', 'in_total', 'Out Throughput', 'out_total']
+    def build_df(self, ingress_file_name, egress_file_name, rtr_q_filename):
 
-        # The gap between the total in and the total out indicates what's in the queue
-        connection_df['Conn. Bytes in Queue'] = connection_df['in_total'] - connection_df['out_total']
+        # Parse inbound file. Extract dropped packets and passed packets for the connection
+        file = open(ingress_file_name, 'r')
+        lines = file.readlines()
+        in_conn_lines = self.reduce_lines(lines)  # take out all the lines that are not related to the connection
+        in_passed_lines, in_dropped_lines = self.reduce_dropped_packets(in_conn_lines)
+
+        # Parse outbound file. Extract passed packets for the connection
+        file = open(egress_file_name, 'r')
+        lines = file.readlines()
+        out_conn_lines = self.reduce_lines(lines)  # take out all the lines that are not related to the connection
+
+        # Create several DataFrames from the lines
+        dropped_df = self.create_dropped_df(in_dropped_lines)
+        in_throughput_df = self.create_throughput_df(in_conn_lines)
+        out_throughput_df = self.create_throughput_df(out_conn_lines)
+        in_goodput_df = self.create_throughput_df(
+            in_passed_lines)  # Throughput for packets that did not drop
+        ts_val_df = self.create_ts_val_df(in_conn_lines)
+
+        # Consolidate all the DataFrames into one DataFrame
+        self.conn_df = pd.concat([in_throughput_df, out_throughput_df, dropped_df, ts_val_df],
+                                 axis=1)  # Outer join between in and out df
+        self.conn_df.columns = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap']
+        self.conn_df.sort_index()
+        # Create the Byte in Queue column
+        # Add Total column that indicates the number of bytes passed so far
+        in_goodput_df['In Total'] = in_goodput_df.cumsum()
+        out_throughput_df['Out Total'] = out_throughput_df.cumsum()
+        df = pd.concat([in_goodput_df['In Total'], out_throughput_df['Out Total']], axis=1)
+        # The gap between the total in and the total out indicates what's in the queue. We want to convert form
+        # Mbps to Bytes
+        df['Conn. Bytes in Queue'] = df['In Total'] - df['Out Total']
+        df['Conn. Bytes in Queue'] = df['Conn. Bytes in Queue'].map(lambda num: num / 8 * 100000)
+        self.conn_df = self.conn_df.join(df['Conn. Bytes in Queue'], lsuffix='_caller')
+
+        values = {'Connection Num of Drops': 0}
+        self.conn_df = self.conn_df.fillna(value=values)
 
         # Add qdisc columns, only for existing keys (inner join)
         qdisc_df = pd.read_csv(rtr_q_filename, sep="\t", header=None)
         qdisc_df.columns = ['Time', 'Total Bytes in Queue', 'Num of Packets', 'Num of Drops']
         qdisc_df = qdisc_df.set_index('Time')
-        connection_df = connection_df.join(qdisc_df, lsuffix='_caller')
-        return connection_df
+        self.conn_df = self.conn_df.join(qdisc_df, lsuffix='_caller')
+        self.rolling_df = self.conn_df.rolling(10,win_type='boxcar').mean()
+
+        return
 
     @staticmethod
-    def parse_dump_lines(lines):
-        # totals_dict = {}
+    def create_ts_val_df(lines):
+        # TS val indicates the timestamp in which the packet was sent.
+        # since we want to maintain the data based on time intervals, we should expect some intervals to include
+        # a lot of packets, and others with only few of them.
+        # It is hard to process such information, so we will
+        # extract the maximal time gap between two sent packets for each interval.
+        ts_val_dict = {}
+        last_ts_val = 0
+        for line in lines:
+            conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line)
+            ts_val = int(ts_val)
+            rounded_time_obj = re.search(r'(\S+\.\d)', time_str)
+            rounded_time = rounded_time_obj.group(1)
+            if last_ts_val==0:
+                last_ts_val=ts_val
+
+            if rounded_time not in ts_val_dict:
+                ts_val_dict[rounded_time] = ts_val-last_ts_val
+            else:
+                ts_val_dict[rounded_time] = max(ts_val_dict[rounded_time], ts_val-last_ts_val)
+            last_ts_val = ts_val
+        df = pd.DataFrame.from_dict(ts_val_dict,orient='index')
+        return df
+
+
+
+
+    @staticmethod
+    def create_throughput_df(lines):
         time_list = []
         length_list = []
 
@@ -49,47 +112,24 @@ class SingleConnStatistics:
 
         df = pd.DataFrame({'Time': time_list, 'Thoughput': length_list})
         df = df.groupby(['Time']).sum()
-        df.sort_index()
-        df['Total'] = df.cumsum()  # Add Total column that indicates the number of bytes passed so far
         df['Thoughput'] = df['Thoughput'].map(lambda num: num * 8 / 100000)
 
         return df
 
-    def parse_dump_file(self, file_name):
+    @staticmethod
+    def create_dropped_df(dropped_lines):
+        time_list = []
+        for line in dropped_lines:
+            conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line)
 
-        # Using readlines()
-        file = open(file_name, 'r')
-        lines = file.readlines()
-        lines = self.reduce_lines(lines)
-        lines = self.reduce_retransmissions(lines)
-        return self.parse_dump_lines(lines)
+            # Take only 10th of a second from the time string:
+            rounded_time_str = time_str[0:-5]
+            time_list.append(rounded_time_str)
 
-    def create_plots(self, graph_file_name):
-
-        fig, (throughput_ax, q_disc_ax) = plt.subplots(2, figsize=(10, 10))
-        self.conn_df.plot(kind='line', ax=throughput_ax, y=['In Throughput', 'Out Throughput'],
-                          title="Throughput vs. Bytes in Queue")
-        throughput_ax.legend(loc=2)
-        throughput_ax.set(xlabel='time', ylabel='Throughput (Mbps)')
-        throughput_ax.grid()
-        ax4 = throughput_ax.twinx()  # instantiate a second axes that shares the same x-axis.
-        cm = cycler('color', 'r')
-        ax4.set_prop_cycle(cm)
-        ax4.set(ylabel='Bytes')
-        self.conn_df.plot(kind='line', ax=ax4, y=['Conn. Bytes in Queue'])
-        ax4.legend(loc=1)
-
-        self.conn_df.plot(kind='line', ax=q_disc_ax, y=['Num of Drops'], color="red")
-        q_disc_ax.set(ylabel='Drops (pkts)')
-        q_disc_ax.grid()
-        q_disc_ax.legend(loc=2)
-        ax5 = q_disc_ax.twinx()  # instantiate a second axes that shares the same x-axis.
-        ax5.set(ylabel='Bytes')
-        self.conn_df.plot(kind='line', ax=ax5, y=['Conn. Bytes in Queue', 'Total Bytes in Queue'],
-                          title="Drops vs. Bytes in Queue")
-        ax5.legend(loc=1)
-        plt.savefig(graph_file_name)
-        plt.show()
+        df = pd.DataFrame({'Time': time_list})
+        df = df.groupby(['Time']).size()
+        df.columns = ['Num of Drops']
+        return df
 
     @staticmethod
     def reduce_lines(lines):
@@ -120,11 +160,12 @@ class SingleConnStatistics:
         # 09:17:58.297429 IP 10.0.1.10.44848 > 10.0.10.10.5202: Flags [.], seq 1486:2934, ack 1, win 83, options [nop,nop,TS val 4277329349 ecr 645803186], length 1448
 
     @staticmethod
-    def reduce_retransmissions(lines):
+    def reduce_dropped_packets(lines):
         # The method assumes single connection. If lines are from multiple connections, two messages
         # from two different connections with the same seq number will be interpreted as retransmissions
         # If data was sent multiple times, the method keeps only the last retransmission.
         reduced_lines = []
+        dropped_lines = []
         transmission_dict = {}
         for line in lines:
             search_obj = re.search(r'.*seq (\d+).* length (\d+)', line)
@@ -139,8 +180,57 @@ class SingleConnStatistics:
 
             seq = int(search_obj.group(1))
             # Map the line to the sequence. If older sequence was there, it will be automatically reduced.
+            if seq in transmission_dict:
+                dropped_lines.append(transmission_dict[seq])
             transmission_dict[seq] = line
-        return reduced_lines + list(transmission_dict.values())
+        return reduced_lines + list(transmission_dict.values()), dropped_lines
+
+    def create_plots(self, graph_file_name):
+
+        fig2 = plt.figure(constrained_layout=True, figsize=(10, 10))
+        spec2 = gridspec.GridSpec(ncols=1, nrows=3, figure=fig2)
+        throughput_ax = fig2.add_subplot(spec2[0, 0])
+        q_disc_ax = fig2.add_subplot(spec2[1, 0])
+        ts_ax = fig2.add_subplot(spec2[2, 0])
+        # f2_ax3 = fig2.add_subplot(spec2[1, 0])
+        # f2_ax4 = fig2.add_subplot(spec2[1, 1])
+
+        # fig, (throughput_ax, q_disc_ax) = plt.subplots(2, figsize=(10, 10))
+
+        self.conn_df.plot(kind='line', ax=throughput_ax, y=['In Throughput', 'Out Throughput'],
+                          title="Throughput vs. Bytes in Queue")
+        throughput_ax.legend(loc=2)
+        throughput_ax.set(xlabel='time', ylabel='Throughput (Mbps)')
+        throughput_ax.grid()
+        ax4 = throughput_ax.twinx()  # instantiate a second axes that shares the same x-axis.
+        cm = cycler('color', 'r')
+        ax4.set_prop_cycle(cm)
+        ax4.set(xlabel='time', ylabel='Bytes')
+        self.conn_df.plot(kind='line', ax=ax4, y=['Conn. Bytes in Queue'])
+        ax4.legend(loc=1)
+
+        self.conn_df.plot(kind='line', ax=q_disc_ax, y=['Connection Num of Drops'], color="red")
+        q_disc_ax.set(xlabel='time', ylabel='Drops (pkts)')
+        q_disc_ax.grid()
+        q_disc_ax.legend(loc=2)
+        ax5 = q_disc_ax.twinx()  # instantiate a second axes that shares the same x-axis.
+        ax5.set(ylabel='Bytes')
+        self.conn_df.plot(kind='line', ax=ax5, y=['Conn. Bytes in Queue', 'Total Bytes in Queue'],
+                          title="Drops vs. Bytes in Queue")
+        ax5.legend(loc=1)
+
+        self.conn_df.plot(kind='line', ax=ts_ax, y=['Connection Num of Drops'], color="red")
+        ts_ax.set(xlabel='time', ylabel='Drops (pkts)')
+        ts_ax.grid()
+        ts_ax.legend(loc=2)
+        ax6 = ts_ax.twinx()  # instantiate a second axes that shares the same x-axis.
+        ax6.set(ylabel='msec')
+        self.conn_df.plot(kind='line', ax=ax6, y=['Send Time Gap'],
+                          title="Drops vs. Send Time Gap")
+        ax6.legend(loc=1)
+
+        plt.savefig(graph_file_name)
+        plt.show()
 
 
 if __name__ == '__main__':
@@ -152,11 +242,14 @@ if __name__ == '__main__':
         out_file = "results/%s/server_%s.txt" % (test_name, host_name)
         rtr_file = "results/%s/rtr_q.txt" % test_name
         graph_file_name = "results/%s/BIQ_%s.png" % (test_name, host_name)
+        q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name)
+        q_line_obj.conn_df.to_csv("results/%s/single_connection_stat_%s.csv" % (test_name, host_name))
     else:
-        in_file = "test_files/client_reno_0.txt"
-        out_file = "test_files/server_reno_0.txt"
+        in_file = "test_files/in_file_test.txt"
+        out_file = "test_files/out_file_test.txt"
         rtr_file = "test_files/rtr_q.txt"
         graph_file_name = "test_files/BIQ.png"
+        q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name)
+        q_line_obj.conn_df.to_csv("test_files/single_connection_stat.csv")
     # in_file = "test_files/in_short.txt"
     # out_file = "test_files/out_short.txt"
-    q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name)
