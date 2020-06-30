@@ -10,13 +10,13 @@ from tcpdump_statistics import TcpdumpStatistics
 
 
 class SingleConnStatistics:
-    def __init__(self, ingress_file_name, egress_file_name, rtr_q_filename, graph_file_name):
+    def __init__(self, ingress_file_name, egress_file_name, rtr_q_filename, graph_file_name, plot_title):
         self.conn_df = self.rolling_df = None
 
         self.build_df(ingress_file_name, egress_file_name, rtr_q_filename)
         print(self.conn_df)
         # self.create_plots(graph_file_name)
-        self.create_plots(graph_file_name)
+        self.create_plots(graph_file_name, plot_title)
 
     def build_df(self, ingress_file_name, egress_file_name, rtr_q_filename):
 
@@ -43,6 +43,7 @@ class SingleConnStatistics:
         self.conn_df = pd.concat([in_throughput_df, out_throughput_df, dropped_df, ts_val_df],
                                  axis=1)  # Outer join between in and out df
         self.conn_df.columns = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap']
+        self.conn_df.index.name = 'Time'
         self.conn_df.sort_index()
         # Create the Byte in Queue column
         # Add Total column that indicates the number of bytes passed so far
@@ -51,9 +52,10 @@ class SingleConnStatistics:
         df = pd.concat([in_goodput_df['In Total'], out_throughput_df['Out Total']], axis=1)
         # The gap between the total in and the total out indicates what's in the queue. We want to convert form
         # Mbps to Bytes
-        df['Conn. Bytes in Queue'] = df['In Total'] - df['Out Total']
-        df['Conn. Bytes in Queue'] = df['Conn. Bytes in Queue'].map(lambda num: num / 8 * 100000)
-        self.conn_df = self.conn_df.join(df['Conn. Bytes in Queue'], lsuffix='_caller')
+        df['CBIQ'] = df['In Total'] - df['Out Total']
+        df['CBIQ'] = df['CBIQ'].map(lambda num: num / 8 * 100000)
+        self.conn_df = self.conn_df.join(df['CBIQ'], lsuffix='_caller')
+
 
         values = {'Connection Num of Drops': 0}
         self.conn_df = self.conn_df.fillna(value=values)
@@ -63,7 +65,13 @@ class SingleConnStatistics:
         qdisc_df.columns = ['Time', 'Total Bytes in Queue', 'Num of Packets', 'Num of Drops']
         qdisc_df = qdisc_df.set_index('Time')
         self.conn_df = self.conn_df.join(qdisc_df, lsuffix='_caller')
-        self.rolling_df = self.conn_df.rolling(10,win_type='boxcar').mean()
+        self.rolling_df = self.conn_df.rolling(20,win_type='triang').mean()
+        # Create local max and local min
+        # Find local peaks
+        self.min_cbiq_series = self.rolling_df.CBIQ[(self.rolling_df.CBIQ.shift(1) > self.rolling_df.CBIQ) &
+                                                (self.rolling_df.CBIQ.shift(-1) > self.rolling_df.CBIQ)]
+        self.max_cbiq_series = self.conn_df.CBIQ[(self.rolling_df.CBIQ.shift(1) < self.rolling_df.CBIQ) &
+                                                (self.rolling_df.CBIQ.shift(-1) < self.rolling_df.CBIQ)]
 
         return
 
@@ -185,13 +193,15 @@ class SingleConnStatistics:
             transmission_dict[seq] = line
         return reduced_lines + list(transmission_dict.values()), dropped_lines
 
-    def create_plots(self, graph_file_name):
+    def create_plots(self, graph_file_name, plot_title):
 
         fig2 = plt.figure(constrained_layout=True, figsize=(10, 10))
+        fig2.suptitle(plot_title)
         spec2 = gridspec.GridSpec(ncols=1, nrows=3, figure=fig2)
         throughput_ax = fig2.add_subplot(spec2[0, 0])
         q_disc_ax = fig2.add_subplot(spec2[1, 0])
         ts_ax = fig2.add_subplot(spec2[2, 0])
+        # max_ax = fig2.add_subplot(spec2[1, 1])
         # f2_ax3 = fig2.add_subplot(spec2[1, 0])
         # f2_ax4 = fig2.add_subplot(spec2[1, 1])
 
@@ -206,7 +216,7 @@ class SingleConnStatistics:
         cm = cycler('color', 'r')
         ax4.set_prop_cycle(cm)
         ax4.set(xlabel='time', ylabel='Bytes')
-        self.conn_df.plot(kind='line', ax=ax4, y=['Conn. Bytes in Queue'])
+        self.conn_df.plot(kind='line', ax=ax4, y=['CBIQ'])
         ax4.legend(loc=1)
 
         self.conn_df.plot(kind='line', ax=q_disc_ax, y=['Connection Num of Drops'], color="red")
@@ -215,9 +225,12 @@ class SingleConnStatistics:
         q_disc_ax.legend(loc=2)
         ax5 = q_disc_ax.twinx()  # instantiate a second axes that shares the same x-axis.
         ax5.set(ylabel='Bytes')
-        self.conn_df.plot(kind='line', ax=ax5, y=['Conn. Bytes in Queue', 'Total Bytes in Queue'],
+        self.conn_df.plot(kind='line', ax=ax5, y=['CBIQ'],
                           title="Drops vs. Bytes in Queue")
         ax5.legend(loc=1)
+
+        #self.max_cbiq_series.plot(kind='line', ax=max_ax, c='g')
+        #self.rolling_df.plot(kind='line', ax=max_ax, c='g', y=['CBIQ'])
 
         self.conn_df.plot(kind='line', ax=ts_ax, y=['Connection Num of Drops'], color="red")
         ts_ax.set(xlabel='time', ylabel='Drops (pkts)')
@@ -230,7 +243,7 @@ class SingleConnStatistics:
         ax6.legend(loc=1)
 
         plt.savefig(graph_file_name)
-        plt.show()
+        plt.show(block=False)
 
 
 if __name__ == '__main__':

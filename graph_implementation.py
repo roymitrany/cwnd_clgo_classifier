@@ -9,25 +9,30 @@ from tcpdump_statistics import TcpdumpStatistics
 
 
 class GraphImplementation:
-    def __init__(self, plot_file_name="Graph.png", plot_fig_name="Congestion Control Statistics"):
+    def __init__(self, tcpdump_statistsics, tc_qdisc_statistics, plot_file_name="Graph.png", plot_fig_name="Congestion Control Statistics"):
 
         # Clear plt before starting new statistics, otherwise it add up to the previous one:
         # plt.cla() # Clear the current axes.
         # plt.clf() # Clear the current figure.
 
-        fig, (ax1, ax2, ax3) = plt.subplots(3, figsize=(10, 10))
+        fig, (ax1, ax2) = plt.subplots(2, figsize=(10, 10))
         # fig.suptitle('Congestion Control Algorithms Statistics')
         fig.suptitle(plot_fig_name)
         ax1.set(xlabel='time', ylabel='Throughput (Mbps)')
         ax2.set(xlabel='time', ylabel='Number of drops')
-        ax3.set(xlabel='num of packets', ylabel='Delta Time (ms)')
+        # ax3.set(xlabel='num of packets', ylabel='Delta Time (ms)')
         self.throughput_ax = ax1
         self.drop_ax = ax2
-        self.TSVal_ax = ax3
-
-        plt.grid(True)
+        # self.TSVal_ax = ax3
 
         self.plot_file_name = plot_file_name
+
+        self.create_throughput_plot(tcpdump_statistsics, tc_qdisc_statistics)
+        self.create_drop_plot(tc_qdisc_statistics)
+        # graph_implementation.create_ts_val_plot(tcpdump_statistsics)
+        self.throughput_ax.grid()
+        self.drop_ax.grid()
+        self.save_and_show()
 
     def create_throughput_plot(self, tcpdump_statistsics, tc_qdisc_statistics):
         # Convert the 2D dictionary to a plot, using DataFrame:
@@ -42,17 +47,18 @@ class GraphImplementation:
 
         ### Plot the throughput:
         # Create a DataFrame out of the dictionaries:
-        throughput_dataframe = pd.DataFrame(tcpdump_statistsics.throughput_dict_of_dicts)
-        throughput_dataframe = throughput_dataframe.fillna(0.0)
+        throughput_df = pd.DataFrame(tcpdump_statistsics.throughput_dict_of_dicts)
+        # throughput_df = throughput_df.fillna(0.0)
 
         # Convert throughput from (Bytes /0.1 sec) to Mbps:
-        throughput_dataframe = throughput_dataframe.div(100000 / 8)
-        throughput_dataframe.plot(kind='line', ax=self.throughput_ax, title='Throughput')
+        throughput_df = throughput_df.div(100000 / 8)
+        throughput_df.plot(kind='line', ax=self.throughput_ax, title='Throughput')
 
         # Create queue length data frame:
         queue_length_series = pd.Series(tc_qdisc_statistics.q_len_packets_dict)
         queue_length_series.index.name = 'Time'
-        queue_length_dataframe = pd.DataFrame(queue_length_series)
+        queue_length_df = pd.DataFrame(queue_length_series)
+        queue_length_df.columns = ['Port QLen']
 
         ax3 = self.throughput_ax.twinx()  # instantiate a second axes that shares the same x-axis.
         ax3.set(xlabel='time', ylabel='Number of packets')
@@ -61,29 +67,29 @@ class GraphImplementation:
         # ax3.set_prop_cycle('color',plt.cm.Spectral(np.linspace(0,1,30)))
         cm = cycler('color', 'r')
         ax3.set_prop_cycle(cm)
-        queue_length_dataframe.plot(kind='line', ax=ax3)
+        queue_length_df.plot(kind='line', ax=ax3)
 
     def create_drop_plot(self, tc_qdisc_statistics):
 
         # Create drops data frame:
         drops_series = pd.Series(tc_qdisc_statistics.q_drops_dict)
         drops_series.index.name = 'Time'
-        drops_dataframe = pd.DataFrame(drops_series)
-        drops_dataframe.plot(kind='line', ax=self.drop_ax, title='Drops')
-
+        drops_df = pd.DataFrame(drops_series)
+        drops_df.columns = ['Port Drops']
+        drops_df.plot(kind='line', ax=self.drop_ax, title='Drops')
 
         # Create queue length data frame:
         queue_length_series = pd.Series(tc_qdisc_statistics.q_len_packets_dict)
         queue_length_series.index.name = 'Time'
-        queue_length_dataframe = pd.DataFrame(queue_length_series)
+        queue_length_df = pd.DataFrame(queue_length_series)
+        queue_length_df.columns = ['Port QLen']
 
         ax4 = self.drop_ax.twinx()  # instantiate a second axes that shares the same x-axis.
         ax4.set(xlabel='time', ylabel='Number of packets')
-        #ax4.legend(loc='upper center', shadow=True, fontsize='xx-small')
+        # ax4.legend(loc='upper center', shadow=True, fontsize='xx-small')
         cm = cycler('color', 'r')
         ax4.set_prop_cycle(cm)
-        queue_length_dataframe.plot(kind='line', ax=ax4)
-
+        queue_length_df.plot(kind='line', ax=ax4)
 
     def create_ts_val_plot(self, tcpdump_statistsics):
         ### Plot the TS Val:
@@ -94,16 +100,17 @@ class GraphImplementation:
             s_list.append(queue_length_series)
 
         # Create the data frame:
-        throughput_dataframe = pd.concat(s_list, axis=1)
+        throughput_df = pd.concat(s_list, axis=1)
         # throughput_dataframe = throughput_dataframe.fillna(0.0)
-        throughput_dataframe.to_csv("df1.csv")
+        throughput_df.to_csv("df1.csv")
         self.TSVal_ax.legend(loc='upper center', shadow=True, fontsize='xx-small')
         self.TSVal_ax.set(xlabel='packet num', ylabel='Delta time(ms)')
-        throughput_dataframe.plot(kind='line', ax=self.TSVal_ax, title="TS Val")
+        throughput_df.plot(kind='line', ax=self.TSVal_ax, title="TS Val")
 
     def save_and_show(self):
         plt.savefig(self.plot_file_name, dpi=600)
         plt.show()
+
 
 # For testing only: (the class is called by simulation_implementation.py)
 if __name__ == '__main__':

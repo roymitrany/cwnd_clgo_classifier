@@ -19,6 +19,7 @@ from mininet.util import pmonitor
 from cycler import cycler
 
 from simulation_topology import SimulationTopology
+from single_connection_statistics import SingleConnStatistics
 from tcpdump_statistics import TcpdumpStatistics
 from tc_qdisc_statistics import TcQdiscStatistics
 from graph_implementation import GraphImplementation
@@ -41,7 +42,7 @@ class Iperf3Simulator:
             tn.minute) + "-" + str(tn.second)
 
         # Create results directory, with name includes num of clients for each algo, and time:
-        self.res_dirname = os.path.join(os.getcwd(), "results", self.simulation_name + "@" + time_str)
+        self.res_dirname = os.path.join(os.getcwd(), "results", time_str + "_" + self.simulation_name)
         os.mkdir(self.res_dirname, 0o777)
 
         # Set results file names:
@@ -59,7 +60,7 @@ class Iperf3Simulator:
 
     def StartSimulation(self):
         self.net.start()
-        #CLI(self.net)
+        # CLI(self.net)
 
         srv = self.net.getNodeByName(self.simulation_topology.srv)
         srv_ip = srv.IP()
@@ -142,7 +143,7 @@ class Iperf3Simulator:
         for process in srv_procs:
             process.send_signal(SIGINT)
         q_proc.send_signal(SIGINT)
-        #CLI(self.net)
+        # CLI(self.net)
         self.net.stop()
 
 
@@ -157,21 +158,21 @@ def create_sim_name(cwnd_algo_dict):
 
 if __name__ == '__main__':
     # Simulation's parameters initializing:
-    host_bw = 500
+    host_bw = 100
     host_delay = 5e3
-    srv_bw = 100
+    srv_bw = 500
     srv_delay = 5e3
     tcp_packet_size = 2806
     algo_dict = {}
-    algo_dict['cubic'] = 1
-    algo_dict['reno'] = 0
+    algo_dict['cubic'] = 5
+    algo_dict['reno'] = 5
     algo_dict['vegas'] = 0
     # algo_dict['BBR'] = 2
     simulation_duration = 60  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
     total_delay = 2 * (host_delay + srv_delay)
-    queue_size = 300 #2 * (
-                #srv_bw * total_delay) / tcp_packet_size  # Rule of thumb: queue_size = (bw [Mbit/sec] * RTT [sec]) / size_of_packet.
+    queue_size = 800  # 2 * (
+    # srv_bw * total_delay) / tcp_packet_size  # Rule of thumb: queue_size = (bw [Mbit/sec] * RTT [sec]) / size_of_packet.
     # Tell mininet to print useful information:
     setLogLevel('info')
     # bw is in Mbps, delay in msec, queue size in packets:
@@ -180,14 +181,21 @@ if __name__ == '__main__':
     simulation_name = create_sim_name(algo_dict)
     simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration)
     simulator.StartSimulation()
+    for client in simulator.simulation_topology.host_list:
+        print("calculating statistics for %s" % client)
+        in_file = os.path.join(simulator.res_dirname, 'client_%s.txt' % client)
+        out_file = os.path.join(simulator.res_dirname, 'server_%s.txt' % client)
+        rtr_file = os.path.join(simulator.res_dirname, 'rtr_q.txt')
+        graph_file_name = os.path.join(simulator.res_dirname, 'Conn_Graph_%s.png' % client)
+        plot_title = client
+        q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name, plot_title)
+        q_line_obj.conn_df.to_csv(os.path.join(simulator.res_dirname, 'single_connection_stat_%s.csv' % client))
+
     tcpdump_statistsics = TcpdumpStatistics(simulator.port_algo_dict)
     for filename in simulator.file_captures:
         tcpdump_statistsics.parse_tcpdump_file(filename)
     tc_qdisc_statistics = TcQdiscStatistics(simulator.rtr_q_filename)
-    graph_implementation = GraphImplementation(plot_file_name=os.path.join(simulator.res_dirname, 'Graphs.png'),
+    graph_implementation = GraphImplementation(tcpdump_statistsics, tc_qdisc_statistics,
+                                               plot_file_name=os.path.join(simulator.res_dirname, 'Graphs.png'),
                                                plot_fig_name="host_bw_%s_host_delay_%s_srv_bw_%s_srv_delay_%s_queue_size_%s.png" % (
-                                               host_bw, host_delay, srv_bw, srv_delay, queue_size))
-    graph_implementation.create_throughput_plot(tcpdump_statistsics, tc_qdisc_statistics)
-    graph_implementation.create_drop_plot(tc_qdisc_statistics)
-    graph_implementation.create_ts_val_plot(tcpdump_statistsics)
-    graph_implementation.save_and_show()
+                                                   host_bw, host_delay, srv_bw, srv_delay, queue_size))
