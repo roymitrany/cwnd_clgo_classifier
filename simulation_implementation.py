@@ -9,7 +9,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-from dictionaries import Dict
 from enum import Enum
 from signal import SIGINT
 from time import sleep
@@ -48,10 +47,11 @@ class Iperf3Simulator:
         :param seconds: The test duration
         """
         self.file_captures = []
-        self.simulation_topology = simulation_topology
+        self.simulation_topology: SimulationTopology = simulation_topology
         self.net = Mininet(simulation_topology, controller=OVSController, link=TCLink, autoSetMacs=True)
         self.seconds = seconds
         self.simulation_name = simulation_name
+        self.port_algo_dict = {}
         tn = datetime.now()
         time_str = str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
             tn.minute) + "-" + str(tn.second)
@@ -64,7 +64,24 @@ class Iperf3Simulator:
         self.iperf_out_filename = os.path.join(self.res_dirname, "iperf_output.txt")
         self.rtr_q_filename = os.path.join(self.res_dirname, "rtr_q.txt")
 
-        self.port_algo_dict = {}
+        # Create the simulation parameters file
+        topo_param_filename = os.path.join(self.res_dirname, "topo_params.txt")
+        param_file = open(topo_param_filename, 'w')
+        param_dict = simulation_topology.to_dict()
+        param_json = json.dumps(param_dict)
+        param_file.write(param_json)
+        param_file.close()
+
+        # Create train csv file
+        train_csv_filename = os.path.join(self.res_dirname, "train.csv")
+        train_file = open(train_csv_filename, 'w')
+        train_file.write("id,label\n")
+        for host in self.simulation_topology.host_list:
+            for algo in Algo:
+                if algo.name in host:
+                    train_file.write("%s,%d\n" % (host, algo.value))
+        train_file.close()
+
 
     def SetCongestionControlAlgorithm(self, host, tcp_algo):
         """
@@ -191,31 +208,28 @@ def create_sim_name(cwnd_algo_dict):
 
 if __name__ == '__main__':
     # Simulation's parameters initializing:
-    #host_bw = 100
-    #host_delay = 5e3
-    #srv_bw = 500
     srv_delay = 5e3
     # tcp_packet_size = 2806
+    Algo = Enum('Algo', 'cubic reno bbr')
     algo_dict = {}
-    #algo_dict['cubic'] = 2
-    #algo_dict['reno'] = 2
-    #algo_dict['vegas'] = 0
-    #algo_dict['bbr'] = 2
     simulation_duration = 30  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
-    
-    #queue_size = 800  # 2 * (
+
+    # queue_size = 800  # 2 * (
     # srv_bw * total_delay) / tcp_packet_size  # Rule of thumb: queue_size = (bw [Mbit/sec] * RTT [sec]) / size_of_packet.
     # Tell mininet to print useful information:
     setLogLevel('info')
     # bw is in Mbps, delay in msec, queue size in packets:
+    """for host_bw in range(70, 80, 10):
+        for host_delay in range(4500, 4700, 200):
+            for srv_bw in range(450, 470, 20):
+                for queue_size in range(500, 1000, 100):"""
     for host_bw in range(70, 120, 10):
         for host_delay in range(4500, 5500, 200):
             for srv_bw in range(450, 550, 20):
                 for queue_size in range(500, 1000, 100):
-                    algo_dict['cubic'] = random.randint(2,4)
-                    algo_dict['reno'] = random.randint(2,4)
-                    algo_dict['bbr'] = random.randint(2,4)
+                    for algo in Algo:
+                        algo_dict[algo.name] = random.randint(2, 4)
                     total_delay = 2 * (host_delay + srv_delay)
                     simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
                                                              srv_bw=srv_bw,

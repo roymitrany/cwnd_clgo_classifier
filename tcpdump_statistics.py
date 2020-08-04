@@ -1,5 +1,4 @@
 import re
-from dictionaries import Dict
 
 class TcpdumpStatistics:
     def __init__(self, port_algo_dict):

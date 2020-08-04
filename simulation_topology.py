@@ -9,7 +9,6 @@ Congestion control reavluation classification topology:
 
 """
 from logging import info
-from dictionaries  import Dict
 
 # from mininet.link import TCLink
 from mininet.node import Node
@@ -44,6 +43,16 @@ class SimulationTopology(Topo):
         # super should be called only after class member initialization.
         # The super constructor calls build.
         super(SimulationTopology, self).__init__()
+
+    def to_dict(self):
+        dict = {}
+        dict["algo_dict"] = self.algo_dict
+        dict["host_bw"] = self.host_bw
+        dict["host_delay"] = self.host_delay
+        dict["srv_bw"] = self.srv_bw
+        dict["srv_delay"] = self.srv_delay
+        dict["rtr_queue_size"] = self.rtr_queue_size
+        return dict
 
     def add_host(self, algo, index):
         client_subnet_prefix = self.as_addr_prefix + str(index)
