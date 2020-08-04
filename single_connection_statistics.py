@@ -8,15 +8,20 @@ from matplotlib import cycler, gridspec
 
 from tcpdump_statistics import TcpdumpStatistics
 
+def get_sec(time_str):
+    """Get Seconds from time."""
+    h, m, s = time_str.split(':')
+    return int(h) * 3600 + int(m) * 60 + float(s)
 
 class SingleConnStatistics:
-    def __init__(self, ingress_file_name, egress_file_name, rtr_q_filename, graph_file_name, plot_title):
+    def __init__(self, ingress_file_name, egress_file_name, rtr_q_filename, graph_file_name, plot_title, generate_graphs):
         self.conn_df = self.rolling_df = None
 
         self.build_df(ingress_file_name, egress_file_name, rtr_q_filename)
-        print(self.conn_df)
+        #print(self.conn_df)
         # self.create_plots(graph_file_name)
-        self.create_plots(graph_file_name, plot_title)
+        if generate_graphs:
+            self.create_plots(graph_file_name, plot_title)
 
     def build_df(self, ingress_file_name, egress_file_name, rtr_q_filename):
 
@@ -65,14 +70,11 @@ class SingleConnStatistics:
         qdisc_df.columns = ['Time', 'Total Bytes in Queue', 'Num of Packets', 'Num of Drops']
         qdisc_df = qdisc_df.set_index('Time')
         self.conn_df = self.conn_df.join(qdisc_df, lsuffix='_caller')
-        self.rolling_df = self.conn_df.rolling(20,win_type='triang').mean()
-        # Create local max and local min
-        # Find local peaks
-        self.min_cbiq_series = self.rolling_df.CBIQ[(self.rolling_df.CBIQ.shift(1) > self.rolling_df.CBIQ) &
-                                                (self.rolling_df.CBIQ.shift(-1) > self.rolling_df.CBIQ)]
-        self.max_cbiq_series = self.conn_df.CBIQ[(self.rolling_df.CBIQ.shift(1) < self.rolling_df.CBIQ) &
-                                                (self.rolling_df.CBIQ.shift(-1) < self.rolling_df.CBIQ)]
 
+        # Convert the time string into time offset float
+        base_timestamp = get_sec(self.conn_df.index[0])
+        self.conn_df['timestamp'] = self.conn_df.index.map(mapper=(lambda x: get_sec(x)-base_timestamp))
+        self.conn_df = self.conn_df.set_index('timestamp')
         return
 
     @staticmethod

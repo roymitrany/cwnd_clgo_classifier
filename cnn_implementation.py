@@ -30,12 +30,12 @@ class Net(Module):
             Conv2d(1, 4, kernel_size=3, stride=1, padding=1),
             BatchNorm2d(4),
             ReLU(inplace=True),
-            MaxPool2d(kernel_size=2, stride=2),
+            MaxPool2d(kernel_size=2, stride=1),
             # Defining another 2D convolution layer
             Conv2d(4, 4, kernel_size=3, stride=1, padding=1),
             BatchNorm2d(4),
             ReLU(inplace=True),
-            MaxPool2d(kernel_size=2, stride=2),
+            MaxPool2d(kernel_size=2, stride=1),
         )
 
         self.linear_layers = Sequential(
@@ -101,12 +101,13 @@ if __name__ == '__main__':
 
     # loading training images
     data_arr = []
-    for df_name in tqdm(train_df['id']):
+    #for df_name in tqdm(train_df['id']):
+    for df_name in range (10):
         # defining the image path
-        csv_filename = 'results/6.30.2020@12-9-6_5_cubic_5_reno_0_vegas/single_connection_stat_%s.csv' % df_name
+        csv_filename = 'results/cnn_test/file_%d.csv' % df_name
         df = pd.read_csv(csv_filename)
-        df = df.drop(columns='Time')
-        df = df.astype(np.float32)
+        #df = df.drop(columns=['Time','Send Time Gap','Out Throughput', 'Connection Num of Drops', 'Total Bytes in Queue', 'Num of Packets', 'Num of Drops'])
+        #df = df.astype(np.float32)
 
         # appending the image into the list
         data_arr.append(df.to_numpy())
@@ -114,34 +115,26 @@ if __name__ == '__main__':
     # converting the list to numpy array
     train_x = np.array(data_arr)
     # defining the target
-    train_y = train_df['label'].values
-    train_x.shape
+    train_y = np.array(train_df['label'].values)
 
     # create validation set
     train_x, val_x, train_y, val_y = train_test_split(train_x, train_y, test_size=0.1)
-    (train_x.shape, train_y.shape), (val_x.shape, val_y.shape)
 
     # converting training images into torch format
-    train_x = train_x.reshape(9, 1, 602, 8)
+    train_x = train_x.reshape(9, 1, 27, 28)
     train_x = torch.from_numpy(train_x)
 
     # converting the target into torch format
     train_y = train_y.astype(int);
     train_y = torch.from_numpy(train_y)
 
-    # shape of training data
-    train_x.shape, train_y.shape
-
     # converting validation images into torch format
-    val_x = val_x.reshape(1, 1, 602, 8)
+    val_x = val_x.reshape(1, 1, 27, 28)
     val_x = torch.from_numpy(val_x)
 
     # converting the target into torch format
     val_y = val_y.astype(int);
     val_y = torch.from_numpy(val_y)
-
-    # shape of validation data
-    val_x.shape, val_y.shape
 
     # defining the model
     model = Net()

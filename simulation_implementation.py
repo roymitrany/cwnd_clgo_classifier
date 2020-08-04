@@ -3,6 +3,10 @@
 import os
 import json
 import re
+import threading
+import random
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from dictionaries import Dict
@@ -23,6 +27,17 @@ from single_connection_statistics import SingleConnStatistics
 from tcpdump_statistics import TcpdumpStatistics
 from tc_qdisc_statistics import TcQdiscStatistics
 from graph_implementation import GraphImplementation
+
+
+def create_csv(sim_obj, client, generate_graphs=False):
+    print("calculating statistics for %s" % client)
+    in_file = os.path.join(sim_obj.res_dirname, 'client_%s.txt' % client)
+    out_file = os.path.join(sim_obj.res_dirname, 'server_%s.txt' % client)
+    rtr_file = os.path.join(sim_obj.res_dirname, 'rtr_q.txt')
+    graph_file_name = os.path.join(sim_obj.res_dirname, 'Conn_Graph_%s.png' % client)
+    plot_title = client
+    q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name, plot_title, generate_graphs)
+    q_line_obj.conn_df.to_csv(os.path.join(sim_obj.res_dirname, 'single_connection_stat_%s.csv' % client))
 
 
 class Iperf3Simulator:
@@ -58,6 +73,33 @@ class Iperf3Simulator:
         cmd = 'echo %s > /proc/sys/net/ipv4/tcp_congestion_control' % tcp_algo
         self.net.getNodeByName(host).cmd(cmd)
 
+    def process_results(self, generate_graphs=False, keep_dump_files=False):
+        threads = list()
+        for client in self.simulation_topology.host_list:
+            x = threading.Thread(target=create_csv, args=(self, client))
+            threads.append(x)
+            x.start()
+
+        for index, thread in enumerate(threads):
+            thread.join()
+
+        if generate_graphs:
+            tcpdump_statistsics = TcpdumpStatistics(self.port_algo_dict)
+            for filename in self.file_captures:
+                tcpdump_statistsics.parse_tcpdump_file(filename)
+            tc_qdisc_statistics = TcQdiscStatistics(self.rtr_q_filename)
+            GraphImplementation(tcpdump_statistsics, tc_qdisc_statistics,
+                                plot_file_name=os.path.join(self.res_dirname, 'Graphs.png'),
+                                plot_fig_name="host_bw_%s_host_delay_%s_srv_bw_%s_srv_delay_%s_queue_size_%s.png" % (
+                                    host_bw, host_delay, srv_bw, srv_delay, queue_size))
+        if (keep_dump_files == False):
+            for p in Path(self.res_dirname).glob("client_*.txt"):
+                print(p)
+                p.unlink()
+            for p in Path(self.res_dirname).glob("server_*.txt"):
+                print(p)
+                p.unlink()
+
     def StartSimulation(self):
         self.net.start()
         # CLI(self.net)
@@ -84,18 +126,6 @@ class Iperf3Simulator:
             # otherwise they are stuck in the system, so we keep the proc nums in a list.
             srv_cmd = 'iperf3 -s -p %d &' % test_port
             srv_procs.append(srv.popen(srv_cmd))
-
-            """
-            # Throughput measuring- using tshark:
-            # Running tshark on client side, saving to pcap file (a separate pcap file for each client):
-            pcap_file_name = os.path.join(self.res_dirname, "host_%s.pcap" % client)
-            cmd = 'tshark -i host_int -f "port %d" -w %s -F libpcap&' % (test_port, pcap_file_name)
-            (self.net.getNodeByName(client)).cmd(cmd)
-            # Running tshark on server side, saving to pcap file (a separate pcap file for each client):
-            pcap_file_name = os.path.join(self.res_dirname, "server_%s.pcap" % client)
-            cmd = 'tshark -i srv-r -f "port %d" -w %s&' % (test_port, pcap_file_name)
-            srv.cmd(cmd)
-            """
 
             # Throughput measuring- using tcpdump:
             # Running tcpdump on client side, saving to txt file (a separate txt file for each client):
@@ -131,8 +161,6 @@ class Iperf3Simulator:
 
         # Gather statistics from the router:
         q_proc = rtr.popen('python tc_qdisc_implementation.py r-srv %s' % self.rtr_q_filename)
-        pcap_filename = os.path.join(self.res_dirname, "rtr_srv.pcap")
-        # rtr.cmd('tshark -i r-srv -w %s -F libpcap&' % pcap_filename)
 
         # Wait until all commands are completed:
         for client, line in pmonitor(popens, timeoutms=1000):
@@ -147,6 +175,11 @@ class Iperf3Simulator:
         self.net.stop()
 
 
+def clean_sim():
+    cmd = "mn -c"
+    os.system(cmd)
+
+
 def create_sim_name(cwnd_algo_dict):
     name = ''
     if len(cwnd_algo_dict) == 0:
@@ -158,44 +191,37 @@ def create_sim_name(cwnd_algo_dict):
 
 if __name__ == '__main__':
     # Simulation's parameters initializing:
-    host_bw = 100
-    host_delay = 5e3
-    srv_bw = 500
+    #host_bw = 100
+    #host_delay = 5e3
+    #srv_bw = 500
     srv_delay = 5e3
-    tcp_packet_size = 2806
+    # tcp_packet_size = 2806
     algo_dict = {}
-    algo_dict['cubic'] = 5
-    algo_dict['reno'] = 5
-    algo_dict['vegas'] = 0
-    # algo_dict['BBR'] = 2
-    simulation_duration = 60  # seconds.
+    #algo_dict['cubic'] = 2
+    #algo_dict['reno'] = 2
+    #algo_dict['vegas'] = 0
+    #algo_dict['bbr'] = 2
+    simulation_duration = 30  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
-    total_delay = 2 * (host_delay + srv_delay)
-    queue_size = 800  # 2 * (
+    
+    #queue_size = 800  # 2 * (
     # srv_bw * total_delay) / tcp_packet_size  # Rule of thumb: queue_size = (bw [Mbit/sec] * RTT [sec]) / size_of_packet.
     # Tell mininet to print useful information:
     setLogLevel('info')
     # bw is in Mbps, delay in msec, queue size in packets:
-    simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw, srv_bw=srv_bw,
-                                             srv_delay=srv_delay, rtr_queue_size=queue_size)
-    simulation_name = create_sim_name(algo_dict)
-    simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration)
-    simulator.StartSimulation()
-    for client in simulator.simulation_topology.host_list:
-        print("calculating statistics for %s" % client)
-        in_file = os.path.join(simulator.res_dirname, 'client_%s.txt' % client)
-        out_file = os.path.join(simulator.res_dirname, 'server_%s.txt' % client)
-        rtr_file = os.path.join(simulator.res_dirname, 'rtr_q.txt')
-        graph_file_name = os.path.join(simulator.res_dirname, 'Conn_Graph_%s.png' % client)
-        plot_title = client
-        q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name, plot_title)
-        q_line_obj.conn_df.to_csv(os.path.join(simulator.res_dirname, 'single_connection_stat_%s.csv' % client))
-
-    tcpdump_statistsics = TcpdumpStatistics(simulator.port_algo_dict)
-    for filename in simulator.file_captures:
-        tcpdump_statistsics.parse_tcpdump_file(filename)
-    tc_qdisc_statistics = TcQdiscStatistics(simulator.rtr_q_filename)
-    graph_implementation = GraphImplementation(tcpdump_statistsics, tc_qdisc_statistics,
-                                               plot_file_name=os.path.join(simulator.res_dirname, 'Graphs.png'),
-                                               plot_fig_name="host_bw_%s_host_delay_%s_srv_bw_%s_srv_delay_%s_queue_size_%s.png" % (
-                                                   host_bw, host_delay, srv_bw, srv_delay, queue_size))
+    for host_bw in range(70, 120, 10):
+        for host_delay in range(4500, 5500, 200):
+            for srv_bw in range(450, 550, 20):
+                for queue_size in range(500, 1000, 100):
+                    algo_dict['cubic'] = random.randint(2,4)
+                    algo_dict['reno'] = random.randint(2,4)
+                    algo_dict['bbr'] = random.randint(2,4)
+                    total_delay = 2 * (host_delay + srv_delay)
+                    simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
+                                                             srv_bw=srv_bw,
+                                                             srv_delay=srv_delay, rtr_queue_size=queue_size)
+                    simulation_name = create_sim_name(algo_dict)
+                    simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration)
+                    simulator.StartSimulation()
+                    simulator.process_results()
+                    clean_sim()
