@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from matplotlib import cycler, gridspec
 
-from tcpdump_statistics import TcpdumpStatistics
+from simulation.tcpdump_statistics import TcpdumpStatistics
 
 def get_sec(time_str):
     """Get Seconds from time."""
@@ -260,9 +260,9 @@ if __name__ == '__main__':
         q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name)
         q_line_obj.conn_df.to_csv("results/%s/single_connection_stat_%s.csv" % (test_name, host_name))
     else:
-        in_file = "test_files/in_file_test.txt"
-        out_file = "test_files/out_file_test.txt"
-        rtr_file = "test_files/rtr_q.txt"
+        in_file = "../test_files/in_file_test.txt"
+        out_file = "../test_files/out_file_test.txt"
+        rtr_file = "../test_files/rtr_q.txt"
         graph_file_name = "test_files/BIQ.png"
         q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name)
         q_line_obj.conn_df.to_csv("test_files/single_connection_stat.csv")

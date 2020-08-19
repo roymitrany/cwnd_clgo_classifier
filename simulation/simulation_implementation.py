@@ -2,30 +2,25 @@
 
 import os
 import json
-import re
 import threading
 import random
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 from enum import Enum
 from signal import SIGINT
 from time import sleep
-from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.log import setLogLevel
 from mininet.net import Mininet
 from datetime import datetime
 from mininet.node import OVSController
 from mininet.util import pmonitor
-from cycler import cycler
 
-from simulation_topology import SimulationTopology
-from single_connection_statistics import SingleConnStatistics
-from tcpdump_statistics import TcpdumpStatistics
-from tc_qdisc_statistics import TcQdiscStatistics
-from graph_implementation import GraphImplementation
+from simulation.simulation_topology import SimulationTopology
+from simulation.single_connection_statistics import SingleConnStatistics
+from simulation.tcpdump_statistics import TcpdumpStatistics
+from simulation.tc_qdisc_statistics import TcQdiscStatistics
+from simulation.graph_implementation import GraphImplementation
 
 
 def create_csv(sim_obj, client, generate_graphs=False):

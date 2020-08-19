@@ -1,10 +1,8 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 from cycler import cycler
 
-from tc_qdisc_statistics import TcQdiscStatistics
-from tcpdump_statistics import TcpdumpStatistics
+from simulation.tcpdump_statistics import TcpdumpStatistics
 
 
 class GraphImplementation:
@@ -115,7 +113,7 @@ class GraphImplementation:
 if __name__ == '__main__':
     port_algo_dict = {'5201': 'reno'}
     tcp_stat = TcpdumpStatistics(port_algo_dict)
-    filename = "test_files/test_input.txt"
+    filename = "../test_files/test_input.txt"
     tcp_stat.parse_dump_file(filename)
     q_filname = "test_qlen.txt"
     tcp_stat.parse_q_len(q_filname)
