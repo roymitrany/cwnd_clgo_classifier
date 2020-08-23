@@ -23,11 +23,12 @@ import glob
 import os
 import pickle
 
+from learning.environment import *
 from learning.results_manager import *
 
 
 NUM_OF_CLASSIFICATION_PARAMETERS = 9  # 7
-NUM_OF_TIME_SAMPLES = 601  # 301 # 602
+NUM_OF_TIME_SAMPLES = 600  # 301 # 602
 NUM_OF_CONGESTION_CONTROL_LABELING = 3
 NUM_OF_CONV_FILTERS = 10
 NUM_OF_TRAIN_DATAFRAMES = 7  # 9
@@ -111,10 +112,8 @@ def train(epoch):
 if __name__ == '__main__':
     global model, val_x, val_y, optimizer, criterion, n_epochs, train_losses, val_losses
     # defining the dataframe path
-    # training_files_path = r'C:\Users\deanc\PycharmProjects\Congestion_Control_Classifier\train_files2'
-    training_files_path = "C:\\Users\\roym\\PycharmProjects\\cwnd_clgo_classifier\\results"
-    training_parameters_path = "C:\\Users\\roym\\PycharmProjects\\cwnd_clgo_classifier\\cnn_training_parameters"
-    normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]
+    # normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]
+    normalization_types = ["AbsoluteNormalization2"]
     normalization_counter = 0
 
     #for normalization_type in [StatisticalNormalization(), AbsoluteNormalization1(), AbsoluteNormalization2()]: # 3 different types of normaliztion (pre- processing)
