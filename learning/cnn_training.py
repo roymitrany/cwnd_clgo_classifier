@@ -16,19 +16,23 @@ from tqdm import tqdm
 # PyTorch libraries and modules
 import torch
 from torch.autograd import Variable
-from torch.nn import Linear, ReLU, CrossEntropyLoss, Sequential, Conv2d, MaxPool2d, Module, Softmax, BatchNorm2d, \
-    Dropout
+from torch.nn import Linear, ReLU, CrossEntropyLoss, Sequential, Conv2d, MaxPool2d, Module, Softmax, BatchNorm2d, Dropout
 from torch.optim import Adam, SGD
 
 import glob
 import os
+import pickle
 
-NUM_OF_CLASSIFICATION_PARAMETERS = 9 # 7
-NUM_OF_TIME_SAMPLES = 301 # 602
+from learning.results_manager import *
+
+
+NUM_OF_CLASSIFICATION_PARAMETERS = 9  # 7
+NUM_OF_TIME_SAMPLES = 601  # 301 # 602
 NUM_OF_CONGESTION_CONTROL_LABELING = 3
 NUM_OF_CONV_FILTERS = 10
-NUM_OF_TRAIN_DATAFRAMES = 7 # 9
-NUM_OF_TEST_DATAFRAMES = 7
+NUM_OF_TRAIN_DATAFRAMES = 7  # 9
+NUM_OF_TEST_DATAFRAMES = 10
+
 
 class Net(Module):
     def __init__(self):
@@ -50,7 +54,8 @@ class Net(Module):
         )
 
         self.linear_layers = Sequential(
-            Linear(NUM_OF_CONV_FILTERS * (NUM_OF_TIME_SAMPLES - 2) * 1, NUM_OF_CONGESTION_CONTROL_LABELING + 1) # an errorbecause the labels must be 0 indexed. So, for example, if you have 20 classes, and the labels are 1th indexed, the 20th label would be 20, so cur_target < n_classes assert would fail. If it’s 0th indexed, the 20th label is 19, so cur_target < n_classes assert passes.
+            Linear(NUM_OF_CONV_FILTERS * (NUM_OF_TIME_SAMPLES - 2) * 1, NUM_OF_CONGESTION_CONTROL_LABELING + 1)
+            # an error because the labels must be 0 indexed. So, for example, if you have 20 classes, and the labels are 1th indexed, the 20th label would be 20, so cur_target < n_classes assert would fail. If it’s 0th indexed, the 20th label is 19, so cur_target < n_classes assert passes.
             # input features: 10 channels * number of rows * number of columns, output features: number of labels = 2.
         )
 
@@ -84,10 +89,16 @@ def train(epoch):
     output_val = model(x_val.type('torch.FloatTensor'))
 
     # computing the training and validation loss
-    loss_train = criterion(output_train, y_train.type('torch.LongTensor'))  # Long instead of float (was float and changed to long- now works).
+    loss_train = criterion(output_train, y_train.type(
+        'torch.LongTensor'))  # Long instead of float (was float and changed to long- now works).
     loss_val = criterion(output_val, y_val.type('torch.LongTensor'))
     train_losses.append(loss_train)
     val_losses.append(loss_val)
+
+    # saving the training and validation loss
+    pckl_file = open('model_parameters.pckl', 'wb')
+    pickle.dump([train_losses, val_losses], pckl_file)
+    pckl_file.close()
 
     # computing the updated weights of all the model parameters
     loss_train.backward()
@@ -97,154 +108,105 @@ def train(epoch):
         # printing the validation loss
         print('Epoch : ', epoch + 1, '\t', 'loss :', loss_val)
 
-
-def preprocessing_probabilistic(dataframe_arr):
-    dataframe_arr_concatenated = pd.concat([dataframe for dataframe in dataframe_arr], axis=0)
-    dataframe_mean = dataframe_arr_concatenated.mean()
-    dataframe_std = dataframe_arr_concatenated.std()
-    """
-    dataframe_mean = [dataframe.mean().to_frame().T for dataframe in dataframe_arr]
-    dataframe_std = [dataframe.std().to_frame().T for dataframe in dataframe_arr]
-    return dataframe_mean, dataframe_std
-    """
-    # return [((dataframe - dataframe_mean) / np.sqrt(dataframe_mean)) for dataframe in dataframe_arr]
-    return [((dataframe - dataframe_mean) / np.sqrt(dataframe_std)).fillna(0) for dataframe in dataframe_arr]
-
-
-
-def preprocessing_absolute(dataframe_arr):
-    return
-
-
 if __name__ == '__main__':
     global model, val_x, val_y, optimizer, criterion, n_epochs, train_losses, val_losses
     # defining the dataframe path
-    # path = r'C:\Users\deanc\PycharmProjects\Congestion_Control_Classifier\results\cnn_data'
-    path = r'C:\Users\deanc\PycharmProjects\Congestion_Control_Classifier\train_files\8.4.2020@15-14-44_2_cubic_2_reno_3_bbr'
-    all_files = glob.glob(os.path.join(path, "*.csv"))
-    # loading dataset
-    trainning_labeling = pd.read_csv(os.path.join(path, "train.csv"))
-    trainning_labeling.head()
-    # loading training dataframes
-    dataframe_arr = []
-    # all_files = glob.glob(path + "/*.csv")
-    for csv_filename in all_files:
-        # csv_file = pd.read_csv(csv_filename, index_col=None, header=0)
-        csv_file = pd.read_csv(csv_filename)
-        if csv_file.shape[0] < NUM_OF_TIME_SAMPLES:
-            continue
-        # df = df.drop(columns=['Time','Send Time Gap','Out Throughput', 'Connection Num of Drops', 'Total Bytes in Queue', 'Num of Packets', 'Num of Drops'])
-        # appending the image into the list:
-        # csv_file = csv_file.drop(columns=['Time', 'Send Time Gap'])
-        # data_arr.append(csv_file.to_numpy())
-        csv_file.dropna(inplace= True, how='all')
-        dataframe_arr.append(csv_file)
+    # training_files_path = r'C:\Users\deanc\PycharmProjects\Congestion_Control_Classifier\train_files2'
+    training_files_path = "C:\\Users\\roym\\PycharmProjects\\cwnd_clgo_classifier\\results"
+    training_parameters_path = "C:\\Users\\roym\\PycharmProjects\\cwnd_clgo_classifier\\cnn_training_parameters"
+    normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]
+    normalization_counter = 0
 
-    # converting the list to numpy array after pre- processing
-    dataframe_arr = preprocessing_probabilistic(dataframe_arr)
-    dataframe_arr = [dataframe.to_numpy() for dataframe in dataframe_arr]
+    #for normalization_type in [StatisticalNormalization(), AbsoluteNormalization1(), AbsoluteNormalization2()]: # 3 different types of normaliztion (pre- processing)
+    for normalization_type in [AbsoluteNormalization2()]: # 3 different types of normaliztion (pre- processing)
+        res_mgr = ResultsManager(training_files_path, normalization_type, NUM_OF_TIME_SAMPLES)
+        trainning_labeling = res_mgr.get_train_df()
+        dataframe_arr = res_mgr.get_normalized_df_list()
+        for csv_file in dataframe_arr: # maybe not necessary
+            csv_file = csv_file.drop(csv_file.index[NUM_OF_TIME_SAMPLES:])  # remove samples that were taken after the conventional measuring time.
+            csv_file.dropna(inplace=True, how='all')  # remove empty lines after deleting them.
+            csv_file = csv_file.fillna((csv_file.shift() + csv_file.shift(-1)) / 2)  # takes care of missing values.
 
-    train_x = np.array(dataframe_arr)
-    # defining the target
-    train_y = np.array(trainning_labeling['label'].values)
+        # converting the list to numpy array after pre- processing
+        dataframe_arr = [dataframe.to_numpy() for dataframe in dataframe_arr]
+        train_x = np.array(dataframe_arr)
+        # defining the target
+        train_y = np.array(trainning_labeling['label'].values)
+        pckl_file = open(training_parameters_path + normalization_types[normalization_counter] + '.pckl', 'wb')
+        pickle.dump([train_x, train_y], pckl_file)
+        pckl_file.close()
 
-    # create validation set
-    train_x, val_x, train_y, val_y = train_test_split(train_x, train_y, test_size=0.1)
+        # creating validation set
+        train_x, val_x, train_y, val_y = train_test_split(train_x, train_y, test_size=0.1)
 
-    # converting training dataframes into torch format
-    train_x = train_x.reshape(len(train_x), 1, NUM_OF_TIME_SAMPLES, NUM_OF_CLASSIFICATION_PARAMETERS)
-    train_x = torch.from_numpy(train_x)
+        # converting training dataframes into torch format
+        train_x = train_x.reshape(len(train_x), 1, NUM_OF_TIME_SAMPLES, NUM_OF_CLASSIFICATION_PARAMETERS)
+        train_x = torch.from_numpy(train_x)
 
-    # converting the target into torch format
-    train_y = train_y.astype(float)
-    train_y = torch.from_numpy(train_y)
+        # converting the target into torch format
+        train_y = train_y.astype(float)
+        train_y = torch.from_numpy(train_y)
 
-    # converting validation dataframes into torch format
-    val_x = val_x.reshape(NUM_OF_TRAIN_DATAFRAMES - len(train_y), 1, NUM_OF_TIME_SAMPLES, NUM_OF_CLASSIFICATION_PARAMETERS)
-    val_x = torch.from_numpy(val_x)
+        # converting validation dataframes into torch format
+        val_x = val_x.reshape(len(val_x), 1, NUM_OF_TIME_SAMPLES, NUM_OF_CLASSIFICATION_PARAMETERS)
+        val_x = torch.from_numpy(val_x)
 
-    # converting the target into torch format
-    val_y = val_y.astype(float)
-    val_y = torch.from_numpy(val_y)
+        # converting the target into torch format
+        val_y = val_y.astype(float)
+        val_y = torch.from_numpy(val_y)
 
-    # defining the model
-    model = Net()
-    # defining the optimizer
-    optimizer = Adam(model.parameters(), lr=0.07)
-    # defining the loss function
-    criterion = CrossEntropyLoss()
-    # checking if GPU is available
-    if torch.cuda.is_available():
-        model = model.cuda()
-        criterion = criterion.cuda()
+        # defining the model
+        model = Net()
+        # defining the optimizer
+        optimizer = Adam(model.parameters(), lr=0.07)
+        # defining the loss function
+        criterion = CrossEntropyLoss()
+        # checking if GPU is available
+        if torch.cuda.is_available():
+            model = model.cuda()
+            criterion = criterion.cuda()
 
-    # defining the number of epochs
-    n_epochs = 25
-    # empty list to store training losses
-    train_losses = []
-    # empty list to store validation losses
-    val_losses = []
-    # training the model
-    for epoch in range(n_epochs):
-        train(epoch)
+        # defining the number of epochs
+        n_epochs = 25
+        # empty list to store training losses
+        train_losses = []
+        # empty list to store validation losses
+        val_losses = []
+        # training the model
+        for epoch in range(n_epochs):
+            train(epoch)
 
-    # plotting the training and validation loss
-    plt.plot(train_losses, label='Training loss')
-    plt.plot(val_losses, label='Validation loss')
-    plt.legend()
-    plt.show()
+        # saving the trained model
+        torch.save(model, training_parameters_path + normalization_types[normalization_counter] + '_mytraining.pt')
 
-    # prediction for training set
-    with torch.no_grad():
-        output = model(train_x.type('torch.FloatTensor'))
 
-    softmax = torch.exp(output).cpu()
-    prob = list(softmax.numpy())
-    predictions = np.argmax(prob, axis=1)
+        # plotting the training and validation loss
+        plt.plot(train_losses, label='Training loss')
+        plt.plot(val_losses, label='Validation loss')
+        plt.legend()
+        # plt.show()
+        plt.savefig(training_parameters_path + normalization_types[normalization_counter] + '_graph.jpeg')
 
-    # accuracy on training set
-    print(accuracy_score(train_y, predictions))
+        # prediction for training set
+        with torch.no_grad():
+            output = model(train_x.type('torch.FloatTensor'))
 
-    # prediction for validation set
-    with torch.no_grad():
-        output = model(val_x.type('torch.FloatTensor'))
+        softmax = torch.exp(output).cpu()
+        prob = list(softmax.numpy())
+        predictions = np.argmax(prob, axis=1)
 
-    softmax = torch.exp(output).cpu()
-    prob = list(softmax.numpy())
-    predictions = np.argmax(prob, axis=1)
+        # accuracy on training set
+        print(accuracy_score(train_y, predictions))
 
-    # accuracy on validation set
-    print(accuracy_score(val_y, predictions))
+        # prediction for validation set
+        with torch.no_grad():
+            output = model(val_x.type('torch.FloatTensor'))
 
-    # the test set:
-    path = r'C:\Users\deanc\PycharmProjects\Congestion_Control_Classifier\test_files'
-    all_files = glob.glob(os.path.join(path, "*.csv"))
-    dataframe_arr = []
-    for csv_filename in all_files:
-        csv_file = pd.read_csv(csv_filename)
-        if csv_file.shape[0] < NUM_OF_TIME_SAMPLES:
-            continue
-        # csv_file = csv_file.drop(columns=['timestamp', 'Send Time Gap'])
-        # csv_file = csv_file.dropna()
-        csv_file.dropna(inplace= True, how='all')
-        # csv_file.replace()
-        dataframe_arr.append(csv_file)
-    test_x = preprocessing_probabilistic(dataframe_arr)
-    test_x = [dataframe.to_numpy() for dataframe in test_x]
-    test_x = np.array(test_x)
-    test_x = test_x.reshape(NUM_OF_TEST_DATAFRAMES, 1, NUM_OF_TIME_SAMPLES, NUM_OF_CLASSIFICATION_PARAMETERS)
-    test_x = torch.from_numpy(test_x)
-    with torch.no_grad():
-        output = model(test_x.type('torch.FloatTensor'))
-    softmax = torch.exp(output).cpu()
-    prob = list(softmax.numpy())
-    predictions = np.argmax(prob, axis=1)
-    """
-    sample_submission = pd.DataFrame().reindex_like(trainning_labeling)
-    sample_submission.drop(sample_submission.shape[0]-len(predictions))
-    # sample_submission.dropna(inplace=True, how='all')
-    """
-    sample_submission = pd.read_csv(path + '\sample_submission.csv')
-    sample_submission['label'] = predictions
-    sample_submission.head()
-    sample_submission.to_csv(path + '\sample_submission.csv', index=False)
+        softmax = torch.exp(output).cpu()
+        prob = list(softmax.numpy())
+        predictions = np.argmax(prob, axis=1)
+
+        # accuracy on validation set
+        print(accuracy_score(val_y, predictions))
+
+        normalization_counter +=1

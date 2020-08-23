@@ -28,21 +28,7 @@ class Normalizer(abc.ABC):
     def normalize(self):
         pass
 
-
-class IsaacNormalizer(Normalizer):
-
-    def __init__(self):
-        super().__init__()
-        self.result_df_list = []
-
-    def add_result(self, res, iter_name):
-        self.result_df_list.append(res)
-
-    def normalize(self):
-        self.normilized_df_list = [df / df.max() for df in self.result_df_list]
-
-
-class DeanNormalizer(Normalizer):
+class StatisticalNormalization(Normalizer):
 
     def __init__(self):
         super().__init__()
@@ -55,11 +41,23 @@ class DeanNormalizer(Normalizer):
         concat_df_list = pd.concat([df for df in self.result_df_list], axis=0)
         mean_df = concat_df_list.mean()
         std_df = concat_df_list.std()
-
         self.normilized_df_list = [((df - mean_df) / np.sqrt(std_df)).fillna(0) for df in self.result_df_list]
 
 
-class RoyNormalizer(Normalizer):
+class AbsoluteNormalization1(Normalizer):
+
+    def __init__(self):
+        super().__init__()
+        self.result_df_list = []
+
+    def add_result(self, res, iter_name):
+        self.result_df_list.append(res)
+
+    def normalize(self):
+        self.normilized_df_list = [(df / df.max()).fillna(0) for df in self.result_df_list]
+
+
+class AbsoluteNormalization2(Normalizer):
 
     def __init__(self):
         super().__init__()
@@ -85,7 +83,7 @@ class RoyNormalizer(Normalizer):
 
             for df in single_exec_df_list:
                 normalized_df = df / sum_df
-                self.normilized_df_list.append(normalized_df)
+                self.normilized_df_list.append(normalized_df.fillna(0))
 
             print("Finished normalizing %s" % iter_name)
 
@@ -142,7 +140,7 @@ class ResultsManager:
 
 # For testing only
 if __name__ == '__main__':
-    normaliz = RoyNormalizer()
+    normaliz = AbsoluteNormalization2()
     res_mgr = ResultsManager("C:\\Users\\roym\\PycharmProjects\\cwnd_clgo_classifier\\results", normaliz, 600)
     norm_dfl = res_mgr.get_normalized_df_list()
     len_list = list()
