@@ -24,25 +24,24 @@ import glob
 import os
 import pickle
 
-from learning.environment import *
+from learning.env import *
+from learning.cnn_training import Net
 from learning.results_manager import *
 
 NUM_OF_CLASSIFICATION_PARAMETERS = 9  # 7
-NUM_OF_TIME_SAMPLES = 601  # 301 # 602
+NUM_OF_TIME_SAMPLES = 301 # 601  # 301 # 602
 NUM_OF_CONGESTION_CONTROL_LABELING = 3
 NUM_OF_CONV_FILTERS = 10
-NUM_OF_TRAIN_DATAFRAMES = 7  # 9
-NUM_OF_TEST_DATAFRAMES = 7
+NUM_OF_TRAIN_DATAFRAMES = 3  # 9
+NUM_OF_TEST_DATAFRAMES = 3
 
 if __name__ == '__main__':
     global model, val_x, val_y, optimizer, criterion, n_epochs, train_losses, val_losses
 
-    #normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]
-    normalization_types = ["AbsoluteNormalization2"]
+    normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]
     normalization_counter = 0
 
-    #for normalization_type in [StatisticalNormalization(), AbsoluteNormalization1(), AbsoluteNormalization2()]: # 3 different types of normaliztion (pre- processing)
-    for normalization_type in [AbsoluteNormalization2()]: # 3 different types of normaliztion (pre- processing)
+    for normalization_type in [StatisticalNormalization(), AbsoluteNormalization1(), AbsoluteNormalization2()]: # 3 different types of normaliztion (pre- processing)
         model = torch.load(training_parameters_path + normalization_types[normalization_counter] + '_mytraining.pt')  # loading the model and its parameters.
         res_mgr = ResultsManager(testing_files_path, normalization_type, NUM_OF_TIME_SAMPLES)
         trainning_labeling = res_mgr.get_train_df()
@@ -69,6 +68,7 @@ if __name__ == '__main__':
         testing_labeling = trainning_labeling.copy()
         testing_labeling['label'] = predictions
         testing_labeling.head()
+        trainning_labeling.to_csv(testing_files_path + '\\' + normalization_types[normalization_counter] + '_training_labeling.csv', index=False)
         testing_labeling.to_csv(testing_files_path + '\\' + normalization_types[normalization_counter] + '_testing_labeling.csv', index=False)
 
         # comparing "train" and "sample_submission":

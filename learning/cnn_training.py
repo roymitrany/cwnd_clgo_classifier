@@ -23,15 +23,15 @@ import glob
 import os
 import pickle
 
-from learning.environment import *
+from learning.env import *
 from learning.results_manager import *
 
 
 NUM_OF_CLASSIFICATION_PARAMETERS = 9  # 7
-NUM_OF_TIME_SAMPLES = 600  # 301 # 602
+NUM_OF_TIME_SAMPLES = 301 #601  # 301 # 602
 NUM_OF_CONGESTION_CONTROL_LABELING = 3
 NUM_OF_CONV_FILTERS = 10
-NUM_OF_TRAIN_DATAFRAMES = 7  # 9
+NUM_OF_TRAIN_DATAFRAMES = 3  # 9
 NUM_OF_TEST_DATAFRAMES = 10
 
 
@@ -55,7 +55,7 @@ class Net(Module):
         )
 
         self.linear_layers = Sequential(
-            Linear(NUM_OF_CONV_FILTERS * (NUM_OF_TIME_SAMPLES - 2) * 1, NUM_OF_CONGESTION_CONTROL_LABELING + 1)
+            Linear(NUM_OF_CONV_FILTERS * (NUM_OF_TIME_SAMPLES - 2) * 1, NUM_OF_CONGESTION_CONTROL_LABELING)
             # an error because the labels must be 0 indexed. So, for example, if you have 20 classes, and the labels are 1th indexed, the 20th label would be 20, so cur_target < n_classes assert would fail. If it’s 0th indexed, the 20th label is 19, so cur_target < n_classes assert passes.
             # input features: 10 channels * number of rows * number of columns, output features: number of labels = 2.
         )
@@ -97,7 +97,7 @@ def train(epoch):
     val_losses.append(loss_val)
 
     # saving the training and validation loss
-    pckl_file = open('model_parameters.pckl', 'wb')
+    pckl_file = open(training_parameters_path + 'model_parameters.pckl', 'wb')
     pickle.dump([train_losses, val_losses], pckl_file)
     pckl_file.close()
 
@@ -112,12 +112,10 @@ def train(epoch):
 if __name__ == '__main__':
     global model, val_x, val_y, optimizer, criterion, n_epochs, train_losses, val_losses
     # defining the dataframe path
-    # normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]
-    normalization_types = ["AbsoluteNormalization2"]
+    normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]
     normalization_counter = 0
 
-    #for normalization_type in [StatisticalNormalization(), AbsoluteNormalization1(), AbsoluteNormalization2()]: # 3 different types of normaliztion (pre- processing)
-    for normalization_type in [AbsoluteNormalization2()]: # 3 different types of normaliztion (pre- processing)
+    for normalization_type in [StatisticalNormalization(), AbsoluteNormalization1(), AbsoluteNormalization2()]: # 3 different types of normaliztion (pre- processing)
         res_mgr = ResultsManager(training_files_path, normalization_type, NUM_OF_TIME_SAMPLES)
         trainning_labeling = res_mgr.get_train_df()
         dataframe_arr = res_mgr.get_normalized_df_list()

@@ -1,5 +1,5 @@
-absolute_path = "C:\\Users\\roym\\PycharmProjects\\cwnd_clgo_classifier\\"
-training_files_path = absolute_path + "results"
-training_parameters_path = absolute_path + "cnn_training_parameters"
-testing_files_path = r'C:\Users\deanc\PycharmProjects\Congestion_Control_Classifier\test_files2'
-# training_files_path = r'C:\Users\deanc\PycharmProjects\Congestion_Control_Classifier\train_files2'
+import os
+absolute_path = r'C:\Users\deanc\PycharmProjects\Congestion_Control_classifier_GitHub\\'
+training_files_path = os.path.join(absolute_path, 'train_files')
+training_parameters_path = os.path.join(absolute_path, 'cnn_training_parameters\\')
+testing_files_path = os.path.join(absolute_path, 'test_files')
