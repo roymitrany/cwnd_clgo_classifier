@@ -52,7 +52,7 @@ class Iperf3Simulator:
             tn.minute) + "-" + str(tn.second)
 
         # Create results directory, with name includes num of clients for each algo, and time:
-        self.res_dirname = os.path.join(os.getcwd(), "results", time_str + "_" + self.simulation_name)
+        self.res_dirname = os.path.join(Path(os.getcwd()).parent, "results", time_str + "_" + self.simulation_name)
         os.mkdir(self.res_dirname, 0o777)
 
         # Set results file names:
@@ -60,22 +60,12 @@ class Iperf3Simulator:
         self.rtr_q_filename = os.path.join(self.res_dirname, "rtr_q.txt")
 
         # Create the simulation parameters file
-        topo_param_filename = os.path.join(self.res_dirname, "topo_params.txt")
+        '''topo_param_filename = os.path.join(self.res_dirname, "topo_params.txt")
         param_file = open(topo_param_filename, 'w')
         param_dict = simulation_topology.to_dict()
         param_json = json.dumps(param_dict)
         param_file.write(param_json)
-        param_file.close()
-
-        # Create train csv file
-        train_csv_filename = os.path.join(self.res_dirname, "train.csv")
-        train_file = open(train_csv_filename, 'w')
-        train_file.write("id,label\n")
-        for host in self.simulation_topology.host_list:
-            for algo in Algo:
-                if algo.name in host:
-                    train_file.write("%s,%d\n" % (host, algo.value))
-        train_file.close()
+        param_file.close()'''
 
 
     def SetCongestionControlAlgorithm(self, host, tcp_algo):
@@ -207,7 +197,7 @@ if __name__ == '__main__':
     # tcp_packet_size = 2806
     Algo = Enum('Algo', 'cubic reno bbr')
     algo_dict = {}
-    simulation_duration = 30  # seconds.
+    simulation_duration = 60  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (
@@ -219,12 +209,12 @@ if __name__ == '__main__':
         for host_delay in range(4500, 4700, 200):
             for srv_bw in range(450, 470, 20):
                 for queue_size in range(500, 1000, 100):"""
-    for host_bw in range(70, 120, 10):
-        for host_delay in range(4500, 5500, 200):
-            for srv_bw in range(450, 550, 20):
-                for queue_size in range(500, 1000, 100):
+    for host_bw in range(100, 140, 5):
+        for host_delay in range(4500, 5500, 100):
+            for srv_bw in range(250, 350, 10):
+                for queue_size in range(500, 1000, 50):
                     for algo in Algo:
-                        algo_dict[algo.name] = random.randint(2, 4)
+                        algo_dict[algo.name] = 1  # random.randint(2, 4)
                     total_delay = 2 * (host_delay + srv_delay)
                     simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
                                                              srv_bw=srv_bw,
