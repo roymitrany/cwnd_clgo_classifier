@@ -214,7 +214,7 @@ if __name__ == '__main__':
             for srv_bw in range(250, 350, 10):
                 for queue_size in range(500, 1000, 50):
                     for algo in Algo:
-                        algo_dict[algo.name] = 1  # random.randint(2, 4)
+                        algo_dict[algo.name] = 1   # random.randint(2, 4)
                     total_delay = 2 * (host_delay + srv_delay)
                     simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
                                                              srv_bw=srv_bw,
