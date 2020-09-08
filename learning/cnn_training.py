@@ -22,13 +22,14 @@ from torch.optim import Adam, SGD
 import glob
 import os
 import pickle
+from datetime import datetime
 
 from learning.env import *
 from learning.results_manager import *
 
 
 NUM_OF_CLASSIFICATION_PARAMETERS = 9  # 7
-NUM_OF_TIME_SAMPLES = 301 #601  # 301 # 602
+NUM_OF_TIME_SAMPLES = 601  # 301 # 602
 NUM_OF_CONGESTION_CONTROL_LABELING = 3
 NUM_OF_CONV_FILTERS = 10
 NUM_OF_TRAIN_DATAFRAMES = 3  # 9
@@ -182,6 +183,8 @@ if __name__ == '__main__':
         plt.plot(val_losses, label='Validation loss')
         plt.legend()
         # plt.show()
+        tn = datetime.now()
+        time_str = str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(tn.minute) + "-" + str(tn.second)
         plt.savefig(training_parameters_path + normalization_types[normalization_counter] + '_graph.jpeg')
 
         # prediction for training set

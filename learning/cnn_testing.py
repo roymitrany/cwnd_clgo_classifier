@@ -27,9 +27,9 @@ import pickle
 from learning.env import *
 from learning.cnn_training import Net
 from learning.results_manager import *
-
+import time
 NUM_OF_CLASSIFICATION_PARAMETERS = 9  # 7
-NUM_OF_TIME_SAMPLES = 301 # 601  # 301 # 602
+NUM_OF_TIME_SAMPLES = 601  # 301 # 602
 NUM_OF_CONGESTION_CONTROL_LABELING = 3
 NUM_OF_CONV_FILTERS = 10
 NUM_OF_TRAIN_DATAFRAMES = 3  # 9
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]
     normalization_counter = 0
-
+    classification_difference = []
     for normalization_type in [StatisticalNormalization(), AbsoluteNormalization1(), AbsoluteNormalization2()]: # 3 different types of normaliztion (pre- processing)
         model = torch.load(training_parameters_path + normalization_types[normalization_counter] + '_mytraining.pt')  # loading the model and its parameters.
         res_mgr = ResultsManager(testing_files_path, normalization_type, NUM_OF_TIME_SAMPLES)
@@ -68,11 +68,12 @@ if __name__ == '__main__':
         testing_labeling = trainning_labeling.copy()
         testing_labeling['label'] = predictions
         testing_labeling.head()
-        trainning_labeling.to_csv(testing_files_path + '\\' + normalization_types[normalization_counter] + '_training_labeling.csv', index=False)
-        testing_labeling.to_csv(testing_files_path + '\\' + normalization_types[normalization_counter] + '_testing_labeling.csv', index=False)
+        trainning_labeling.to_csv(testing_results_path + '\\' + normalization_types[normalization_counter] + time.strftime("_%d_%m_%Y") + '_training_labeling.csv', index=False)
+        testing_labeling.to_csv(testing_results_path + '\\' + normalization_types[normalization_counter] + time.strftime("_%d_%m_%Y") + '_testing_labeling.csv', index=False)
 
         # comparing "train" and "sample_submission":
-        difference = testing_labeling[testing_labeling != trainning_labeling]
-        print(difference.count()[1] / len(testing_labeling))
-
+        classification_difference.append((testing_labeling[testing_labeling != trainning_labeling].count()[1])/len(testing_labeling))
+        # print(classification_difference.count()[1] / len(testing_labeling))
         normalization_counter+=1
+
+    print(classification_difference)
