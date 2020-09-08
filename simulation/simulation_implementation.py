@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-
+import itertools
 import os
 import json
 import threading
@@ -35,14 +35,16 @@ def create_csv(sim_obj, client, generate_graphs=False):
 
 
 class Iperf3Simulator:
-    def __init__(self, simulation_topology, simulation_name, seconds=10):
+    def __init__(self, simulation_topology, simulation_name, seconds=10, iperf_start_after=0):
         """
         :param simulation_topology: The topology class to be used
         :param simulation_name: the results folder will contain the test name
         :param seconds: The test duration
+        :param iperf_start_after: iperf will start the after random time up to this value in ms
         """
         self.file_captures = []
         self.simulation_topology: SimulationTopology = simulation_topology
+        self.iperf_start_after: int = iperf_start_after
         self.net = Mininet(simulation_topology, controller=OVSController, link=TCLink, autoSetMacs=True)
         self.seconds = seconds
         self.simulation_name = simulation_name
@@ -66,7 +68,6 @@ class Iperf3Simulator:
         param_json = json.dumps(param_dict)
         param_file.write(param_json)
         param_file.close()'''
-
 
     def SetCongestionControlAlgorithm(self, host, tcp_algo):
         """
@@ -157,8 +158,12 @@ class Iperf3Simulator:
         for client in self.simulation_topology.host_list:
             cwnd_algo = client[0:client.find("_")]
             # cmd = 'iperf3 -c %s -t %d -p %d -C %s' % (srv_ip, self.seconds, 5201 + client_counter, self.congestion_control_algorithm[client_counter % 2])
-            cmd = 'iperf3 -c %s -t %d -p %d -C %s' % (srv_ip, self.seconds, 5201 + client_counter, cwnd_algo)
-            popens[client] = (self.net.getNodeByName(client)).popen(cmd)
+            start_after = random.randint(0, self.iperf_start_after) / 1000
+            cmd = 'sleep %f && iperf3 -c %s -t %d -p %d -C %s' % (
+            start_after, srv_ip, self.seconds, 5201 + client_counter, cwnd_algo)
+            # cmd = 'iperf3 -c %s -t %d -p %d -C %s &' % (srv_ip, self.seconds, 5201 + client_counter, cwnd_algo)
+            print("sleeeeeeeeeeeeeeeeeeeeeeping %s " % cmd)
+            popens[client] = (self.net.getNodeByName(client)).popen(cmd, shell=True)
             client_counter += 1
 
         # Gather statistics from the router:
@@ -197,7 +202,7 @@ if __name__ == '__main__':
     # tcp_packet_size = 2806
     Algo = Enum('Algo', 'cubic reno bbr')
     algo_dict = {}
-    simulation_duration = 60  # seconds.
+    simulation_duration = 40  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (
@@ -209,18 +214,25 @@ if __name__ == '__main__':
         for host_delay in range(4500, 4700, 200):
             for srv_bw in range(450, 470, 20):
                 for queue_size in range(500, 1000, 100):"""
-    for host_bw in range(100, 140, 5):
-        for host_delay in range(4500, 5500, 100):
-            for srv_bw in range(250, 350, 10):
-                for queue_size in range(500, 1000, 50):
-                    for algo in Algo:
-                        algo_dict[algo.name] = 1   # random.randint(2, 4)
-                    total_delay = 2 * (host_delay + srv_delay)
-                    simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
-                                                             srv_bw=srv_bw,
-                                                             srv_delay=srv_delay, rtr_queue_size=queue_size)
-                    simulation_name = create_sim_name(algo_dict)
-                    simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration)
-                    simulator.StartSimulation()
-                    simulator.process_results()
-                    clean_sim()
+    # for host_bw in range(100, 140, 5):
+    #    for host_delay in range(4500, 5500, 100):
+    #        for srv_bw in range(250, 350, 10):
+    #            for queue_size in range(500, 1000, 50):
+    #                for algo in Algo:
+    host_bw = 100
+    host_delay = 500
+    srv_bw = 100
+    queue_size = 750
+    for _ in itertools.repeat(None, 5):
+        for algo in Algo:
+            algo_dict[algo.name] = 1  # random.randint(2, 4)
+        total_delay = 2 * (host_delay + srv_delay)
+        simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
+                                                 srv_bw=srv_bw,
+                                                 srv_delay=srv_delay, rtr_queue_size=queue_size)
+        simulation_name = create_sim_name(algo_dict)
+        simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
+                                    iperf_start_after=500)
+        simulator.StartSimulation()
+        simulator.process_results(generate_graphs=True)
+        clean_sim()

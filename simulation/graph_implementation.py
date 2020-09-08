@@ -106,7 +106,7 @@ class GraphImplementation:
 
     def save_and_show(self):
         plt.savefig(self.plot_file_name, dpi=600)
-        plt.show()
+        #plt.show()
 
 
 # For testing only: (the class is called by simulation_implementation.py)
