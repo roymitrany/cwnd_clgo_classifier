@@ -205,9 +205,9 @@ if __name__ == '__main__':
     # Simulation's parameters initializing:
     srv_delay = 5e3
     # tcp_packet_size = 2806
-    Algo = Enum('Algo', 'cubic reno bbr')
+    Algo = Enum('Algo', 'reno bbr cubic')
     algo_dict = {}
-    simulation_duration = 30  # seconds.
+    simulation_duration = 60  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (
@@ -219,18 +219,18 @@ if __name__ == '__main__':
         for host_delay in range(4500, 4700, 200):
             for srv_bw in range(450, 470, 20):
                 for queue_size in range(500, 1000, 100):"""
-    for host_bw in range(70, 120, 10):
-        for host_delay in range(4500, 5500, 200):
-            for srv_bw in range(450, 550, 20):
-                for queue_size in range(500, 1000, 100):
-                    for algo in Algo:
-                        algo_dict[algo.name] = random.randint(2, 4)
-                    total_delay = 2 * (host_delay + srv_delay)
-                    simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
-                                                             srv_bw=srv_bw,
-                                                             srv_delay=srv_delay, rtr_queue_size=queue_size)
-                    simulation_name = create_sim_name(algo_dict)
-                    simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration)
-                    simulator.StartSimulation()
-                    simulator.process_results()
-                    clean_sim()
+    # for host_bw in range(70, 120, 10):
+    for host_delay in range(4500, 5500, 5):
+        for srv_bw in range(450, 550, 5):
+            for queue_size in range(500, 1000, 5):
+                for algo in Algo:
+                    algo_dict[algo.name] = random.randint(2, 4)
+                total_delay = 2 * (host_delay + srv_delay)
+                simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
+                                                         srv_bw=srv_bw,
+                                                         srv_delay=srv_delay, rtr_queue_size=queue_size)
+                simulation_name = create_sim_name(algo_dict)
+                simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration)
+                simulator.StartSimulation()
+                simulator.process_results()
+                clean_sim()

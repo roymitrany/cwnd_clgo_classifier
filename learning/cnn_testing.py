@@ -28,20 +28,23 @@ from learning.env import *
 from learning.cnn_training import Net
 from learning.results_manager import *
 import time
-NUM_OF_CLASSIFICATION_PARAMETERS = 9  # 7
-NUM_OF_TIME_SAMPLES = 601  # 301 # 602
+NUM_OF_CLASSIFICATION_PARAMETERS = 3 # 9  # 7
+NUM_OF_TIME_SAMPLES = 501 # 601  # 301 # 602
 NUM_OF_CONGESTION_CONTROL_LABELING = 3
 NUM_OF_CONV_FILTERS = 10
-NUM_OF_TRAIN_DATAFRAMES = 3  # 9
-NUM_OF_TEST_DATAFRAMES = 3
+# NUM_OF_TRAIN_DATAFRAMES = 3  # 9
+# NUM_OF_TEST_DATAFRAMES = 3
 
 if __name__ == '__main__':
     global model, val_x, val_y, optimizer, criterion, n_epochs, train_losses, val_losses
 
-    normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]
+    # normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]
+    normalization_types = ["AbsoluteNormalization1"]
     normalization_counter = 0
     classification_difference = []
-    for normalization_type in [StatisticalNormalization(), AbsoluteNormalization1(), AbsoluteNormalization2()]: # 3 different types of normaliztion (pre- processing)
+
+    # for normalization_type in [StatisticalNormalization(), AbsoluteNormalization1(), AbsoluteNormalization2()]: # 3 different types of normaliztion (pre- processing)
+    for normalization_type in [AbsoluteNormalization1()]: # 3 different types of normaliztion (pre- processing)
         model = torch.load(training_parameters_path + normalization_types[normalization_counter] + '_mytraining.pt')  # loading the model and its parameters.
         res_mgr = ResultsManager(testing_files_path, normalization_type, NUM_OF_TIME_SAMPLES)
         trainning_labeling = res_mgr.get_train_df()

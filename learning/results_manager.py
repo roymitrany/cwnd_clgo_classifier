@@ -111,19 +111,20 @@ class ResultsManager:
             for csv_file in res_folder.csv_files:
                 csv_filename = os.path.join(res_folder.res_path, csv_file)
                 orig_conn_stat_df = pd.read_csv(csv_filename, index_col=None, header=0)
-
                 # If the df does not have minimum rows, take it out of the list and continue
                 if orig_conn_stat_df['In Throughput'].count() < min_num_of_rows:
                     res_folder.csv_files.remove(csv_file)
                     continue
+                orig_conn_stat_df = orig_conn_stat_df.drop(columns=['Out Throughput', 'Connection Num of Drops', 'Send Time Gap',
+                             'Num of Drops', 'Num of Packets', 'Total Bytes in Queue'])
 
                 fix_conn_stat_df = orig_conn_stat_df.head(min_num_of_rows)
-                if "single_connection_stat_bbr" in csv_file:
-                    train_list.append(["bbr", 0])
+                if "single_connection_stat_reno" in csv_file:
+                    train_list.append(["reno", 0])
+                elif "single_connection_stat_bbr" in csv_file:
+                    train_list.append(["bbr", 1])
                 elif "single_connection_stat_cubic" in csv_file:
-                    train_list.append(["cubic", 1])
-                elif "single_connection_stat_reno" in csv_file:
-                    train_list.append(["reno", 2])
+                    train_list.append(["cubic", 2])
 
                 self.normilizer.add_result(fix_conn_stat_df, iter_name)
             print("added %s to list" % iter_name)
