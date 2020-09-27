@@ -18,7 +18,7 @@ class ResFolder:
 class Normalizer(abc.ABC):
 
     def __init__(self):
-        self.normilized_df_list = []
+        self.normalized_df_list = []
 
     @abc.abstractmethod
     def add_result(self, res, iter_name):
@@ -27,6 +27,7 @@ class Normalizer(abc.ABC):
     @abc.abstractmethod
     def normalize(self):
         pass
+
 
 class StatisticalNormalization(Normalizer):
 
@@ -38,10 +39,11 @@ class StatisticalNormalization(Normalizer):
         self.result_df_list.append(res)
 
     def normalize(self):
-        concat_df_list = pd.concat([df for df in self.result_df_list], axis=0)
-        mean_df = concat_df_list.mean()
-        std_df = concat_df_list.std()
-        self.normilized_df_list = [((df - mean_df) / np.sqrt(std_df)).fillna(0) for df in self.result_df_list]
+        # concat_df_list = pd.concat([df for df in self.result_df_list], axis=0)
+        # mean_df = concat_df_list.mean()
+        # std_df = concat_df_list.std()
+        # self.normalized_df_list = [((df - mean_df) / np.sqrt(std_df)).fillna(0) for df in self.result_df_list]
+        self.normalized_df_list = [((df - df.mean()) / np.sqrt(df.std())).fillna(0) for df in self.result_df_list]
 
 
 class AbsoluteNormalization1(Normalizer):
@@ -83,7 +85,7 @@ class AbsoluteNormalization2(Normalizer):
 
             for df in single_exec_df_list:
                 normalized_df = df / sum_df
-                self.normilized_df_list.append(normalized_df.fillna(0))
+                self.normalized_df_list.append(normalized_df.fillna(0))
 
             print("Finished normalizing %s" % iter_name)
 
@@ -135,7 +137,7 @@ class ResultsManager:
         return self.train_df
 
     def get_normalized_df_list(self):
-        return self.normilizer.normilized_df_list
+        return self.normilizer.normalized_df_list
 
 
 # For testing only
