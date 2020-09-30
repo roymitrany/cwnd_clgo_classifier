@@ -12,7 +12,7 @@ import pandas as pd
 @dataclass
 class ResFolder:
     res_path: str
-    csv_files: list
+    csv_files_list: list
 
 
 class Normalizer(abc.ABC):
@@ -27,6 +27,7 @@ class Normalizer(abc.ABC):
     @abc.abstractmethod
     def normalize(self):
         pass
+
 
 class StatisticalNormalization(Normalizer):
 
@@ -95,7 +96,7 @@ class ResultsManager:
         """The init function does all the building of the collections, using all results sub folders under
         :param results_path: A String with full path to results location
         """
-        self.normilizer = normilizer
+        self.normalizer = normilizer
         self.res_folder_dict = dict()
         # Create a dictionary that reflects the results file structure
         # create a list of subfolders under results dir
@@ -109,40 +110,43 @@ class ResultsManager:
         # Build dataframe array and train array
         train_list = list()
         for (iter_name, res_folder) in self.res_folder_dict.items():
-            for csv_file in res_folder.csv_files:
+            for csv_file in res_folder.csv_files_list:
                 csv_filename = os.path.join(res_folder.res_path, csv_file)
-                orig_conn_stat_df = pd.read_csv(csv_filename, index_col=None, header=0)
+                with open(csv_filename) as f:
+                    row_count = sum(1 for row in f)
+                for i in range(0, row_count, min_num_of_rows):
+                    conn_stat_df = pd.read_csv(csv_filename, index_col=None, header=0,
+                                               skiprows=range(1, i+1), nrows=min_num_of_rows)
 
-                # If the df does not have minimum rows, take it out of the list and continue
-                if orig_conn_stat_df['In Throughput'].count() < min_num_of_rows:
-                    res_folder.csv_files.remove(csv_file)
-                    continue
+                    # If the df does not have minimum rows, take it out of the list and continue
+                    if conn_stat_df['In Throughput'].count() < min_num_of_rows:
+                        continue
 
-                fix_conn_stat_df = orig_conn_stat_df.head(min_num_of_rows)
-                if "single_connection_stat_bbr" in csv_file:
-                    train_list.append(["bbr", 0])
-                elif "single_connection_stat_cubic" in csv_file:
-                    train_list.append(["cubic", 1])
-                elif "single_connection_stat_reno" in csv_file:
-                    train_list.append(["reno", 2])
+                    if "single_connection_stat_bbr" in csv_file:
+                        train_list.append(["bbr", 0])
+                    elif "single_connection_stat_cubic" in csv_file:
+                        train_list.append(["cubic", 1])
+                    elif "single_connection_stat_reno" in csv_file:
+                        train_list.append(["reno", 2])
 
-                self.normilizer.add_result(fix_conn_stat_df, iter_name)
-            print("added %s to list" % iter_name)
+                    self.normalizer.add_result(conn_stat_df, iter_name)
+                print("added %s to list" % iter_name)
         self.train_df = pd.DataFrame(train_list, columns=["id", "label"])
 
-        self.normilizer.normalize()
+        self.normalizer.normalize()
 
     def get_train_df(self):
         return self.train_df
 
     def get_normalized_df_list(self):
-        return self.normilizer.normalized_df_list
+        return self.normalizer.normalized_df_list
 
 
 # For testing only
 if __name__ == '__main__':
     normaliz = AbsoluteNormalization2()
-    res_mgr = ResultsManager("C:\\Users\\roym\\PycharmProjects\\cwnd_clgo_classifier\\results", normaliz, 600)
+    #res_mgr = ResultsManager("C:\\Users\\roym\\PycharmProjects\\cwnd_clgo_classifier\\results", normaliz, 600)
+    res_mgr = ResultsManager("/home/roy/PycharmProjects/cwnd_clgo_classifier/test_results", normaliz, 30)
     norm_dfl = res_mgr.get_normalized_df_list()
     len_list = list()
     for df in norm_dfl:
