@@ -96,3 +96,21 @@ class SimulationTopology(Topo):
                      use_tbf=True,
                      max_queue_size=int(self.rtr_queue_size)
                      )
+        host_number += 1
+
+        # Add noise generator. Its index is the next one after the server:
+        noise_gen_addr = self.as_addr_prefix + str(host_number) + '.10'
+        self.noise_gen = self.addHost('noise_gen', ip=noise_gen_addr + '/24',
+                                defaultRoute="via " + self.as_addr_prefix + str(host_number) + '.1')
+        self.addLink(self.noise_gen, self.rtr,
+                     intfName1='noise-gen-r',
+                     intfName2='r-noise-gen',
+                     params2={
+                         'ip': self.as_addr_prefix + str(host_number) + '.1/24'
+                     },
+                     bw=self.host_bw,
+                     use_tbf=True,
+                     max_queue_size=int(self.rtr_queue_size),
+                     delay=self.host_delay
+                     )
+        host_number += 1
