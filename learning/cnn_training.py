@@ -19,9 +19,9 @@ from torch.optim import Adam
 from learning.env import *
 from learning.results_manager import *
 
-NUM_OF_CLASSIFICATION_PARAMETERS = 3  # 9  # 7
-NUM_OF_TIME_SAMPLES = 501  # 301 # 602
-NUM_OF_CONGESTION_CONTROL_LABELING = 3 # 3
+NUM_OF_CLASSIFICATION_PARAMETERS = 9 # 3  # 9  # 7
+NUM_OF_TIME_SAMPLES = 600 # 1200 # 300 # 601 # 501  # 301 # 602
+NUM_OF_CONGESTION_CONTROL_LABELING = 6 # 3
 NUM_OF_CONV_FILTERS = 50
 # NUM_OF_TRAIN_DATAFRAMES = 3  # 9
 # NUM_OF_TEST_DATAFRAMES = 10
@@ -101,7 +101,6 @@ def train(epoch):
         # printing the validation loss
         print('Epoch : ', epoch + 1, '\t', 'loss :', loss_val)
 
-
 if __name__ == '__main__':
     global model, val_x, val_y, optimizer, criterion, n_epochs, train_losses, val_losses
     # defining the dataframe path
@@ -159,7 +158,7 @@ if __name__ == '__main__':
             criterion = criterion.cuda()
 
         # defining the number of epochs
-        n_epochs = 50 # 25
+        n_epochs = 100 # 50 # 25
         min_n_epochs = 10 # 25
         # empty list to store training losses
         train_losses = []
