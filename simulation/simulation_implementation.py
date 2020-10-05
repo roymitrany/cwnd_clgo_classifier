@@ -108,7 +108,7 @@ class Iperf3Simulator:
 
     def StartSimulation(self):
         self.net.start()
-        CLI(self.net)
+        # CLI(self.net)
 
         srv = self.net.getNodeByName(self.simulation_topology.srv)
         srv_ip = srv.IP()
@@ -185,7 +185,7 @@ class Iperf3Simulator:
         for process in srv_procs:
             process.send_signal(SIGINT)
         q_proc.send_signal(SIGINT)
-        CLI(self.net)
+        # CLI(self.net)
         self.net.stop()
 
 
@@ -208,9 +208,10 @@ if __name__ == '__main__':
     srv_delay = 5e3
     # tcp_packet_size = 2806
     # Algo = Enum('Algo', 'cubic reno bbr')
+    # Algo = Enum('Algo', 'vegas bic westwood reno bbr cubic')
     Algo = Enum('Algo', 'reno bbr cubic')
     algo_dict = {}
-    simulation_duration = 120  # seconds.
+    simulation_duration = 80 # 120  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (
@@ -228,9 +229,9 @@ if __name__ == '__main__':
                 for queue_size in range(500, 1000, 100):"""
     # for host_bw in range(100, 140, 5):
 
-    for host_delay in range(4500, 5500, 5):
-        for srv_bw in range(150, 210, 5):
-            for queue_size in range(100, 500, 5):
+    for host_delay in range(4500, 5500, 250): # 250): # original step was 5.
+        for srv_bw in range(150, 210, 20): # 10): # original step was 5.
+            for queue_size in range(100, 500, 100): # 100): # original step was 5.
                 # for _ in itertools.repeat(None, 100):
 
                 # Algo_list = [Enum('Algo', 'cubic')]
@@ -244,7 +245,8 @@ if __name__ == '__main__':
                                                          srv_delay=srv_delay, rtr_queue_size=queue_size)
                 simulation_name = create_sim_name(algo_dict)
                 simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
-                                            iperf_start_after=500, background_noise=100)
+                                            iperf_start_after=20000, background_noise=0)
+                # iperf_start_after=500, background_noise=100)
                 simulator.StartSimulation()
                 simulator.process_results(generate_graphs=True)
                 clean_sim()
