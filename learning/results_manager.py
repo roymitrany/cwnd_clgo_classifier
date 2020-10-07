@@ -115,6 +115,7 @@ class ResultsManager:
                 with open(csv_filename) as f:
                     row_count = sum(1 for row in f)
                 for i in range(0, row_count, min_num_of_rows):
+                # for i in range(row_count, 0, -min_num_of_rows):
                     conn_stat_df = pd.read_csv(csv_filename, index_col=None, header=0,
                                                skiprows=range(1, i+1), nrows=min_num_of_rows)
 
