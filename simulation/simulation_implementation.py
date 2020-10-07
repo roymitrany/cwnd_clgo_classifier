@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import itertools
+
 import os
 import json
 import threading
@@ -9,8 +9,6 @@ from pathlib import Path
 from enum import Enum
 from signal import SIGINT
 from time import sleep
-
-from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.log import setLogLevel
 from mininet.net import Mininet

@@ -56,7 +56,7 @@ class AbsoluteNormalization1(Normalizer):
         self.result_df_list.append(res)
 
     def normalize(self):
-        self.normilized_df_list = [(df / df.max()).fillna(0) for df in self.result_df_list]
+        self.normalized_df_list = [(df / df.max()).fillna(0) for df in self.result_df_list]
 
 
 class AbsoluteNormalization2(Normalizer):
