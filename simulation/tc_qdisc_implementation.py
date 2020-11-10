@@ -19,9 +19,15 @@ if __name__ == '__main__':
     queue_len_bytes_dict = {}
     drops_dict = {}
     # queue_len_packets_list = []
-    assert argv != 3, "argv was %d. add ifname and filename as parameters" % len(argv)
+    assert argv != 4, "usage: tc_qdisc_implementation <ifName> <filename> <tick interval accuracy (0-4)>"
     if_name = argv[1]
     results_filename = argv[2]
+    tick_interval_accuracy = argv[3]
+    # Check if tick_interval_accuracy is between 0 to 4
+    tick_interval_accuracy = int(tick_interval_accuracy)
+    print("tick_interval_accuracy: %d" %tick_interval_accuracy)
+    #assert tick_interval_accuracy<0 or tick_interval_accuracy>4, "accuracy (last parameter) should be a number between 0 to 4"
+
     signal.signal(signal.SIGINT, signal_handler)
     output_file = open("q_disc_debug.txt", 'w')
     last_dropped = 0
@@ -43,12 +49,18 @@ if __name__ == '__main__':
                 num = int(match.group(2)[0:-1]) * 1000
                 num_of_bytes = str(num)
             num_of_packets = match.group(3)
-            time_str = datetime.now().strftime("%H:%M:%S.%f")[:-5]
+            num_of_cut_digits = tick_interval_accuracy-6
+            time_str = datetime.now().strftime("%H:%M:%S.%f")[:num_of_cut_digits]
 
-            queue_len_bytes_dict[datetime.now().strftime("%H:%M:%S.%f")[:-5]] = "%s\t%s\t%d" % (
+            queue_len_bytes_dict[datetime.now().strftime("%H:%M:%S.%f")[:num_of_cut_digits]] = "%s\t%s\t%d" % (
                 num_of_bytes, num_of_packets, drops)
-
-        time.sleep(0.093)
+            if tick_interval_accuracy == 0:
+                time_to_sleep = 0.993
+            elif tick_interval_accuracy == 1:
+                time_to_sleep = 0.093
+            elif tick_interval_accuracy == 2:
+                time_to_sleep = 0.003
+            time.sleep(time_to_sleep)
 
     # SIGINT was called. Save all results in a file:
     results_file = open(results_filename, 'w')
