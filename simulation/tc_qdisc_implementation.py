@@ -60,6 +60,8 @@ if __name__ == '__main__':
                 time_to_sleep = 0.093
             elif tick_interval_accuracy == 2:
                 time_to_sleep = 0.003
+            else:
+                time_to_sleep = 0.0001
             time.sleep(time_to_sleep)
 
     # SIGINT was called. Save all results in a file:
