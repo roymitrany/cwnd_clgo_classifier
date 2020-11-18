@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+import sys;
+sys.path.extend(['/home/another/PycharmProjects/cwnd_clgo_classifier', '/home/another/PycharmProjects/cwnd_clgo_classifier/venv/lib/python3.6/site-packages'])
 import itertools
 import os
 import json
@@ -32,7 +34,8 @@ def create_csv(sim_obj, client, generate_graphs=False):
     rtr_file = os.path.join(sim_obj.res_dirname, 'rtr_q.txt')
     graph_file_name = os.path.join(sim_obj.res_dirname, 'Conn_Graph_%s.png' % client)
     plot_title = client
-    q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name, plot_title, generate_graphs)
+    interval_accuracy= sim_obj.interval_accuracy
+    q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name, plot_title, generate_graphs, interval_accuracy)
     q_line_obj.conn_df.to_csv(os.path.join(sim_obj.res_dirname, 'single_connection_stat_%s.csv' % client))
 
 

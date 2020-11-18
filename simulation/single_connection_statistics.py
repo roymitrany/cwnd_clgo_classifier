@@ -8,17 +8,21 @@ from matplotlib import cycler, gridspec
 
 from simulation.tcpdump_statistics import TcpdumpStatistics
 
+
 def get_sec(time_str):
     """Get Seconds from time."""
     h, m, s = time_str.split(':')
     return int(h) * 3600 + int(m) * 60 + float(s)
 
+
 class SingleConnStatistics:
-    def __init__(self, ingress_file_name, egress_file_name, rtr_q_filename, graph_file_name, plot_title, generate_graphs):
+    def __init__(self, ingress_file_name, egress_file_name, rtr_q_filename, graph_file_name, plot_title,
+                 generate_graphs, interval_accuracy):
         self.conn_df = self.rolling_df = None
+        self.interval_accuracy = interval_accuracy
 
         self.build_df(ingress_file_name, egress_file_name, rtr_q_filename)
-        #print(self.conn_df)
+        # print(self.conn_df)
         # self.create_plots(graph_file_name)
         if generate_graphs:
             self.create_plots(graph_file_name, plot_title)
@@ -37,12 +41,12 @@ class SingleConnStatistics:
         out_conn_lines = self.reduce_lines(lines)  # take out all the lines that are not related to the connection
 
         # Create several DataFrames from the lines
-        dropped_df = self.create_dropped_df(in_dropped_lines)
-        in_throughput_df = self.create_throughput_df(in_conn_lines)
-        out_throughput_df = self.create_throughput_df(out_conn_lines)
+        dropped_df = self.create_dropped_df(in_dropped_lines, self.interval_accuracy)
+        in_throughput_df = self.create_throughput_df(in_conn_lines, self.interval_accuracy)
+        out_throughput_df = self.create_throughput_df(out_conn_lines, self.interval_accuracy)
         in_goodput_df = self.create_throughput_df(
-            in_passed_lines)  # Throughput for packets that did not drop
-        ts_val_df = self.create_ts_val_df(in_conn_lines)
+            in_passed_lines, self.interval_accuracy)  # Throughput for packets that did not drop
+        ts_val_df = self.create_ts_val_df(in_conn_lines, self.interval_accuracy)
 
         # Consolidate all the DataFrames into one DataFrame
         self.conn_df = pd.concat([in_throughput_df, out_throughput_df, dropped_df, ts_val_df],
@@ -61,7 +65,6 @@ class SingleConnStatistics:
         df['CBIQ'] = df['CBIQ'].map(lambda num: num / 8 * 100000)
         self.conn_df = self.conn_df.join(df['CBIQ'], lsuffix='_caller')
 
-
         values = {'Connection Num of Drops': 0}
         self.conn_df = self.conn_df.fillna(value=values)
 
@@ -73,12 +76,12 @@ class SingleConnStatistics:
 
         # Convert the time string into time offset float
         base_timestamp = get_sec(self.conn_df.index[0])
-        self.conn_df['timestamp'] = self.conn_df.index.map(mapper=(lambda x: get_sec(x)-base_timestamp))
+        self.conn_df['timestamp'] = self.conn_df.index.map(mapper=(lambda x: get_sec(x) - base_timestamp))
         self.conn_df = self.conn_df.set_index('timestamp')
         return
 
     @staticmethod
-    def create_ts_val_df(lines):
+    def create_ts_val_df(lines, interval_accuracy):
         # TS val indicates the timestamp in which the packet was sent.
         # since we want to maintain the data based on time intervals, we should expect some intervals to include
         # a lot of packets, and others with only few of them.
@@ -89,24 +92,22 @@ class SingleConnStatistics:
         for line in lines:
             conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line)
             ts_val = int(ts_val)
-            rounded_time_obj = re.search(r'(\S+\.\d)', time_str)
+            s_str = '(\S+\.\d{%d})' % interval_accuracy
+            rounded_time_obj = re.search(r'%s' % s_str, time_str)
             rounded_time = rounded_time_obj.group(1)
-            if last_ts_val==0:
-                last_ts_val=ts_val
+            if last_ts_val == 0:
+                last_ts_val = ts_val
 
             if rounded_time not in ts_val_dict:
-                ts_val_dict[rounded_time] = ts_val-last_ts_val
+                ts_val_dict[rounded_time] = ts_val - last_ts_val
             else:
-                ts_val_dict[rounded_time] = max(ts_val_dict[rounded_time], ts_val-last_ts_val)
+                ts_val_dict[rounded_time] = max(ts_val_dict[rounded_time], ts_val - last_ts_val)
             last_ts_val = ts_val
-        df = pd.DataFrame.from_dict(ts_val_dict,orient='index')
+        df = pd.DataFrame.from_dict(ts_val_dict, orient='index')
         return df
 
-
-
-
     @staticmethod
-    def create_throughput_df(lines):
+    def create_throughput_df(lines, interval_accuracy):
         time_list = []
         length_list = []
 
@@ -116,7 +117,7 @@ class SingleConnStatistics:
                 continue
 
             # Take only 10th of a second from the time string:
-            rounded_time_str = time_str[0:-5]
+            rounded_time_str = time_str[0:0-interval_accuracy]
             time_list.append(rounded_time_str)
             length_list.append(float(length))
 
@@ -127,13 +128,13 @@ class SingleConnStatistics:
         return df
 
     @staticmethod
-    def create_dropped_df(dropped_lines):
+    def create_dropped_df(dropped_lines, interval_accuracy):
         time_list = []
         for line in dropped_lines:
             conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line)
 
             # Take only 10th of a second from the time string:
-            rounded_time_str = time_str[0:-5]
+            rounded_time_str = time_str[0:0-interval_accuracy]
             time_list.append(rounded_time_str)
 
         df = pd.DataFrame({'Time': time_list})
@@ -231,8 +232,8 @@ class SingleConnStatistics:
                           title="Drops vs. Bytes in Queue")
         ax5.legend(loc=1)
 
-        #self.max_cbiq_series.plot(kind='line', ax=max_ax, c='g')
-        #self.rolling_df.plot(kind='line', ax=max_ax, c='g', y=['CBIQ'])
+        # self.max_cbiq_series.plot(kind='line', ax=max_ax, c='g')
+        # self.rolling_df.plot(kind='line', ax=max_ax, c='g', y=['CBIQ'])
 
         self.conn_df.plot(kind='line', ax=ts_ax, y=['Connection Num of Drops'], color="red")
         ts_ax.set(xlabel='time', ylabel='Drops (pkts)')

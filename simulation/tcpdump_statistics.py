@@ -80,7 +80,7 @@ class TcpdumpStatistics:
                 continue
 
             ##### Process throughput:
-            # For throughput, take only 10th of a second from the time string:
+            # For throughput, round the time according to interval accuracy:
             s_str = '(\S+\.\d{%d})' % self.interval_accuracy
             rounded_time_obj = re.search(r'%s' % s_str, time_str)
             rounded_time = rounded_time_obj.group(1)
