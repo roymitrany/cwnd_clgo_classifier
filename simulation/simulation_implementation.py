@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-import sys;
-sys.path.extend(['/home/another/PycharmProjects/cwnd_clgo_classifier', '/home/another/PycharmProjects/cwnd_clgo_classifier/venv/lib/python3.6/site-packages'])
 import itertools
 import os
 import json

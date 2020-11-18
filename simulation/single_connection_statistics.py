@@ -117,7 +117,7 @@ class SingleConnStatistics:
                 continue
 
             # Take only 10th of a second from the time string:
-            rounded_time_str = time_str[0:0-interval_accuracy]
+            rounded_time_str = time_str[0:interval_accuracy-6]
             time_list.append(rounded_time_str)
             length_list.append(float(length))
 
@@ -134,7 +134,7 @@ class SingleConnStatistics:
             conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line)
 
             # Take only 10th of a second from the time string:
-            rounded_time_str = time_str[0:0-interval_accuracy]
+            rounded_time_str = time_str[0:interval_accuracy-6]
             time_list.append(rounded_time_str)
 
         df = pd.DataFrame({'Time': time_list})
