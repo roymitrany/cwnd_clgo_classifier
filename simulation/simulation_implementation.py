@@ -30,17 +30,22 @@ def create_csv(sim_obj, client, generate_graphs=False):
     rtr_file = os.path.join(sim_obj.res_dirname, 'rtr_q.txt')
     graph_file_name = os.path.join(sim_obj.res_dirname, 'Conn_Graph_%s.png' % client)
     plot_title = client
-    q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name, plot_title, generate_graphs)
+    interval_accuracy= sim_obj.interval_accuracy
+    q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name, plot_title, generate_graphs, interval_accuracy)
     q_line_obj.conn_df.to_csv(os.path.join(sim_obj.res_dirname, 'single_connection_stat_%s.csv' % client))
 
 
 class Iperf3Simulator:
-    def __init__(self, simulation_topology, simulation_name, seconds=10, iperf_start_after=0, background_noise=0):
+    def __init__(self, simulation_topology, simulation_name, seconds=10, iperf_start_after=0,
+                 background_noise=0, interval_accuracy=1):
         """
+        :param interval_accuracy:
         :param simulation_topology: The topology class to be used
         :param simulation_name: the results folder will contain the test name
         :param seconds: The test duration
         :param iperf_start_after: iperf will start the after random time up to this value in ms
+        :param tick_interval: tick duration. effects qdisc sample interval, background noise generation
+        :param background_noise: Amount of packets per tick to send as background noise
         """
         self.file_captures = []
         self.simulation_topology: SimulationTopology = simulation_topology
@@ -50,6 +55,7 @@ class Iperf3Simulator:
         self.simulation_name = simulation_name
         self.port_algo_dict = {}
         self.background_noise = background_noise
+        self.interval_accuracy = interval_accuracy
         tn = datetime.now()
         time_str = str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
             tn.minute) + "-" + str(tn.second)
@@ -88,7 +94,7 @@ class Iperf3Simulator:
             thread.join()
 
         if generate_graphs:
-            tcpdump_statistsics = TcpdumpStatistics(self.port_algo_dict)
+            tcpdump_statistsics = TcpdumpStatistics(self.port_algo_dict, self.interval_accuracy)
             for filename in self.file_captures:
                 tcpdump_statistsics.parse_tcpdump_file(filename)
             tc_qdisc_statistics = TcQdiscStatistics(self.rtr_q_filename)
@@ -163,16 +169,20 @@ class Iperf3Simulator:
         for client in self.simulation_topology.host_list:
             cwnd_algo = client[0:client.find("_")]
             # cmd = 'iperf3 -c %s -t %d -p %d -C %s' % (srv_ip, self.seconds, 5201 + client_counter, self.congestion_control_algorithm[client_counter % 2])
-            start_after = random.randint(0, self.iperf_start_after) / 1000
+            # start_after = random.randint(0, self.iperf_start_after) / 1000
+            start_after = self.iperf_start_after
+            # cmd = 'sleep %f && iperf3 -c %s -t %d -p %d -C %s' % (
+            #     start_after, srv_ip, self.seconds, 5201 + client_counter, cwnd_algo)
             cmd = 'sleep %f && iperf3 -c %s -t %d -p %d -C %s' % (
-                start_after, srv_ip, self.seconds, 5201 + client_counter, cwnd_algo)
+            start_after, srv_ip, self.seconds, 5201 + client_counter, cwnd_algo)
             # cmd = 'iperf3 -c %s -t %d -p %d -C %s &' % (srv_ip, self.seconds, 5201 + client_counter, cwnd_algo)
             print("sleeeeeeeeeeeeeeeeeeeeeeping %s " % cmd)
             popens[client] = (self.net.getNodeByName(client)).popen(cmd, shell=True)
             client_counter += 1
 
         # Gather statistics from the router:
-        q_proc = rtr.popen('python tc_qdisc_implementation.py r-srv %s' % self.rtr_q_filename)
+        q_proc = rtr.popen('python tc_qdisc_implementation.py r-srv %s %d'
+                           % (self.rtr_q_filename, self.interval_accuracy))
 
         # Wait until all commands are completed:
         for client, line in pmonitor(popens, timeoutms=1000):
@@ -202,6 +212,9 @@ def create_sim_name(cwnd_algo_dict):
 
 
 if __name__ == '__main__':
+    # interval accuracy: a number between 0 to 3. For value n, the accuracy will be set to 1/10^n
+    interval_accuracy = 2
+
     # Simulation's parameters initializing:
     srv_delay = 5e3
     # tcp_packet_size = 2806
@@ -209,7 +222,7 @@ if __name__ == '__main__':
     # Algo = Enum('Algo', 'vegas bic westwood reno bbr cubic')
     Algo = Enum('Algo', 'reno bbr cubic')
     algo_dict = {}
-    simulation_duration = 60 # 80 # 120  # seconds.
+    simulation_duration = 20  # 60 # 80 # 120  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (
@@ -221,32 +234,40 @@ if __name__ == '__main__':
     host_delay = 500
     srv_bw = 100
     queue_size = 7500
-    """for host_bw in range(70, 80, 10):
-        for host_delay in range(4500, 4700, 200):
-            for srv_bw in range(450, 470, 20):
-                for queue_size in range(500, 1000, 100):"""
     # for host_bw in range(100, 140, 5):
 
-    for host_delay in range(4500, 5500, 250): # 250): # original step was 5.
-        for srv_bw in range(150, 210, 20): # 10): # original step was 5.
-            for queue_size in range(100, 500, 100): # 100): # original step was 5.
-                # for _ in itertools.repeat(None, 100):
+    """for host_delay in range(4500, 5500, 250):  # 250): # original step was 5.
+        for srv_bw in range(150, 210, 20):  # 10): # original step was 5.
+            for queue_size in range(100, 500, 100):  # 100): # original step was 5.
+                # for _ in itertools.repeat(None, 100):"""
+    # Algo_list = [Enum('Algo', 'cubic')]
+    # for Algo in Algo_list:
+    #     for _ in itertools.repeat(None, 10):
+    # for background_noise in range(1000, 10000, 1000):
+    background_noise = 1000
+    for host_bw in range(70, 80, 10):
+        for host_delay in range(4500, 4700, 200):
+            for srv_bw in range(450, 470, 20):
 
-                # Algo_list = [Enum('Algo', 'cubic')]
-                # for Algo in Algo_list:
-                #     for _ in itertools.repeat(None, 10):
-                for background_noise in range(1000, 10000, 1000):
                     for algo in Algo:
                         algo_dict[algo.name] = 1  # random.randint(2, 4) # how many flows of each type
-                        # algo_dict['vegas']=10
+                        # algo_dict['bbr']=10
                     total_delay = 2 * (host_delay + srv_delay)
                     simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
                                                              srv_bw=srv_bw,
                                                              srv_delay=srv_delay, rtr_queue_size=queue_size)
                     simulation_name = create_sim_name(algo_dict)
-                    simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
-                                                iperf_start_after=0, background_noise=background_noise) # iperf_start_after = 20000
+                    if algo.name == "cubic":
+                        simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration - 10,
+                                                    iperf_start_after=10,
+                                                    background_noise=background_noise,
+                                                    interval_accuracy=interval_accuracy)  # iperf_start_after = 20000
+                    else:
+                        simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
+                                                    iperf_start_after=0,
+                                                    background_noise=background_noise,
+                                                    interval_accuracy=interval_accuracy)  # iperf_start_after = 20000
                     # iperf_start_after=500, background_noise=100)
                     simulator.StartSimulation()
-                    simulator.process_results(generate_graphs=True)
+                    simulator.process_results(generate_graphs=True, keep_dump_files=True)
                     clean_sim()

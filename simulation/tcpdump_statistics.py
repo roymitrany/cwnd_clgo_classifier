@@ -1,7 +1,8 @@
 import re
 
+
 class TcpdumpStatistics:
-    def __init__(self, port_algo_dict):
+    def __init__(self, port_algo_dict, interval_accuracy):
 
         '''
         2D Dictionary with amount of transferred data in each cell
@@ -17,6 +18,7 @@ class TcpdumpStatistics:
         self.ts_val_dict_of_lists = {}
         self.last_ts_val_dict = {}
         self.port_algo_dict = port_algo_dict
+        self.interval_accuracy = interval_accuracy
 
     @staticmethod
     def get_connection_identifier(src_addr, src_port, dst_addr, dst_port, port_algo_dict={}):
@@ -78,8 +80,9 @@ class TcpdumpStatistics:
                 continue
 
             ##### Process throughput:
-            # For throughput, take only 10th of a second from the time string:
-            rounded_time_obj = re.search(r'(\S+\.\d)', time_str)
+            # For throughput, round the time according to interval accuracy:
+            s_str = '(\S+\.\d{%d})' % self.interval_accuracy
+            rounded_time_obj = re.search(r'%s' % s_str, time_str)
             rounded_time = rounded_time_obj.group(1)
 
             # If needed, add an entry for the connection (a new column):
