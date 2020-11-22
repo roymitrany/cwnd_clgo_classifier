@@ -1,8 +1,6 @@
 # importing the libraries
-
 import pickle
 from datetime import datetime
-
 # for reading and displaying graphs
 # from skimage.io import imread
 import matplotlib.pyplot as plt
@@ -13,19 +11,33 @@ from sklearn.metrics import accuracy_score
 # for creating validation set
 from sklearn.model_selection import train_test_split
 from torch.autograd import Variable
-from torch.nn import Linear, ReLU, CrossEntropyLoss, Sequential, Conv2d, MaxPool2d, Module, BatchNorm2d
+from torch.nn import Linear, ReLU, CrossEntropyLoss, L1Loss, MSELoss, SmoothL1Loss, NLLLoss, KLDivLoss, Sequential, Conv2d, MaxPool2d, Module, BatchNorm2d
 from torch.optim import Adam
 
 from learning.env import *
-from learning.results_manager import *
+from learning.results_manager_old import *
 
 NUM_OF_CLASSIFICATION_PARAMETERS = 9 # 3  # 9  # 7
-NUM_OF_TIME_SAMPLES = 600 # 1200 # 300 # 601 # 501  # 301 # 602
-NUM_OF_CONGESTION_CONTROL_LABELING = 6 # 3
+NUM_OF_TIME_SAMPLES = 600 # 100 # 1200 # 300 # 601 # 501  # 301 # 602
+NUM_OF_CONGESTION_CONTROL_LABELING = 3 # 6 # 3
 NUM_OF_CONV_FILTERS = 50
 # NUM_OF_TRAIN_DATAFRAMES = 3  # 9
 # NUM_OF_TEST_DATAFRAMES = 10
 
+def init_weights(model):
+    if type(model) == Linear:
+        torch.nn.init.xavier_uniform_(model.weight)
+        torch.nn.init.zeros_(model.bias)
+        # torch.nn.init.xavier_normal(model.weight)
+        # torch.nn.init.kaiming_uniform_(model.weight, a=0, mode='fan_in', nonlinearity='leaky_relu')
+        # torch.nn.init.zeros_(model.bias)
+        # torch.nn.init.normal_(model.weight, mean=0, std=1)
+        #torch.nn.init.uniform(model.weight, 0.0, 1.0)
+    # if isinstance(model, Conv2d):
+    if type(model) == Conv2d:
+        torch.nn.init.xavier_uniform_(model.weight)
+        torch.nn.init.zeros_(model.bias)
+        #torch.nn.init.kaiming_uniform_(model.weight, a=0, mode='fan_in', nonlinearity='leaky_relu')
 
 class Net(Module):
     def __init__(self):
@@ -47,7 +59,7 @@ class Net(Module):
         )
 
         self.linear_layers = Sequential(
-            Linear(NUM_OF_CONV_FILTERS * 1 * (NUM_OF_TIME_SAMPLES - 2) * 1, NUM_OF_CONGESTION_CONTROL_LABELING)  # 1 instead of NUM_OF_CLASSIFICATION_PARAMETER
+            Linear(NUM_OF_CONV_FILTERS * 1 * (NUM_OF_TIME_SAMPLES - 2) * 1, NUM_OF_CLASSIFICATION_PARAMETERS)  # 1 instead of NUM_OF_CLASSIFICATION_PARAMETER
             # an error because the labels must be 0 indexed. So, for example, if you have 20 classes, and the labels are 1th indexed, the 20th label would be 20, so cur_target < n_classes assert would fail. If it’s 0th indexed, the 20th label is 19, so cur_target < n_classes assert passes.
             # input features: 10 channels * number of rows * number of columns, output features: number of labels = 2.
         )
@@ -58,6 +70,16 @@ class Net(Module):
         x = x.view(x.size(0), -1)  # flattening?
         x = self.linear_layers(x)
         return x
+        """
+        self.sigmoid = torch.nn.Sigmoid()
+        self.softmax = torch.nn.Softmax(dim=1)
+        x = self.cnn_layers(x)
+        x = x.view(x.size(0), -1)  # flattening?
+        x = self.sigmoid(x)
+        x = self.linear_layers(x)
+        x = self.softmax(x)
+        return x
+        """
 
 
 def train(epoch):
@@ -82,8 +104,17 @@ def train(epoch):
     output_val = model(x_val.type('torch.FloatTensor'))
 
     # computing the training and validation loss
-    loss_train = criterion(output_train, y_train.type(
-        'torch.LongTensor'))  # Long instead of float (was float and changed to long- now works).
+    """
+    softmax = torch.exp(output_train).cpu()
+    prob = list(softmax.detach().numpy())
+    predictions = np.argmax(prob, axis=1)
+    """
+    # loss_train = criterion(output_train, y_train.type('torch.LongTensor'))  # Long instead of float (was float and changed to long- now works).
+    # loss_val = criterion(output_val, y_val.type('torch.LongTensor'))
+    # loss_train = criterion(predictions, y_train.type('torch.LongTensor').view(-1, 1))  # Long instead of float (was float and changed to long- now works).
+    # loss_train = criterion(output_train, y_train.type('torch.LongTensor').view(-1, 1))  # Long instead of float (was float and changed to long- now works).
+    # loss_train = criterion(output_train, y_train.type('torch.FloatTensor'))  # Long instead of float (was float and changed to long- now works).
+    loss_train = criterion(output_train, y_train.type('torch.LongTensor'))  # Long instead of float (was float and changed to long- now works).
     loss_val = criterion(output_val, y_val.type('torch.LongTensor'))
     train_losses.append(loss_train)
     val_losses.append(loss_val)
@@ -148,31 +179,51 @@ if __name__ == '__main__':
 
         # defining the model
         model = Net()
-        # defining the optimizer
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.07)
-        # defining the loss function
+
+        # initializing weights:
+        model.apply(init_weights)
+        # model.apply(weights_init_uniform)
+
+        # defining the optimizer:
+        """
+        learning_rate = 1e-4
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+        """
+        # defining the loss function:
         criterion = CrossEntropyLoss()
+        # criterion = L1Loss()
+        # criterion = NLLLoss()
+        # criterion = MSELoss()
+        # criterion = SmoothL1Loss()
+        # criterion = KLDivLoss()
         # checking if GPU is available
         if torch.cuda.is_available():
             model = model.cuda()
-            criterion = criterion.cuda()
+            criterion = criterion(reduction="sum").cuda()
 
         # defining the number of epochs
-        n_epochs = 100 # 50 # 25
+        n_epochs = 100 # 75 # 50 # 70 # 50 # 25
         min_n_epochs = 10 # 25
         # empty list to store training losses
         train_losses = []
         # empty list to store validation losses
         val_losses = []
-        # training the model
+        # training the model:
+        m = 25
+        learning_rate_init = 1e-4
         for epoch in range(n_epochs):
+            learning_rate = learning_rate_init / (1 + epoch/m)
+            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+            # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+            # optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate)
             train(epoch)
-            if epoch > min_n_epochs and val_losses[epoch] == 0:
-                break
+            # if epoch > min_n_epochs and val_losses[epoch] == 0:
+            #     break
 
         # saving the trained model
         torch.save(model, training_parameters_path + normalization_types[normalization_counter] + '_mytraining.pt')
-
+        torch.save(model.state_dict(), training_parameters_path + normalization_types[normalization_counter] + '_mytraining_state_dict.pt')
 
         # plotting the training and validation loss
         plt.plot(train_losses, label='Training loss')
@@ -181,7 +232,7 @@ if __name__ == '__main__':
         # plt.show()
         tn = datetime.now()
         time_str = str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(tn.minute) + "-" + str(tn.second)
-        plt.savefig(training_parameters_path + normalization_types[normalization_counter] + '_graph.jpeg')
+        #plt.savefig(training_parameters_path + normalization_types[normalization_counter] + '_graph.jpeg')
 
         # prediction for training set
         with torch.no_grad():

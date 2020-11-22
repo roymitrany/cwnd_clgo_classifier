@@ -116,19 +116,35 @@ class ResultsManager:
                     row_count = sum(1 for row in f)
                 for i in range(0, row_count, min_num_of_rows):
                 # for i in range(row_count, 0, -min_num_of_rows):
+                    # if i < row_count /10:
+                    #     continue
                     conn_stat_df = pd.read_csv(csv_filename, index_col=None, header=0,
                                                skiprows=range(1, i+1), nrows=min_num_of_rows)
 
                     # If the df does not have minimum rows, take it out of the list and continue
                     if conn_stat_df['In Throughput'].count() < min_num_of_rows:
                         continue
-
+                    """
+                    conn_stat_df = conn_stat_df.drop(
+                        columns=['Out Throughput', 'Connection Num of Drops', 'Send Time Gap',
+                                 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue'])
+                    """
                     if "single_connection_stat_bbr" in csv_file:
                         train_list.append(["bbr", 0])
                     elif "single_connection_stat_cubic" in csv_file:
                         train_list.append(["cubic", 1])
+                    # else:
+                    #     continue
                     elif "single_connection_stat_reno" in csv_file:
                         train_list.append(["reno", 2])
+                    else:
+                        continue
+                    #elif "single_connection_stat_vegas" in csv_file:
+                    #    train_list.append(["vegas", 3])
+                    #elif "single_connection_stat_bic" in csv_file:
+                    #    train_list.append(["bic", 4])
+                    #elif "single_connection_stat_westwood" in csv_file:
+                    #    train_list.append(["westwood", 5])
 
                     self.normalizer.add_result(conn_stat_df, iter_name)
                 print("added %s to list" % iter_name)
