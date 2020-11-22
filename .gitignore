@@ -4,3 +4,7 @@
 /cnn_training_parameters/
 /test_results/
 
+/learning/cnn_testing_old.py
+/learning/cnn_training_old.py
+/learning/results_manager_old.py
+/data/

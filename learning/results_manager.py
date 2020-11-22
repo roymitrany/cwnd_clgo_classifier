@@ -163,7 +163,7 @@ class ResultsManager:
 if __name__ == '__main__':
     normaliz = AbsoluteNormalization2()
     #res_mgr = ResultsManager("C:\\Users\\roym\\PycharmProjects\\cwnd_clgo_classifier\\results", normaliz, 600)
-    res_mgr = ResultsManager("/home/roy/PycharmProjects/cwnd_clgo_classifier/test_results", normaliz, 30)
+    res_mgr = ResultsManager("/test_results", normaliz, 30)
     norm_dfl = res_mgr.get_normalized_df_list()
     len_list = list()
     for df in norm_dfl:

@@ -1,7 +1,6 @@
 # PyTorch libraries and modules
 import torch
 from learning.env import *
-from learning.cnn_training import Net
 from learning.results_manager_old import *
 import time
 NUM_OF_CLASSIFICATION_PARAMETERS = 9 # 3 # 9  # 7

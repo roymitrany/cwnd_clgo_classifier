@@ -11,8 +11,7 @@ from sklearn.metrics import accuracy_score
 # for creating validation set
 from sklearn.model_selection import train_test_split
 from torch.autograd import Variable
-from torch.nn import Linear, ReLU, CrossEntropyLoss, L1Loss, MSELoss, SmoothL1Loss, NLLLoss, KLDivLoss, Sequential, Conv2d, MaxPool2d, Module, BatchNorm2d
-from torch.optim import Adam
+from torch.nn import Linear, ReLU, CrossEntropyLoss, Sequential, Conv2d, MaxPool2d, Module, BatchNorm2d
 
 from learning.env import *
 from learning.results_manager_old import *

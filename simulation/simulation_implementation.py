@@ -1,9 +1,7 @@
 #!/usr/bin/python3
 
 import os
-import json
 import threading
-import random
 from pathlib import Path
 
 from enum import Enum
@@ -61,7 +59,7 @@ class Iperf3Simulator:
             tn.minute) + "-" + str(tn.second)
 
         # Create results directory, with name includes num of clients for each algo, and time:
-        self.res_dirname = os.path.join(Path(os.getcwd()).parent, "results", time_str + "_" + self.simulation_name)
+        self.res_dirname = os.path.join(Path(os.getcwd()).parent, "data", "results", time_str + "_" + self.simulation_name)
         os.mkdir(self.res_dirname, 0o777)
 
         # Set results file names:
