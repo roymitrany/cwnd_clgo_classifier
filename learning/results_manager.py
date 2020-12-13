@@ -114,37 +114,47 @@ class ResultsManager:
                 csv_filename = os.path.join(res_folder.res_path, csv_file)
                 with open(csv_filename) as f:
                     row_count = sum(1 for row in f)
+                    stat_df = pd.read_csv(csv_filename, index_col=None, header=0)
                 for i in range(0, row_count, min_num_of_rows):
                 # for i in range(row_count, 0, -min_num_of_rows):
                     # if i < row_count /10:
                     #     continue
+                    """
                     conn_stat_df = pd.read_csv(csv_filename, index_col=None, header=0,
                                                skiprows=range(1, i+1), nrows=min_num_of_rows)
-
+                    """
+                    # conn_stat_df = stat_df[min_num_of_rows*i : min_num_of_rows*(i+1)]
+                    conn_stat_df = stat_df[i : (i + min_num_of_rows)]
                     # If the df does not have minimum rows, take it out of the list and continue
                     if conn_stat_df['In Throughput'].count() < min_num_of_rows:
                         continue
+                    """
+                    index_beginning = len(conn_stat_df) // 2
+                    df_indexes = range(index_beginning, index_beginning + min_num_of_rows, 1)
+                    conn_stat_df = conn_stat_df.take(df_indexes)
+                    """
                     """
                     conn_stat_df = conn_stat_df.drop(
                         columns=['Out Throughput', 'Connection Num of Drops', 'Send Time Gap',
                                  'Num of Drops', 'Num of Packets', 'Total Bytes in Queue'])
                     """
+
                     if "single_connection_stat_bbr" in csv_file:
                         train_list.append(["bbr", 0])
                     elif "single_connection_stat_cubic" in csv_file:
                         train_list.append(["cubic", 1])
-                    # else:
-                    #     continue
                     elif "single_connection_stat_reno" in csv_file:
                         train_list.append(["reno", 2])
+                        """
+                    elif "single_connection_stat_vegas" in csv_file:
+                        train_list.append(["vegas", 3])
+                    elif "single_connection_stat_bic" in csv_file:
+                        train_list.append(["bic", 4])
+                    elif "single_connection_stat_westwood" in csv_file:
+                        train_list.append(["westwood", 5])
+                        """
                     else:
                         continue
-                    #elif "single_connection_stat_vegas" in csv_file:
-                    #    train_list.append(["vegas", 3])
-                    #elif "single_connection_stat_bic" in csv_file:
-                    #    train_list.append(["bic", 4])
-                    #elif "single_connection_stat_westwood" in csv_file:
-                    #    train_list.append(["westwood", 5])
 
                     self.normalizer.add_result(conn_stat_df, iter_name)
                 print("added %s to list" % iter_name)
@@ -163,7 +173,7 @@ class ResultsManager:
 if __name__ == '__main__':
     normaliz = AbsoluteNormalization2()
     #res_mgr = ResultsManager("C:\\Users\\roym\\PycharmProjects\\cwnd_clgo_classifier\\results", normaliz, 600)
-    res_mgr = ResultsManager("/test_results", normaliz, 30)
+    res_mgr = ResultsManager("/home/roy/PycharmProjects/cwnd_clgo_classifier/test_results", normaliz, 30)
     norm_dfl = res_mgr.get_normalized_df_list()
     len_list = list()
     for df in norm_dfl:

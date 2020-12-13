@@ -1,10 +1,11 @@
 # PyTorch libraries and modules
 import torch
 from learning.env import *
-from learning.results_manager_old import *
+from learning.cnn_training import Net
+from learning.results_manager import *
 import time
-NUM_OF_CLASSIFICATION_PARAMETERS = 9 # 3 # 9  # 7
-NUM_OF_TIME_SAMPLES = 600 # 100 # 1200 # 300 # 501 # 601  # 301 # 602
+NUM_OF_CLASSIFICATION_PARAMETERS = 3# 3 # 9  # 7
+NUM_OF_TIME_SAMPLES = 5000 # 100 # 1200 # 300 # 501 # 601  # 301 # 602
 
 if __name__ == '__main__':
     # normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]

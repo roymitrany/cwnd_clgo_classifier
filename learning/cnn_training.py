@@ -14,10 +14,10 @@ from torch.autograd import Variable
 from torch.nn import Linear, ReLU, CrossEntropyLoss, Sequential, Conv2d, MaxPool2d, Module, BatchNorm2d
 
 from learning.env import *
-from learning.results_manager_old import *
+from learning.results_manager import *
 
-NUM_OF_CLASSIFICATION_PARAMETERS = 9 # 3  # 9  # 7
-NUM_OF_TIME_SAMPLES = 600 # 100 # 1200 # 300 # 601 # 501  # 301 # 602
+NUM_OF_CLASSIFICATION_PARAMETERS = 9 # 9 # 3  # 9  # 7
+NUM_OF_TIME_SAMPLES = 5000 # 100 # 1200 # 300 # 601 # 501  # 301 # 602
 NUM_OF_CONGESTION_CONTROL_LABELING = 3 # 6 # 3
 NUM_OF_CONV_FILTERS = 50
 # NUM_OF_TRAIN_DATAFRAMES = 3  # 9
@@ -69,17 +69,6 @@ class Net(Module):
         x = x.view(x.size(0), -1)  # flattening?
         x = self.linear_layers(x)
         return x
-        """
-        self.sigmoid = torch.nn.Sigmoid()
-        self.softmax = torch.nn.Softmax(dim=1)
-        x = self.cnn_layers(x)
-        x = x.view(x.size(0), -1)  # flattening?
-        x = self.sigmoid(x)
-        x = self.linear_layers(x)
-        x = self.softmax(x)
-        return x
-        """
-
 
 def train(epoch):
     model.train()
@@ -89,12 +78,13 @@ def train(epoch):
     # getting the validation set
     x_val, y_val = Variable(val_x), Variable(val_y)
     # converting the data into GPU format
+    """
     if torch.cuda.is_available():
         x_train = x_train.cuda()
         y_train = y_train.cuda()
         x_val = x_val.cuda()
         y_val = y_val.cuda()
-
+    """
     # clearing the Gradients of the model parameters
     optimizer.zero_grad()
 
@@ -115,13 +105,13 @@ def train(epoch):
     # loss_train = criterion(output_train, y_train.type('torch.FloatTensor'))  # Long instead of float (was float and changed to long- now works).
     loss_train = criterion(output_train, y_train.type('torch.LongTensor'))  # Long instead of float (was float and changed to long- now works).
     loss_val = criterion(output_val, y_val.type('torch.LongTensor'))
-    train_losses.append(loss_train)
-    val_losses.append(loss_val)
+    #train_losses.append(loss_train)
+    #val_losses.append(loss_val)
 
     # saving the training and validation loss
-    pckl_file = open(training_parameters_path + 'model_parameters.pckl', 'wb')
-    pickle.dump([train_losses, val_losses], pckl_file)
-    pckl_file.close()
+    #pckl_file = open(training_parameters_path + 'model_parameters.pckl', 'wb')
+    #pickle.dump([train_losses, val_losses], pckl_file)
+    #pckl_file.close()
 
     # computing the updated weights of all the model parameters
     loss_train.backward()
@@ -130,6 +120,7 @@ def train(epoch):
     if epoch % 2 == 0:
         # printing the validation loss
         print('Epoch : ', epoch + 1, '\t', 'loss :', loss_val)
+    return loss_val
 
 if __name__ == '__main__':
     global model, val_x, val_y, optimizer, criterion, n_epochs, train_losses, val_losses
@@ -143,11 +134,14 @@ if __name__ == '__main__':
         res_mgr = ResultsManager(training_files_path, normalization_type, NUM_OF_TIME_SAMPLES)
         trainning_labeling = res_mgr.get_train_df()
         dataframe_arr = res_mgr.get_normalized_df_list()
+
+        # Problematic code!!!!
+        """
         for csv_file in dataframe_arr: # maybe not necessary
             csv_file = csv_file.drop(csv_file.index[NUM_OF_TIME_SAMPLES:])  # remove samples that were taken after the conventional measuring time.
             csv_file.dropna(inplace=True, how='all')  # remove empty lines after deleting them.
             csv_file = csv_file.fillna((csv_file.shift() + csv_file.shift(-1)) / 2)  # takes care of missing values.
-
+        """
         # converting the list to numpy array after pre- processing
         dataframe_arr = [dataframe.to_numpy() for dataframe in dataframe_arr]
         train_x = np.array(dataframe_arr)
@@ -198,8 +192,11 @@ if __name__ == '__main__':
         # criterion = KLDivLoss()
         # checking if GPU is available
         if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            """
             model = model.cuda()
             criterion = criterion(reduction="sum").cuda()
+            """
 
         # defining the number of epochs
         n_epochs = 100 # 75 # 50 # 70 # 50 # 25
@@ -211,12 +208,19 @@ if __name__ == '__main__':
         # training the model:
         m = 25
         learning_rate_init = 1e-4
-        for epoch in range(n_epochs):
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+        #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 5)
+        #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=5, threshold=0.01, threshold_mode='abs')
+        #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.9)
+
+        for epoch in range(500):
             learning_rate = learning_rate_init / (1 + epoch/m)
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
             # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
             # optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate)
-            train(epoch)
+            loss_val = train(epoch)
+            #scheduler.step(loss_val)
+            #scheduler.step()
             # if epoch > min_n_epochs and val_losses[epoch] == 0:
             #     break
 
