@@ -1,13 +1,10 @@
 # PyTorch libraries and modules
 import torch
-from learning.env import *
-from learning.cnn_training import Net
+from env import *
 from learning.results_manager import *
+from learning.cnn_training import NUM_OF_TIME_SAMPLES, NUM_OF_CLASSIFICATION_PARAMETERS
 import time
-NUM_OF_CLASSIFICATION_PARAMETERS = 3# 3 # 9  # 7
-NUM_OF_TIME_SAMPLES = 5000 # 100 # 1200 # 300 # 501 # 601  # 301 # 602
-
-if __name__ == '__main__':
+def main():
     # normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]
     normalization_types = ["AbsoluteNormalization1"]
     normalization_counter = 0
@@ -61,3 +58,6 @@ if __name__ == '__main__':
         normalization_counter+=1
 
     print(classification_difference)
+
+if __name__ == '__main__':
+    main()

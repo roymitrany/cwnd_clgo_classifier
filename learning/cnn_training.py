@@ -13,11 +13,11 @@ from sklearn.model_selection import train_test_split
 from torch.autograd import Variable
 from torch.nn import Linear, ReLU, CrossEntropyLoss, Sequential, Conv2d, MaxPool2d, Module, BatchNorm2d
 
-from learning.env import *
+from env import *
 from learning.results_manager import *
 
 NUM_OF_CLASSIFICATION_PARAMETERS = 9 # 9 # 3  # 9  # 7
-NUM_OF_TIME_SAMPLES = 5000 # 100 # 1200 # 300 # 601 # 501  # 301 # 602
+NUM_OF_TIME_SAMPLES = (simulation_duration-iperf_start_after)*(10**interval_accuracy)
 NUM_OF_CONGESTION_CONTROL_LABELING = 3 # 6 # 3
 NUM_OF_CONV_FILTERS = 50
 # NUM_OF_TRAIN_DATAFRAMES = 3  # 9
@@ -70,7 +70,7 @@ class Net(Module):
         x = self.linear_layers(x)
         return x
 
-def train(epoch):
+def train(epoch, train_x, train_y):
     model.train()
     tr_loss = 0
     # getting the training set
@@ -121,8 +121,7 @@ def train(epoch):
         # printing the validation loss
         print('Epoch : ', epoch + 1, '\t', 'loss :', loss_val)
     return loss_val
-
-if __name__ == '__main__':
+def main():
     global model, val_x, val_y, optimizer, criterion, n_epochs, train_losses, val_losses
     # defining the dataframe path
     # normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]
@@ -213,12 +212,12 @@ if __name__ == '__main__':
         #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=5, threshold=0.01, threshold_mode='abs')
         #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.9)
 
-        for epoch in range(500):
+        for epoch in range(n_epochs):
             learning_rate = learning_rate_init / (1 + epoch/m)
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
             # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
             # optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate)
-            loss_val = train(epoch)
+            loss_val = train(epoch, train_x, train_y)
             #scheduler.step(loss_val)
             #scheduler.step()
             # if epoch > min_n_epochs and val_losses[epoch] == 0:
@@ -260,3 +259,5 @@ if __name__ == '__main__':
         print(accuracy_score(val_y, predictions))
 
         normalization_counter +=1
+if __name__ == '__main__':
+    main()
