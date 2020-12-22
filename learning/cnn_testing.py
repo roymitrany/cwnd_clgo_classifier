@@ -4,8 +4,10 @@ from learning.env import *
 from learning.cnn_training import Net
 from learning.results_manager import *
 import time
-NUM_OF_CLASSIFICATION_PARAMETERS = 3# 3 # 9  # 7
+NUM_OF_CLASSIFICATION_PARAMETERS = 9# 3 # 9  # 7
 NUM_OF_TIME_SAMPLES = 5000 # 100 # 1200 # 300 # 501 # 601  # 301 # 602
+DATAFRAME_BEGINNING = 0
+DATAFRAME_END = 5000
 
 if __name__ == '__main__':
     # normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]
@@ -24,7 +26,7 @@ if __name__ == '__main__':
         # model.load_state_dict(st)
         model.eval()
 
-        res_mgr = ResultsManager(testing_files_path, normalization_type, NUM_OF_TIME_SAMPLES)
+        res_mgr = ResultsManager(testing_files_path, normalization_type, NUM_OF_TIME_SAMPLES, DATAFRAME_BEGINNING, DATAFRAME_END)
         data_labeling = res_mgr.get_train_df()
         dataframe_arr = res_mgr.get_normalized_df_list()
 
