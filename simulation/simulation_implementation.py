@@ -60,9 +60,9 @@ class Iperf3Simulator:
 
         # Create results directory, with name includes num of clients for each algo, and time:
         if (iteration % 3) is not 0:
-            self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification/cnn_train_and_test_files", "bbr_cubic_reno_sampling_rate_0.001_train_files_background_noise", time_str + "_" + self.simulation_name)
+            self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification/cnn_train_and_test_files", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_train_files_isaac_topology", time_str + "_" + self.simulation_name)
         else:
-            self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification/cnn_train_and_test_files", "bbr_cubic_reno_sampling_rate_0.001_test_files_background_noise", time_str + "_" + self.simulation_name)
+            self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification/cnn_train_and_test_files", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_test_files_isaac_topology", time_str + "_" + self.simulation_name)
         os.mkdir(self.res_dirname, 0o777)
 
         # Set results file names:
@@ -214,7 +214,7 @@ def create_sim_name(cwnd_algo_dict):
 
 if __name__ == '__main__':
     # interval accuracy: a number between 0 to 3. For value n, the accuracy will be set to 1/10^n
-    # sleep(60*60*10)
+    #sleep(60*60*2.5)
     interval_accuracy = 3
     # Simulation's parameters initializing:
     srv_delay = 5e3
@@ -253,18 +253,22 @@ if __name__ == '__main__':
     """
     # background_noise = 1000
     background_noise = 0
+    host_delay = 25
+    srv_delay = 25
     iteration = 0
-    for host_delay in range(4500, 5000, 100):
-        for srv_bw in range(150, 200, 10):
-            for queue_size in range(100, 500, 100):
+    for host_bw in range(10, 100, 20):
+    #for host_delay in range(4500, 5000, 100):
+        for srv_bw in range(10, 100, 20):
+            for queue_size in range(100, 1000, 100):
                 for algo in Algo:
                     algo_dict[algo.name] = 1  # random.randint(2, 4) # how many flows of each type
-                    # algo_dict['bbr']=10
+                # algo_dict['bbr']=10
                 total_delay = 2 * (host_delay + srv_delay)
                 simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
                                                          srv_bw=srv_bw,
                                                          srv_delay=srv_delay, rtr_queue_size=queue_size)
                 simulation_name = create_sim_name(algo_dict)
+                iteration += 1
                 """
                 if algo.name == "cubic":
                     simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration - 10,
@@ -273,7 +277,6 @@ if __name__ == '__main__':
                                                 interval_accuracy=interval_accuracy)
                 else:
                 """
-                iteration +=1
                 simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
                                             iperf_start_after=0,
                                             background_noise=background_noise,
