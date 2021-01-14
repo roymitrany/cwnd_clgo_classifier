@@ -1,6 +1,12 @@
 import torch
+import torch.utils as torch_utils
 
 BATCH_SIZE = 32
+
+def create_dataloader(data, labeling):
+    dataset = torch_utils.data.TensorDataset(data, labeling)
+    dataloader = torch_utils.data.DataLoader(dataset, batch_size=BATCH_SIZE)
+    return dataloader
 
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""

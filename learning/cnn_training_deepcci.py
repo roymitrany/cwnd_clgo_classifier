@@ -280,10 +280,12 @@ if __name__ == '__main__':
 
     reshape_vector = numpy.ones(3) # 60
     labeling_size = len(input_labeling)
+    input_labeling_origin = input_labeling
     input_labeling = numpy.kron(input_labeling, reshape_vector)
     input_labeling = input_labeling.reshape(labeling_size, SIZE_OF_TIME_SAMPLE)
 
     labeling_size = len(validation_labeling)
+    validation_labeling_origin = validation_labeling
     validation_labeling = numpy.kron(validation_labeling, reshape_vector)
     validation_labeling = validation_labeling.reshape(labeling_size, SIZE_OF_TIME_SAMPLE)
 
@@ -325,6 +327,21 @@ if __name__ == '__main__':
     #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=5, threshold=0.01, threshold_mode='abs')
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.9)
 
+    # Dataloader:
+    #trainloader = torch.utils.data.DataLoader(input_data, batch_size=BATCH_SIZE)
+    train_loader = create_dataloader(input_data, input_labeling)
+    training_accuracy = []
+    for i, (data_input, expected_variant) in enumerate(train_loader):
+        for epoch in range(n_epochs):
+            # learning_rate = learning_rate_init / (1 + epoch/m)
+            # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+            input_data = data_input
+            input_labeling = expected_variant
+            loss_val, accuracy_training = train(epoch)
+            training_accuracy.append(accuracy_training)
+            # scheduler.step(loss_val)
+            scheduler.step()
+    """
     training_accuracy = []
     for epoch in range(n_epochs):
         #learning_rate = learning_rate_init / (1 + epoch/m)
@@ -333,6 +350,7 @@ if __name__ == '__main__':
         training_accuracy.append(accuracy_training)
         #scheduler.step(loss_val)
         scheduler.step()
+    """
 
     # saving the trained model
     torch.save(model, training_parameters_path + "AbsoluteNormalization1" + '_mytraining.pt')
@@ -343,27 +361,30 @@ if __name__ == '__main__':
 
     # prediction for training set
     with torch.no_grad():
-        output = model(input_data.type('torch.FloatTensor'))
+        output, hidden = model(input_data.type('torch.FloatTensor'))
 
-    """
+    output = output.mean(2)
+
     softmax = torch.exp(output).cpu()
     prob = list(softmax.numpy())
     predictions = np.argmax(prob, axis=1)
 
     # accuracy on training set
-    print(accuracy_score(input_labeling, predictions))
+    print(accuracy_score(input_labeling_origin, predictions))
 
     # prediction for validation set
     with torch.no_grad():
-        output = model(validation_data.type('torch.FloatTensor'))
+        output, hidden = model(validation_data.type('torch.FloatTensor'))
+
+    output = output.mean(2)
 
     softmax = torch.exp(output).cpu()
     prob = list(softmax.numpy())
     predictions = np.argmax(prob, axis=1)
 
     # accuracy on validation set
-    print(accuracy_score(validation_labeling, predictions))
-    """
+    print(accuracy_score(validation_labeling_origin, predictions))
+    print(training_accuracy)
     # training_accuracy, hidden = accuracy(output, input_labeling, topk=(1, 3))
 
 
