@@ -1,5 +1,5 @@
 /venv/
-/learning/env.py
+/env.py
 /cnn_train_and_test_files/
 /cnn_training_parameters/
 /test_results/
@@ -8,3 +8,4 @@
 /learning/cnn_training_old.py
 /learning/results_manager_old.py
 /data/
+/simulation/envset.txt

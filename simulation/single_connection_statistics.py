@@ -1,5 +1,6 @@
 import re
 import sys
+from datetime import datetime
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -8,11 +9,50 @@ from matplotlib import cycler, gridspec
 
 from simulation.tcpdump_statistics import TcpdumpStatistics
 
+def time_str_to_timedelta(time_str):
+    my_time = datetime.strptime(time_str, "%H:%M:%S.%f")
+    my_timedelta = my_time - datetime(1900, 1, 1)
+    return my_timedelta
 
-def get_sec(time_str):
+
+def get_delta(curr_timedelta, base_timedelta):
     """Get Seconds from time."""
-    h, m, s = time_str.split(':')
-    return int(h) * 3600 + int(m) * 60 + float(s)
+    return (curr_timedelta-base_timedelta).seconds+(curr_timedelta-base_timedelta).microseconds/1000000
+
+def parse_ip_port(ipp_str):
+    # Auxiliary function to separate the IP from the port in tcpdump parsing:
+    search_obj = re.search(r'(\S+)\.(\d+)$', ipp_str)
+    if search_obj:
+        return search_obj.group(1), search_obj.group(2)
+    else:
+        return None
+
+def parse_seq_line(line):
+    # Parse a single line from TCP dump file, return important values only
+    # The method parses only lines with TCP data, than include seq key
+    # Example of a single line:
+    # 21:00:32.248252 IP 10.0.2.10.54094 > 10.0.3.10.5203: Flags [P.], seq 1:38, ack 1, win 83, options [nop,nop,TS val 3161060119 ecr 3216167312], length 37
+    # search_obj = re.search(r'(\S+) IP (\S+) > (\S+): Flags.* length (\d+)', line)
+    search_obj = re.search(r'(\S+) IP (\S+) > (\S+): Flags.* seq (\d+):.*TS val (\d+) .* length (\d+)', line)
+    if search_obj is None:
+        return '0', '0', '0', '0', '0'
+
+    # Extract the interesting variables:
+    time_str = search_obj.group(1)
+    src_ip_port = search_obj.group(2)
+    src_ip, src_port = TcpdumpStatistics.parse_ip_port(src_ip_port)
+    dst_ip_port = search_obj.group(3)
+    dst_ip, dst_port = TcpdumpStatistics.parse_ip_port(dst_ip_port)
+    seq_num = search_obj.group(4)
+    ts_val = search_obj.group(5)
+    throughput = search_obj.group(6)
+
+    if all(v is not None for v in [src_ip, src_port, dst_ip, dst_port]):
+        # Look for the dictionary element. If it does not exist, create one
+        conn_index = TcpdumpStatistics.get_connection_identifier(src_ip, src_port, dst_ip, dst_port)
+        return conn_index, time_str, throughput, ts_val, seq_num
+    else:
+        return '0', '0', '0', '0'
 
 
 class SingleConnStatistics:
@@ -32,52 +72,65 @@ class SingleConnStatistics:
         # Parse inbound file. Extract dropped packets and passed packets for the connection
         file = open(ingress_file_name, 'r')
         lines = file.readlines()
-        in_conn_lines = self.reduce_lines(lines)  # take out all the lines that are not related to the connection
-        in_passed_lines, in_dropped_lines = self.reduce_dropped_packets(in_conn_lines)
+        in_conn_df = self.build_conn_df(lines)  # take out all the lines that are not related to the connection
+        in_passed_df, in_dropped_df = self.reduce_dropped_packets(in_conn_df)
 
         # Parse outbound file. Extract passed packets for the connection
         file = open(egress_file_name, 'r')
         lines = file.readlines()
-        out_conn_lines = self.reduce_lines(lines)  # take out all the lines that are not related to the connection
+        out_conn_df = self.build_conn_df(lines)  # take out all the lines that are not related to the connection
 
-        # Create several DataFrames from the lines
-        dropped_df = self.create_dropped_df(in_dropped_lines, self.interval_accuracy)
-        in_throughput_df = self.create_throughput_df(in_conn_lines, self.interval_accuracy)
-        out_throughput_df = self.create_throughput_df(out_conn_lines, self.interval_accuracy)
-        in_goodput_df = self.create_throughput_df(
-            in_passed_lines, self.interval_accuracy)  # Throughput for packets that did not drop
-        ts_val_df = self.create_ts_val_df(in_conn_lines, self.interval_accuracy)
+        # Create a DF with all possible time ticks between min time to max time
+        in_start_time = in_conn_df['date_time'].iloc[0]
+        in_end_time = in_conn_df['date_time'].iloc[-1]
+        out_start_time= out_conn_df['date_time'].iloc[0]
+        out_end_time = out_conn_df['date_time'].iloc[-1]
+        start_timedelta = min(in_start_time, out_start_time)
+        end_timedelta = max(in_end_time, out_end_time)
+        millies = 10**(3-interval_accuracy)
+        tdi = pd.timedelta_range(start_timedelta, end_timedelta, freq='%dL'%millies)
+        self.conn_df = tdi.to_frame(name="Time")
+         # Create several DataFrames from the lines
+
+        self.count_throughput(in_conn_df, self.interval_accuracy, 'In Throughput')
+        self.count_throughput(out_conn_df, self.interval_accuracy, 'Out Throughput')
+        self.count_throughput(in_passed_df, self.interval_accuracy, 'In Goodput')
+        self.count_dropped_packets(in_dropped_df,  'Connection Num of Drops')
+        #ts_val_df = self.create_ts_val_df(in_conn_lines, self.interval_accuracy)
 
         # Consolidate all the DataFrames into one DataFrame
-        self.conn_df = pd.concat([in_throughput_df, out_throughput_df, dropped_df, ts_val_df],
-                                 axis=1)  # Outer join between in and out df
-        self.conn_df.columns = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap']
+        #self.conn_df = pd.concat([in_throughput_df, out_throughput_df, dropped_df, ts_val_df],
+        #                         axis=1)  # Outer join between in and out df
         self.conn_df.index.name = 'Time'
-        self.conn_df.sort_index()
         # Create the Byte in Queue column
         # Add Total column that indicates the number of bytes passed so far
-        in_goodput_df['In Total'] = in_goodput_df.cumsum()
-        out_throughput_df['Out Total'] = out_throughput_df.cumsum()
-        df = pd.concat([in_goodput_df['In Total'], out_throughput_df['Out Total']], axis=1)
+        temp_df = self.conn_df.cumsum()
+        temp_df.columns = ['Del1','In Total','Out Total','Goodput Total','Del2']
+        temp_df['CBIQ'] = temp_df['Goodput Total']-temp_df['Out Total']
+        temp_df['CBIQ'] = temp_df['CBIQ'].map(lambda num: num / 8 * 10**(6-interval_accuracy))
+        temp_df = temp_df.drop(columns=['Del1', 'Del2', 'Goodput Total'])
+        self.conn_df = self.conn_df.join(temp_df)
+        self.conn_df = self.conn_df.drop(columns=['In Goodput', 'In Total', 'Out Total'])
         # The gap between the total in and the total out indicates what's in the queue. We want to convert form
         # Mbps to Bytes
-        df['CBIQ'] = df['In Total'] - df['Out Total']
-        df['CBIQ'] = df['CBIQ'].map(lambda num: num / 8 * 100000)
-        self.conn_df = self.conn_df.join(df['CBIQ'], lsuffix='_caller')
 
-        values = {'Connection Num of Drops': 0}
-        self.conn_df = self.conn_df.fillna(value=values)
 
         # Add qdisc columns, only for existing keys (inner join)
         qdisc_df = pd.read_csv(rtr_q_filename, sep="\t", header=None)
         qdisc_df.columns = ['Time', 'Total Bytes in Queue', 'Num of Packets', 'Num of Drops']
+        qdisc_df['Time'] = qdisc_df['Time'].map(lambda time_str: time_str_to_timedelta(time_str))
         qdisc_df = qdisc_df.set_index('Time')
         self.conn_df = self.conn_df.join(qdisc_df, lsuffix='_caller')
+        self.conn_df = self.conn_df.fillna(method='ffill')
 
         # Convert the time string into time offset float
-        base_timestamp = get_sec(self.conn_df.index[0])
-        self.conn_df['timestamp'] = self.conn_df.index.map(mapper=(lambda x: get_sec(x) - base_timestamp))
+        self.conn_df['timestamp'] = self.conn_df['Time'].map(lambda x: get_delta(x, self.conn_df['Time'][0]))
         self.conn_df = self.conn_df.set_index('timestamp')
+        self.conn_df = self.conn_df.drop(columns=['Time'])
+
+        # Fill all Nan with 0 (we don't know anything better for what's left)
+        self.conn_df = self.conn_df.fillna(0)
+
         return
 
     @staticmethod
@@ -106,95 +159,65 @@ class SingleConnStatistics:
         df = pd.DataFrame.from_dict(ts_val_dict, orient='index')
         return df
 
-    @staticmethod
-    def create_throughput_df(lines, interval_accuracy):
-        time_list = []
-        length_list = []
+    def count_throughput(self, conn_df, interval_accuracy,column):
+        bytes_per_timeslot_df = pd.DataFrame(conn_df.groupby('date_time')['length'].sum())
+        self.conn_df = self.conn_df.join(bytes_per_timeslot_df)
+        self.conn_df = self.conn_df.rename(columns={"length": column})
+        self.conn_df[column] = self.conn_df[column].map(lambda num: num * 8 / 10**(6-interval_accuracy))
+        values = {column: 0}
+        self.conn_df = self.conn_df.fillna(value=values)
+        print("a")
 
-        for line in lines:
-            conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line)
-            if int(length) == 0:  # ACK only, ignore
-                continue
 
-            # Take only 10th of a second from the time string:
-            rounded_time_str = time_str[0:interval_accuracy-6]
-            time_list.append(rounded_time_str)
-            length_list.append(float(length))
 
-        df = pd.DataFrame({'Time': time_list, 'Thoughput': length_list})
-        df = df.groupby(['Time']).sum()
-        df['Thoughput'] = df['Thoughput'].map(lambda num: num * 8 / 100000)
+    def count_dropped_packets(self, dropped_df, column):
+        drop_count_df = pd.DataFrame(dropped_df['date_time'].value_counts())
+        self.conn_df = self.conn_df.join(drop_count_df)
+        self.conn_df = self.conn_df.rename(columns={"date_time": column})
+        values = {column: 0}
+        self.conn_df = self.conn_df.fillna(value=values)
 
-        return df
 
     @staticmethod
-    def create_dropped_df(dropped_lines, interval_accuracy):
-        time_list = []
-        for line in dropped_lines:
-            conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line)
-
-            # Take only 10th of a second from the time string:
-            rounded_time_str = time_str[0:interval_accuracy-6]
-            time_list.append(rounded_time_str)
-
-        df = pd.DataFrame({'Time': time_list})
-        df = df.groupby(['Time']).size()
-        df.columns = ['Num of Drops']
-        return df
-
-    @staticmethod
-    def reduce_lines(lines):
+    def build_conn_df(lines):
+        conn_list = []
         # Take out all lines with length 0
         conn_count = {}
         for line in lines:
             # Ignore if length is 0
             if int(line.find('length 0')) > 0:  # ACK only, ignore
                 continue
-            conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line, {})
-            if conn_index in conn_count.keys():
-                conn_count[conn_index] += 1
-            else:
-                conn_count[conn_index] = 1
+            conn_index, time_str, length_str, ts_val, seq_num = parse_seq_line(line)
+            dtime = datetime.strptime(time_str[0:interval_accuracy-6], "%H:%M:%S.%f")-datetime(1900, 1, 1)
+            conn_list.append([conn_index, dtime, int(length_str), ts_val, seq_num])
 
+        df = pd.DataFrame(conn_list, columns=['conn_index', 'date_time', 'length', 'ts_val', 'seq_num'])
         # extract the connection index
-        our_conn_index = max(conn_count, key=conn_count.get)
+        our_conn_index = df.conn_index.mode()[0]
 
-        reduced_lines = []
-        # loop on file again and add only the interesting lines to the list
-        for line in lines:
-            conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line, {})
-            if conn_index == our_conn_index:
-                reduced_lines.append(line)
+        #our_conn_index = max(conn_count, key=conn_count.get)
+        df = df.loc[df['conn_index'] == our_conn_index]
 
-        return reduced_lines
+        return df
 
         # 09:17:58.297429 IP 10.0.1.10.44848 > 10.0.10.10.5202: Flags [.], seq 1486:2934, ack 1, win 83, options [nop,nop,TS val 4277329349 ecr 645803186], length 1448
 
     @staticmethod
-    def reduce_dropped_packets(lines):
+    def reduce_dropped_packets(conn_df):
         # The method assumes single connection. If lines are from multiple connections, two messages
         # from two different connections with the same seq number will be interpreted as retransmissions
         # If data was sent multiple times, the method keeps only the last retransmission.
-        reduced_lines = []
-        dropped_lines = []
-        transmission_dict = {}
-        for line in lines:
-            search_obj = re.search(r'.*seq (\d+).* length (\d+)', line)
-            # All lines with no seq or no data should be automatically not reduced
-            if search_obj is None:
-                reduced_lines.append(line)
-                continue
-            length = search_obj.group(2)
-            if int(length) == 0:
-                reduced_lines.append(line)
-                continue
+        # The method assumes that add df records represent packets with data
 
-            seq = int(search_obj.group(1))
-            # Map the line to the sequence. If older sequence was there, it will be automatically reduced.
-            if seq in transmission_dict:
-                dropped_lines.append(transmission_dict[seq])
-            transmission_dict[seq] = line
-        return reduced_lines + list(transmission_dict.values()), dropped_lines
+        # There is a pd command to filter out duplicates, keeping the last instance
+        passed_df =  conn_df.drop_duplicates(subset='seq_num', keep='last')
+
+        # Find the duplicated items and keep them in a separate df
+        dups_series = conn_df.duplicated(subset='seq_num', keep='last')
+        dups_only = dups_series[dups_series==True]
+        fdf = pd.DataFrame(dups_only).join(conn_df)
+        dropped_df = fdf.drop(columns=[0])
+        return passed_df, dropped_df
 
     def create_plots(self, graph_file_name, plot_title):
 
@@ -250,7 +273,9 @@ class SingleConnStatistics:
 
 
 if __name__ == '__main__':
-
+    interval_accuracy = 3
+    generate_graphs = False
+    plot_title = "kuku"
     if len(sys.argv) == 3:
         test_name = sys.argv[1]
         host_name = sys.argv[2]
@@ -258,14 +283,14 @@ if __name__ == '__main__':
         out_file = "results/%s/server_%s.txt" % (test_name, host_name)
         rtr_file = "results/%s/rtr_q.txt" % test_name
         graph_file_name = "results/%s/BIQ_%s.png" % (test_name, host_name)
-        q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name)
+        q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name, plot_title,generate_graphs,interval_accuracy)
         q_line_obj.conn_df.to_csv("results/%s/single_connection_stat_%s.csv" % (test_name, host_name))
     else:
         in_file = "../test_files/in_file_test.txt"
         out_file = "../test_files/out_file_test.txt"
         rtr_file = "../test_files/rtr_q.txt"
         graph_file_name = "test_files/BIQ.png"
-        q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name)
+        q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name, plot_title,generate_graphs,interval_accuracy)
         q_line_obj.conn_df.to_csv("test_files/single_connection_stat.csv")
     # in_file = "test_files/in_short.txt"
     # out_file = "test_files/out_short.txt"
