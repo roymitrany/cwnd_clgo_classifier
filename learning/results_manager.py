@@ -168,15 +168,15 @@ class ResultsManager:
                     conn_stat_df = conn_stat_df.take(df_indexes)
                     """
 
+                    """
                     conn_stat_df = conn_stat_df.drop(
                     columns=['timestamp', 'Out Throughput', 'Connection Num of Drops', 'CBIQ', 'In Throughput',
                              'Num of Drops', 'Num of Packets', 'Total Bytes in Queue'])
+                    """
 
-                    """
                     conn_stat_df = conn_stat_df.drop(
-                        columns=['Out Throughput', 'Connection Num of Drops', 'Send Time Gap',
+                        columns=['In Throughput', 'Out Throughput', 'Connection Num of Drops',
                                  'Num of Drops', 'Num of Packets', 'Total Bytes in Queue'])
-                    """
 
                     if "single_connection_stat_bbr" in csv_file:
                         train_list.append(["bbr", 0])

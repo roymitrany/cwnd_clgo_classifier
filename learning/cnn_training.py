@@ -15,11 +15,13 @@ from torch.nn import Linear, ReLU, CrossEntropyLoss, Sequential, Conv2d, MaxPool
 
 from learning.env import *
 from learning.results_manager import *
+from classification.utils import  *
+import numpy
 
-NUM_OF_CLASSIFICATION_PARAMETERS = 9 # 9 # 3  # 9  # 7
-NUM_OF_TIME_SAMPLES = 500 # 100 # 1200 # 300 # 601 # 501  # 301 # 602
-DATAFRAME_BEGINNING = 0
-DATAFRAME_END = 500
+NUM_OF_CLASSIFICATION_PARAMETERS = 2 # 9 # 3  # 9  # 7
+NUM_OF_TIME_SAMPLES = 10000 # 100 # 1200 # 300 # 601 # 501  # 301 # 602
+DATAFRAME_BEGINNING = 30000
+DATAFRAME_END = 40000
 NUM_OF_CONGESTION_CONTROL_LABELING = 3 # 6 # 3
 NUM_OF_CONV_FILTERS = 50
 # NUM_OF_TRAIN_DATAFRAMES = 3  # 9
@@ -60,7 +62,7 @@ class Net(Module):
         )
 
         self.linear_layers = Sequential(
-            Linear(NUM_OF_CONV_FILTERS * 1 * (NUM_OF_TIME_SAMPLES - 2) * 1, NUM_OF_CLASSIFICATION_PARAMETERS)  # 1 instead of NUM_OF_CLASSIFICATION_PARAMETER
+            Linear(NUM_OF_CONV_FILTERS * 1 * (NUM_OF_TIME_SAMPLES - 2) * 1, NUM_OF_CONGESTION_CONTROL_LABELING)  # 1 instead of NUM_OF_CLASSIFICATION_PARAMETER
             # an error because the labels must be 0 indexed. So, for example, if you have 20 classes, and the labels are 1th indexed, the 20th label would be 20, so cur_target < n_classes assert would fail. If it’s 0th indexed, the 20th label is 19, so cur_target < n_classes assert passes.
             # input features: 10 channels * number of rows * number of columns, output features: number of labels = 2.
         )
@@ -122,7 +124,10 @@ def train(epoch):
     if epoch % 2 == 0:
         # printing the validation loss
         print('Epoch : ', epoch + 1, '\t', 'loss :', loss_val)
-    return loss_val
+
+    training_accuracy = accuracy_single_sample(output_train, train_y, topk=(1, ))
+
+    return loss_val, training_accuracy
 
 if __name__ == '__main__':
     global model, val_x, val_y, optimizer, criterion, n_epochs, train_losses, val_losses
@@ -225,7 +230,7 @@ if __name__ == '__main__':
             #optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
             # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
             # optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate)
-            loss_val = train(epoch)
+            loss_val, training_accuracy = train(epoch)
             #scheduler.step(loss_val)
             scheduler.step()
             # if epoch > min_n_epochs and val_losses[epoch] == 0:
@@ -267,5 +272,5 @@ if __name__ == '__main__':
 
         # accuracy on validation set
         print(accuracy_score(val_y, predictions))
-
+        print(training_accuracy)
         normalization_counter +=1

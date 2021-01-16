@@ -46,6 +46,30 @@ def accuracy(output, target, topk=(1,)):
         result_summary[i] = [torch.mean(result_summary[i], -1)]
     return result_summary
 
+def accuracy_single_sample(output, target, topk=(1,)):
+    """Computes the accuracy over the k top predictions for the specified values of k"""
+    # output = torch.mean(output, -1)
+    # target = torch.mean(target, -1)
+    res_arr = []
+    result = []
+    maxk = max(topk)
+
+    curr_output = output
+    curr_target = target
+
+    with torch.no_grad():
+        batch_size = curr_target.size(0)
+        _, pred = curr_output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(curr_target.view(1, -1).expand_as(pred))
+        res = []
+        for k in topk:
+            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.mul_(100.0 / batch_size))
+        result.append(res)
+
+    return result
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
 

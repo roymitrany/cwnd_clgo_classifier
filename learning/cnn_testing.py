@@ -4,11 +4,12 @@ from learning.env import *
 from learning.cnn_training import Net
 from learning.results_manager import *
 import time
+from classification.utils import  *
 
-NUM_OF_CLASSIFICATION_PARAMETERS = 9# 3 # 9  # 7
-NUM_OF_TIME_SAMPLES = 5000 # 100 # 1200 # 300 # 501 # 601  # 301 # 602
-DATAFRAME_BEGINNING = 0
-DATAFRAME_END = 5000
+NUM_OF_CLASSIFICATION_PARAMETERS = 2# 3 # 9  # 7
+NUM_OF_TIME_SAMPLES = 10000 # 100 # 1200 # 300 # 501 # 601  # 301 # 602
+DATAFRAME_BEGINNING = 30000
+DATAFRAME_END = 40000
 
 if __name__ == '__main__':
     # normalization_types = ["StatisticalNormalization", "AbsoluteNormalization1", "AbsoluteNormalization2"]
@@ -63,4 +64,10 @@ if __name__ == '__main__':
         # print(classification_difference.count()[1] / len(testing_labeling))
         normalization_counter+=1
 
+        train_y = np.array(data_labeling['label'].values)
+        train_y = train_y.astype(float)
+        train_y = torch.from_numpy(train_y)
+        testing_accuracy = accuracy_single_sample(output, train_y, topk=(1,))
+
     print(classification_difference)
+    print(testing_accuracy)
