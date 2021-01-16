@@ -141,19 +141,7 @@ if __name__ == '__main__':
         res_mgr = ResultsManager(training_files_path, normalization_type, NUM_OF_TIME_SAMPLES, DATAFRAME_BEGINNING, DATAFRAME_END)
         trainning_labeling = res_mgr.get_train_df()
         dataframe_arr = res_mgr.get_normalized_df_list()
-        """
-        # Added in Saturday:
-        num_of_rows = res_mgr.get_num_of_rows()
-        NUM_OF_TIME_SAMPLES = num_of_rows
-        """
 
-        # Problematic code!!!!
-        """
-        for csv_file in dataframe_arr: # maybe not necessary
-            csv_file = csv_file.drop(csv_file.index[NUM_OF_TIME_SAMPLES:])  # remove samples that were taken after the conventional measuring time.
-            csv_file.dropna(inplace=True, how='all')  # remove empty lines after deleting them.
-            csv_file = csv_file.fillna((csv_file.shift() + csv_file.shift(-1)) / 2)  # takes care of missing values.
-        """
         # converting the list to numpy array after pre- processing
         dataframe_arr = [dataframe.to_numpy() for dataframe in dataframe_arr]
         train_x = np.array(dataframe_arr)
@@ -189,12 +177,6 @@ if __name__ == '__main__':
         model.apply(init_weights)
         # model.apply(weights_init_uniform)
 
-        # defining the optimizer:
-        """
-        learning_rate = 1e-4
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
-        """
         # defining the loss function:
         criterion = CrossEntropyLoss()
         # criterion = L1Loss()
@@ -224,6 +206,19 @@ if __name__ == '__main__':
         #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 5)
         #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.9, patience=5, threshold=0.01, threshold_mode='abs')
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.9)
+
+        train_loader = create_dataloader(input_data, input_labeling)
+        training_accuracy = []
+        for i, (data_input, expected_variant) in enumerate(train_loader):
+            for epoch in range(n_epochs):
+                # learning_rate = learning_rate_init / (1 + epoch/m)
+                # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+                input_data = data_input
+                input_labeling = expected_variant
+                loss_val, accuracy_training = train(epoch)
+                training_accuracy.append(accuracy_training)
+                # scheduler.step(loss_val)
+                scheduler.step()
 
         for epoch in range(n_epochs):
             #learning_rate = learning_rate_init / (1 + epoch/m)
