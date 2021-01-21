@@ -141,32 +141,6 @@ class SingleConnStatistics:
 
         return
 
-    @staticmethod
-    def create_ts_val_df(lines, interval_accuracy):
-        # TS val indicates the timestamp in which the packet was sent.
-        # since we want to maintain the data based on time intervals, we should expect some intervals to include
-        # a lot of packets, and others with only few of them.
-        # It is hard to process such information, so we will
-        # extract the maximal time gap between two sent packets for each interval.
-        ts_val_dict = {}
-        last_ts_val = 0
-        for line in lines:
-            conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line)
-            ts_val = int(ts_val)
-            s_str = '(\S+\.\d{%d})' % interval_accuracy
-            rounded_time_obj = re.search(r'%s' % s_str, time_str)
-            rounded_time = rounded_time_obj.group(1)
-            if last_ts_val == 0:
-                last_ts_val = ts_val
-
-            if rounded_time not in ts_val_dict:
-                ts_val_dict[rounded_time] = ts_val - last_ts_val
-            else:
-                ts_val_dict[rounded_time] = max(ts_val_dict[rounded_time], ts_val - last_ts_val)
-            last_ts_val = ts_val
-        df = pd.DataFrame.from_dict(ts_val_dict, orient='index')
-        return df
-
     def count_ts_val(self, conn_df, column):
         # TS val indicates the timestamp in which the packet was sent.
         # since we want to maintain the data based on time intervals, we should expect some intervals to include
