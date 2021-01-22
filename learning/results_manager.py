@@ -7,7 +7,7 @@ import numpy as np
 from typing import Dict
 
 import pandas as pd
-from env import *
+from learning.env import *
 
 @dataclass
 class ResFolder:
@@ -92,7 +92,7 @@ class AbsoluteNormalization2(Normalizer):
 
 class ResultsManager:
 
-    def __init__(self, results_path, normilizer: Normalizer, min_num_of_rows, dataframe_beginning, dataframe_end):
+    def __init__(self, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters): #, dataframe_beginning=0, dataframe_end=60000):
         """The init function does all the building of the collections, using all results sub folders under
         :param results_path: A String with full path to results location
         """
@@ -107,24 +107,6 @@ class ResultsManager:
             csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
             self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
 
-        """
-        # Added on Saturday:
-        # Delete rows containing empty cells and get the number of rows afterwards:
-        dataframe_min_rows = min_num_of_rows
-        for (iter_name, res_folder) in self.res_folder_dict.items():
-            for csv_file in res_folder.csv_files_list:
-                csv_filename = os.path.join(res_folder.res_path, csv_file)
-                with open(csv_filename) as f:
-                    stat_df = pd.read_csv(csv_filename, index_col=None, header=0)
-                    nan_value = float("NaN")
-                    stat_df.replace("", nan_value, inplace=True)
-                    stat_df.dropna(how='any', inplace=True)  # remove empty lines after deleting them.
-                    row_count = sum(1 for row in f)
-                    if row_count < dataframe_min_rows:
-                        dataframe_min_rows = row_count
-        self.num_of_rows = dataframe_min_rows
-        """
-
         # Build dataframe array and train array
         train_list = list()
         for (iter_name, res_folder) in self.res_folder_dict.items():
@@ -133,51 +115,10 @@ class ResultsManager:
                 with open(csv_filename) as f:
                     row_count = sum(1 for row in f)
                     stat_df = pd.read_csv(csv_filename, index_col=None, header=0)
-                    #stat_df = stat_df.drop(stat_df.index[min_num_of_rows:])  # remove samples that were taken after the conventional measuring time.
-                    stat_df.dropna(inplace=True, how='all')  # remove empty lines after deleting them.
-                    """
-                    nan_value = float("NaN")
-                    stat_df.replace("", nan_value, inplace=True)
-                    stat_df.dropna(how='any', inplace=True)  # remove empty lines after deleting them.
-                    """
-                    stat_df = stat_df.take(stat_df.index[dataframe_beginning:dataframe_end])  # remove samples that were taken after the conventional measuring time.
-
-                for i in range(0, row_count, min_num_of_rows):
-                # for i in range(row_count, 0, -min_num_of_rows):
-                # if i < row_count /10:
-                #     continue
-                    """
-                    conn_stat_df = pd.read_csv(csv_filename, index_col=None, header=0,
-                                               skiprows=range(1, i+1), nrows=min_num_of_rows)
-                    """
-                    # conn_stat_df = stat_df[min_num_of_rows*i : min_num_of_rows*(i+1)]
-
-                    conn_stat_df = stat_df[i : (i + min_num_of_rows)]
-                    #conn_stat_df = stat_df[:dataframe_min_rows]
-
-                    # If the df does not have minimum rows, take it out of the list and continue
-                    #if conn_stat_df['In Throughput'].count() < min_num_of_rows:
-                    #conn_stat_df = conn_stat_df.fillna((conn_stat_df.shift() + conn_stat_df.shift(-1)) / 2)  # takes care of missing values.
-
-                    if conn_stat_df.shape[0] < min_num_of_rows:
-                            continue
-
-                    """
-                    index_beginning = len(conn_stat_df) // 2
-                    df_indexes = range(index_beginning, index_beginning + min_num_of_rows, 1)
-                    conn_stat_df = conn_stat_df.take(df_indexes)
-                    """
-
-
-                    conn_stat_df = conn_stat_df.drop(
-                    columns=['timestamp', 'Out Throughput', 'Connection Num of Drops', 'CBIQ', 'In Throughput',
-                             'Num of Drops', 'Num of Packets', 'Total Bytes in Queue'])
-                    """
-
-                    conn_stat_df = conn_stat_df.drop(
-                        columns=['In Throughput', 'Out Throughput', 'Connection Num of Drops',
-                                 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue'])
-"""
+                    if row_count - 1 < min_num_of_rows:
+                        continue
+                    stat_df = stat_df.take(stat_df.index[row_count - min_num_of_rows - 1:])  # remove samples that were taken after the conventional measuring time.
+                    stat_df = stat_df.drop(columns=unused_parameters)
                     if "single_connection_stat_bbr" in csv_file:
                         train_list.append(["bbr", 0])
                     elif "single_connection_stat_cubic" in csv_file:
@@ -195,7 +136,7 @@ class ResultsManager:
                     else:
                         continue
 
-                    self.normalizer.add_result(conn_stat_df, iter_name)
+                    self.normalizer.add_result(stat_df, iter_name)
                     print("added %s to list" % iter_name)
         self.train_df = pd.DataFrame(train_list, columns=["id", "label"])
 

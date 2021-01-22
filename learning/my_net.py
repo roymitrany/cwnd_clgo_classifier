@@ -2,7 +2,7 @@ from learning.utils import *
 
 class my_net(Module):
     def __init__(self):
-        super(Net, self).__init__()
+        super(my_net, self).__init__()
         # conv2d: output size = image_size - filter_size / stride + 1. usually stride = 1, filter [x,x], and padding = (f-1)/2
         # maxpool2d: output size = image_size - filter_size
         self.cnn_layers = Sequential(

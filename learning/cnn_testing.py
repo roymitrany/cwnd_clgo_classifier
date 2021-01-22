@@ -1,10 +1,10 @@
 # PyTorch libraries and modules
 import torch
 from learning.env import *
-from learning.cnn_training import Net
+#from learning.cnn_training import Net
 from learning.results_manager import *
 import time
-from classification.utils import  *
+from learning.utils import  *
 
 NUM_OF_CLASSIFICATION_PARAMETERS = 2# 3 # 9  # 7
 NUM_OF_TIME_SAMPLES = 10000 # 100 # 1200 # 300 # 501 # 601  # 301 # 602
@@ -27,8 +27,9 @@ if __name__ == '__main__':
         model = torch.load(training_parameters_path + normalization_types[normalization_counter] + '_mytraining.pt')  # loading the model and its parameters.
         # model.load_state_dict(st)
         model.eval()
-
-        res_mgr = ResultsManager(testing_files_path, normalization_type, NUM_OF_TIME_SAMPLES, DATAFRAME_BEGINNING, DATAFRAME_END)
+        unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops',
+                             'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        res_mgr = ResultsManager(testing_files_path, normalization_type, 60000, unused_parameters)
         data_labeling = res_mgr.get_train_df()
         dataframe_arr = res_mgr.get_normalized_df_list()
 

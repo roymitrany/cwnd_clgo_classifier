@@ -1,8 +1,9 @@
 from learning.utils import *
+import torch.nn as nn
 
 class deepcci_net(Module):
     def __init__(self):
-        super(Net, self).__init__()
+        super(deepcci_net, self).__init__()
         self.channels = 64
         self.num_layers = 100
         self.hidden_size = 64
@@ -87,9 +88,6 @@ class deepcci_net(Module):
 
     # Defining the forward pass
     def forward(self, x):
-        # x = torch.zeros([180, 1, 60000], dtype=torch.int32)
-        # x=x.type('torch.FloatTensor')
-
         x = self.conv1(x)
         # 1
         residual = x
@@ -169,13 +167,5 @@ class deepcci_net(Module):
         x = self.last_BN_layer(x)
 
         x_variant = x[:, 0:3, :]
-        x_pacing = x[:, 3:5, :]
 
-        # pacing_output = self.pacing_softmax_layer(x_pacing)
-        # variant_output = self.variant_softmax_layer(x_variant)
-
-        pacing_output = x_pacing
-        variant_output = x_variant
-
-        return variant_output, pacing_output
-        return x
+        return x_variant
