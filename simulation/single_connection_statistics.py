@@ -99,6 +99,7 @@ class SingleConnStatistics:
         self.count_throughput(out_conn_df, 'Out Throughput')
         self.count_throughput(in_passed_df, 'In Goodput')
         self.count_dropped_packets(in_dropped_df, 'Connection Num of Drops')
+        self.count_ts_val(out_conn_df, "Send Time Gap")
         # ts_val_df = self.create_ts_val_df(in_conn_lines, self.interval_accuracy)
 
         # Consolidate all the DataFrames into one DataFrame
@@ -140,31 +141,25 @@ class SingleConnStatistics:
 
         return
 
-    @staticmethod
-    def create_ts_val_df(lines, interval_accuracy):
+    def count_ts_val(self, conn_df, column):
         # TS val indicates the timestamp in which the packet was sent.
         # since we want to maintain the data based on time intervals, we should expect some intervals to include
         # a lot of packets, and others with only few of them.
         # It is hard to process such information, so we will
         # extract the maximal time gap between two sent packets for each interval.
-        ts_val_dict = {}
-        last_ts_val = 0
-        for line in lines:
-            conn_index, time_str, length, ts_val = TcpdumpStatistics.parse_line(line)
-            ts_val = int(ts_val)
-            s_str = '(\S+\.\d{%d})' % interval_accuracy
-            rounded_time_obj = re.search(r'%s' % s_str, time_str)
-            rounded_time = rounded_time_obj.group(1)
-            if last_ts_val == 0:
-                last_ts_val = ts_val
 
-            if rounded_time not in ts_val_dict:
-                ts_val_dict[rounded_time] = ts_val - last_ts_val
-            else:
-                ts_val_dict[rounded_time] = max(ts_val_dict[rounded_time], ts_val - last_ts_val)
-            last_ts_val = ts_val
-        df = pd.DataFrame.from_dict(ts_val_dict, orient='index')
-        return df
+        # Create diff df first, with delta between ts_vals (this is the time gap
+        time_gap_df = pd.DataFrame(conn_df['ts_val'].diff())
+        time_gap_df.fillna(0)
+
+        # Join it to th conn df
+        time_gap_df = time_gap_df.rename(columns={"ts_val": column})
+        conn_df = conn_df.join(time_gap_df)
+
+        # Take the maximal value for each time slot
+        bytes_per_timeslot_df = pd.DataFrame(conn_df.groupby('date_time')[column].max())
+        self.conn_df = self.conn_df.join(bytes_per_timeslot_df[column])
+
 
     def count_throughput(self, conn_df, column):
         bytes_per_timeslot_df = pd.DataFrame(conn_df.groupby('date_time')['length'].sum())
@@ -191,7 +186,7 @@ class SingleConnStatistics:
                 continue
             conn_index, time_str, length_str, ts_val, seq_num = parse_seq_line(line)
             dtime = datetime.strptime(time_str[0:self.interval_accuracy - 6], "%H:%M:%S.%f") - datetime(1900, 1, 1)
-            conn_list.append([conn_index, dtime, int(length_str), ts_val, seq_num])
+            conn_list.append([conn_index, dtime, int(length_str), int(ts_val), seq_num])
 
         df = pd.DataFrame(conn_list, columns=['conn_index', 'date_time', 'length', 'ts_val', 'seq_num'])
         # extract the connection index
@@ -280,7 +275,7 @@ if __name__ == '__main__':
     plot_title = "kuku"
     test_name = sys.argv[1]
     host_name = sys.argv[2]
-    abs_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_train/1.14.2021@15-33-49_1_reno_1_bbr_1_cubic"
+    abs_path = "/home/another/PycharmProjects/cwnd_clgo_classifier/results/12.17.2020@21-0-27_1_reno_1_bbr_1_cubic"
     in_file = abs_path + "/client_cubic_2.txt"
     out_file = abs_path + "/server_cubic_2.txt"
     rtr_file = abs_path + "/rtr_q.txt"
