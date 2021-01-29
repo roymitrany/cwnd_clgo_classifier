@@ -60,9 +60,9 @@ class Iperf3Simulator:
 
         # Create results directory, with name includes num of clients for each algo, and time:
         if (iteration % 3) is not 0:
-            self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_train", time_str + "_" + self.simulation_name)
+            self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_train", time_str + "_" + self.simulation_name)
         else:
-            self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_test", time_str + "_" + self.simulation_name)
+            self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_test", time_str + "_" + self.simulation_name)
         os.mkdir(self.res_dirname, 0o777)
 
         # Set results file names:

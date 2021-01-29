@@ -78,30 +78,37 @@ def validate(validation_loader, model, criterion, is_deepcci):
 def run(model, criterion, optimizer, scheduler, unused_parameters, is_deepcci):
     normalization_type = AbsoluteNormalization1()
     training_loader, validation_loader = create_data(training_files_path=training_files_path, normalization_type=normalization_type, unused_parameters=unused_parameters, is_deepcci=is_deepcci)
+    training_loss, training_accuracy, validation_loss, validation_accuracy = ([None] * NUM_OF_EPOCHS for i in range(4))
     for epoch in range(0, NUM_OF_EPOCHS):
         print('start epoch {}'.format(epoch))
-        training_loss, training_accuracy = train(training_loader, model, criterion, optimizer, is_deepcci)
-        validation_loss, validation_accuracy = validate(validation_loader, model, criterion, is_deepcci)
+        training_loss[epoch], training_accuracy[epoch] = train(training_loader, model, criterion, optimizer, is_deepcci)
+        validation_loss[epoch], validation_accuracy[epoch] = validate(validation_loader, model, criterion, is_deepcci)
         scheduler.step()
+    return training_loss, training_accuracy, validation_loss, validation_accuracy
 
 if __name__ == '__main__':
     if IS_DEEPCCI:
         model = deepcci_net().to(device)
+        is_deepcci = "deepcci_net"
+        unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'CBIQ', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        # unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'CBIQ', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
     else:
         model = my_net().to(device)
+        is_deepcci = "my_net"
+        unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
     model.apply(init_weights)
     criterion = CrossEntropyLoss().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.9)
-    unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-    # unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-    # unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'CBIQ', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-    run(model, criterion, optimizer, scheduler, unused_parameters, IS_DEEPCCI)
+    training_loss, training_accuracy, validation_loss, validation_accuracy = run(model, criterion, optimizer, scheduler, unused_parameters, IS_DEEPCCI)
     print('done')
     # saving the trained model
-    torch.save(model, training_parameters_path  + '_mytraining.pt')
+    torch.save(model, training_parameters_path + '_mytraining.pt')
     torch.save(model.state_dict(), training_parameters_path + '_mytraining_state_dict.pt')
-
     tn = datetime.now()
-    time_str = str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(tn.minute) + "-" + str(tn.second)
-    #plt.savefig(training_parameters_path + normalization_types[normalization_counter] + '_graph.jpeg')
+    time_str = "_" + str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(tn.minute) + "-" + str(tn.second)
+    plot_file_name = graphs_path + is_deepcci + "_training" + time_str + '.png'
+    training_graph = Graph_Creator(training_loss, training_accuracy, NUM_OF_EPOCHS, plot_file_name=plot_file_name, plot_fig_name="training statistics")
+    plot_file_name = graphs_path + is_deepcci + "_validation" + time_str + '.png'
+    validation_graph = Graph_Creator(validation_loss, validation_accuracy, NUM_OF_EPOCHS, plot_file_name=plot_file_name, plot_fig_name="validation statistics")
+
