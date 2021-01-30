@@ -118,7 +118,8 @@ class ResultsManager:
                     if row_count - 1 < min_num_of_rows:
                         continue
                     stat_df = stat_df.take(stat_df.index[row_count - min_num_of_rows - 1:])  # remove samples that were taken after the conventional measuring time.
-                    stat_df = stat_df.drop(columns=unused_parameters)
+                    if unused_parameters is not None:
+                        stat_df = stat_df.drop(columns=unused_parameters)
                     if "single_connection_stat_bbr" in csv_file:
                         train_list.append(["bbr", 0])
                     elif "single_connection_stat_cubic" in csv_file:
