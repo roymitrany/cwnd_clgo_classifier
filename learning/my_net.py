@@ -25,9 +25,56 @@ class my_net(Module):
             # input features: 10 channels * number of rows * number of columns, output features: number of labels = 2.
         )
 
+        self.conv2d_layer1 = Conv2d(1, NUM_OF_CONV_FILTERS, kernel_size=(3, NUM_OF_CLASSIFICATION_PARAMETERS), stride=1, padding=(1, 0)) # NUM_OF_CLASSIFICATION_PARAMETERS
+        self.BN_layer1 = BatchNorm2d(NUM_OF_CONV_FILTERS)
+        self.Relu_layer1 = ReLU(inplace=True)
+        self.maxpool_layer1 = MaxPool2d(kernel_size=(6, 1), stride=6)
+        self.conv2d_layer2 = Conv2d(NUM_OF_CONV_FILTERS, NUM_OF_CONV_FILTERS, kernel_size=(3, 1), stride=1, padding=(1, 0))
+        self.BN_layer2 = BatchNorm2d(NUM_OF_CONV_FILTERS)
+        self.Relu_layer2 = ReLU(inplace=True)
+        self.maxpool_layer2 = MaxPool2d(kernel_size=(10, 1), stride=10)
+        self.conv2d_layer3 = Conv2d(NUM_OF_CONV_FILTERS, NUM_OF_CONV_FILTERS, kernel_size=(3, 1), stride=1, padding=(1, 0))
+        self.BN_layer3 = BatchNorm2d(NUM_OF_CONV_FILTERS)
+        self.Relu_layer3 = ReLU(inplace=True)
+        self.maxpool_layer3 = MaxPool2d(kernel_size=(10, 1), stride=10)
+        self.conv2d_layer4 = Conv2d(NUM_OF_CONV_FILTERS, NUM_OF_CONV_FILTERS, kernel_size=(3, 1), stride=1, padding=(1, 0))
+        self.BN_layer4 = BatchNorm2d(NUM_OF_CONV_FILTERS)
+        self.Relu_layer4 = ReLU(inplace=True)
+        self.maxpool_layer4 = MaxPool2d(kernel_size=(10, 1), stride=10)
+        self.conv2d_layer5 = Conv2d(NUM_OF_CONV_FILTERS, NUM_OF_CONGESTION_CONTROL_LABELING, kernel_size=(3, 1), stride=1, padding=(1, 0))
+        self.BN_layer5 = BatchNorm2d(NUM_OF_CONGESTION_CONTROL_LABELING)
+        self.Relu_layer5 = ReLU(inplace=True)
+        self.maxpool_layer5 = MaxPool2d(kernel_size=(10, 1), stride=10)
+        self.linear = Linear(NUM_OF_CONV_FILTERS * 1 * (NUM_OF_TIME_SAMPLES - 2) * 1, NUM_OF_CONGESTION_CONTROL_LABELING)
+
     # Defining the forward pass
     def forward(self, x):
+        """
         x = self.cnn_layers(x)
         x = x.view(x.size(0), -1)  # flattening?
         x = self.linear_layers(x)
+        return x
+        """
+        x = self.conv2d_layer1(x)
+        x = self.BN_layer1(x)
+        x = self.Relu_layer1(x)
+        x = self.maxpool_layer1(x)
+        x = self.conv2d_layer2(x)
+        x = self.BN_layer2(x)
+        x = self.Relu_layer2(x)
+        x = self.maxpool_layer2(x)
+        x = self.conv2d_layer3(x)
+        x = self.BN_layer3(x)
+        x = self.Relu_layer3(x)
+        x = self.maxpool_layer3(x)
+        x = self.conv2d_layer4(x)
+        x = self.BN_layer4(x)
+        x = self.Relu_layer4(x)
+        x = self.maxpool_layer4(x)
+        x = self.conv2d_layer5(x)
+        x = self.BN_layer5(x)
+        x = self.Relu_layer5(x)
+        x = self.maxpool_layer5(x)
+        x = x.squeeze(2)
+        x = x.squeeze(2)
         return x

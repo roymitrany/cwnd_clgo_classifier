@@ -1,5 +1,6 @@
 # importing the libraries
 import pickle
+from time import sleep
 from datetime import datetime
 # for evaluating the model
 from sklearn.metrics import accuracy_score
@@ -92,11 +93,12 @@ def run(model, criterion, optimizer, scheduler, unused_parameters, is_deepcci, i
     return training_loss, training_accuracy, validation_loss, validation_accuracy
 
 if __name__ == '__main__':
+    # sleep(60*60*8)
     if IS_DEEPCCI:
         model = deepcci_net().to(device)
         is_deepcci = "deepcci_net"
         unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'CBIQ', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-        # unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'CBIQ', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        # unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
     else:
         model = my_net().to(device)
         is_deepcci = "my_net"

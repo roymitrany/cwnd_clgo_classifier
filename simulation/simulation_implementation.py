@@ -3,6 +3,7 @@
 import os
 import threading
 from pathlib import Path
+import random
 
 from enum import Enum
 from signal import SIGINT
@@ -59,10 +60,15 @@ class Iperf3Simulator:
             tn.minute) + "-" + str(tn.second)
 
         # Create results directory, with name includes num of clients for each algo, and time:
+        """
         if (iteration % 3) is not 0:
             self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_train", time_str + "_" + self.simulation_name)
         else:
             self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_test", time_str + "_" + self.simulation_name)
+        """
+        self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data","bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_train_fixed_topology_random_timing",
+                                        time_str + "_" + self.simulation_name)
+
         os.mkdir(self.res_dirname, 0o777)
 
         # Set results file names:
@@ -170,8 +176,8 @@ class Iperf3Simulator:
         for client in self.simulation_topology.host_list:
             cwnd_algo = client[0:client.find("_")]
             # cmd = 'iperf3 -c %s -t %d -p %d -C %s' % (srv_ip, self.seconds, 5201 + client_counter, self.congestion_control_algorithm[client_counter % 2])
-            # start_after = random.randint(0, self.iperf_start_after) / 1000
-            start_after = self.iperf_start_after
+            start_after = random.randint(0, self.iperf_start_after) / 1000
+            # start_after = self.iperf_start_after
             # cmd = 'sleep %f && iperf3 -c %s -t %d -p %d -C %s' % (
             #     start_after, srv_ip, self.seconds, 5201 + client_counter, cwnd_algo)
             cmd = 'sleep %f && iperf3 -c %s -t %d -p %d -C %s' % (
@@ -256,33 +262,39 @@ if __name__ == '__main__':
     host_delay = 25
     srv_delay = 25
     iteration = 0
-    for host_bw in range(10, 100, 20):
+
+    host_bw = 50
+    srv_bw = 50
+    queue_size = 500
+    # for host_bw in range(10, 100, 20):
     #for host_delay in range(4500, 5000, 100):
-        for srv_bw in range(10, 100, 20):
-            for queue_size in range(100, 1000, 100):
-                for algo in Algo:
-                    algo_dict[algo.name] = 1  # random.randint(2, 4) # how many flows of each type
-                # algo_dict['bbr']=10
-                total_delay = 2 * (host_delay + srv_delay)
-                simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
-                                                         srv_bw=srv_bw,
-                                                         srv_delay=srv_delay, rtr_queue_size=queue_size)
-                simulation_name = create_sim_name(algo_dict)
-                iteration += 1
-                """
-                if algo.name == "cubic":
-                    simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration - 10,
-                                                iperf_start_after=10,
-                                                background_noise=background_noise,
-                                                interval_accuracy=interval_accuracy)
-                else:
-                """
-                simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
-                                            iperf_start_after=0,
-                                            background_noise=background_noise,
-                                            interval_accuracy=interval_accuracy, iteration=iteration)
-                # iperf_start_after=500, background_noise=100)
-                simulator.StartSimulation()
-                #simulator.process_results(generate_graphs=True, keep_dump_files=True)
-                simulator.process_results(generate_graphs=False, keep_dump_files=True)
-                clean_sim()
+        # for srv_bw in range(10, 100, 20):
+            # for queue_size in range(100, 1000, 100):
+    while iteration < 250:
+        for algo in Algo:
+            algo_dict[algo.name] = 1  # random.randint(2, 4) # how many flows of each type
+        # algo_dict['bbr']=10
+        total_delay = 2 * (host_delay + srv_delay)
+        simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
+                                                 srv_bw=srv_bw,
+                                                 srv_delay=srv_delay, rtr_queue_size=queue_size)
+        simulation_name = create_sim_name(algo_dict)
+        iteration += 1
+        """
+        if algo.name == "cubic":
+            simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration - 10,
+                                        iperf_start_after=10,
+                                        background_noise=background_noise,
+                                        interval_accuracy=interval_accuracy)
+        else:
+        """
+        simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
+                                    #iperf_start_after=0,
+                                    iperf_start_after=6000,
+                                    background_noise=background_noise,
+                                    interval_accuracy=interval_accuracy, iteration=iteration)
+        # iperf_start_after=500, background_noise=100)
+        simulator.StartSimulation()
+        #simulator.process_results(generate_graphs=True, keep_dump_files=True)
+        simulator.process_results(generate_graphs=False, keep_dump_files=True)
+        clean_sim()
