@@ -120,9 +120,9 @@ if __name__ == '__main__':
     torch.save(model, training_parameters_path + '_mytraining.pt')
     torch.save(model.state_dict(), training_parameters_path + '_mytraining_state_dict.pt')
     plot_file_name = directory + "/training.png"
-    training_graph = Graph_Creator(training_loss, training_accuracy, NUM_OF_EPOCHS, plot_file_name=plot_file_name, plot_fig_name="training statistics")
+    training_graph = Graph_Creator(training_loss, training_accuracy, NUM_OF_EPOCHS, IS_BATCH, plot_file_name=plot_file_name, plot_fig_name="training statistics")
     training_graph.create_graphs()
     plot_file_name = directory + "/validation.png"
-    validation_graph = Graph_Creator(validation_loss, validation_accuracy, NUM_OF_EPOCHS, plot_file_name=plot_file_name, plot_fig_name="validation statistics")
+    validation_graph = Graph_Creator(validation_loss, validation_accuracy, NUM_OF_EPOCHS, IS_BATCH, plot_file_name=plot_file_name, plot_fig_name="validation statistics")
     validation_graph.create_graphs()
 

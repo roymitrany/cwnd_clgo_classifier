@@ -41,10 +41,15 @@ class my_net(Module):
         self.BN_layer4 = BatchNorm2d(NUM_OF_CONV_FILTERS)
         self.Relu_layer4 = ReLU(inplace=True)
         self.maxpool_layer4 = MaxPool2d(kernel_size=(10, 1), stride=10)
-        self.conv2d_layer5 = Conv2d(NUM_OF_CONV_FILTERS, NUM_OF_CONGESTION_CONTROL_LABELING, kernel_size=(3, 1), stride=1, padding=(1, 0))
-        self.BN_layer5 = BatchNorm2d(NUM_OF_CONGESTION_CONTROL_LABELING)
+        self.conv2d_layer5 = Conv2d(NUM_OF_CONV_FILTERS, NUM_OF_CONV_FILTERS, kernel_size=(3, 1), stride=1, padding=(1, 0))
+        self.BN_layer5 = BatchNorm2d(NUM_OF_CONV_FILTERS)
         self.Relu_layer5 = ReLU(inplace=True)
         self.maxpool_layer5 = MaxPool2d(kernel_size=(10, 1), stride=10)
+        self.conv1d_layer5 = torch.nn.Conv1d(NUM_OF_CONV_FILTERS, NUM_OF_HIDDEN_LAYERS, kernel_size=3, padding=1)
+        self.gru = torch.nn.GRU(input_size=NUM_OF_HIDDEN_LAYERS, hidden_size=NUM_OF_HIDDEN_LAYERS, num_layers=2)
+        self.lstm = torch.nn.LSTM(input_size=NUM_OF_HIDDEN_LAYERS, num_layers=1, hidden_size=NUM_OF_HIDDEN_LAYERS)
+        self.BN_final = torch.nn.BatchNorm1d(NUM_OF_HIDDEN_LAYERS)
+        self.conv1d_final = torch.nn.Conv1d(NUM_OF_HIDDEN_LAYERS, NUM_OF_CONGESTION_CONTROL_LABELING, kernel_size=3, padding=1)
         self.linear = Linear(NUM_OF_CONV_FILTERS * 1 * (NUM_OF_TIME_SAMPLES - 2) * 1, NUM_OF_CONGESTION_CONTROL_LABELING)
 
     # Defining the forward pass
@@ -75,6 +80,34 @@ class my_net(Module):
         x = self.BN_layer5(x)
         x = self.Relu_layer5(x)
         x = self.maxpool_layer5(x)
+
         x = x.squeeze(2)
+        x = self.conv1d_layer5(x)
+
+        x = x.transpose(1, 2)
+        x = x.transpose(0, 1)
+        x, _ = self.gru(x)
+        #x, _ = self.lstm(x)
+        x = x.transpose(0, 1)
+        x = x.transpose(1, 2)
+        x = self.BN_final(x)
+
+        x = x.transpose(1, 2)
+        x = x.transpose(0, 1)
+        x, _ = self.gru(x)
+        #x, _ = self.lstm(x)
+        x = x.transpose(0, 1)
+        x = x.transpose(1, 2)
+        x = self.BN_final(x)
+
+        x = x.transpose(1, 2)
+        x = x.transpose(0, 1)
+        x, _ = self.gru(x)
+        #x, _ = self.lstm(x)
+        x = x.transpose(0, 1)
+        x = x.transpose(1, 2)
+        x = self.BN_final(x)
+
+        x = self.conv1d_final(x)
         x = x.squeeze(2)
         return x
