@@ -76,7 +76,7 @@ class SingleConnStatistics:
         file = open(ingress_file_name, 'r')
         lines = file.readlines()
         in_conn_df = self.build_conn_df(lines)  # take out all the lines that are not related to the connection
-        in_passed_df, in_dropped_df = self.reduce_dropped_packets(in_conn_df)
+        in_passed_df, in_dropped_df, in_retransmit_df = self.reduce_dropped_packets(in_conn_df)
 
         # Parse outbound file. Extract passed packets for the connection
         file = open(egress_file_name, 'r')
@@ -99,6 +99,7 @@ class SingleConnStatistics:
         self.count_throughput(out_conn_df, 'Out Throughput')
         self.count_throughput(in_passed_df, 'In Goodput')
         self.count_dropped_packets(in_dropped_df, 'Connection Num of Drops')
+        self.count_retransmit_packets(in_retransmit_df, 'Connection Num of Retransmits')
         self.count_ts_val(out_conn_df, "Send Time Gap")
         # ts_val_df = self.create_ts_val_df(in_conn_lines, self.interval_accuracy)
 
@@ -176,6 +177,13 @@ class SingleConnStatistics:
         values = {column: 0}
         self.conn_df = self.conn_df.fillna(value=values)
 
+    def count_retransmit_packets(self, ret_df, column):
+        ret_count_df = pd.DataFrame(ret_df['date_time'].value_counts())
+        self.conn_df = self.conn_df.join(ret_count_df)
+        self.conn_df = self.conn_df.rename(columns={"date_time": column})
+        values = {column: 0}
+        self.conn_df = self.conn_df.fillna(value=values)
+
     def build_conn_df(self, lines):
         conn_list = []
         # Take out all lines with length 0
@@ -209,12 +217,21 @@ class SingleConnStatistics:
         # There is a pd command to filter out duplicates, keeping the last instance
         passed_df = conn_df.drop_duplicates(subset='seq_num', keep='last')
 
-        # Find the duplicated items and keep them in a separate df
+        # Find the items that represent drops, and keep them in a separate df
         dups_series = conn_df.duplicated(subset='seq_num', keep='last')
         dups_only = dups_series[dups_series == True]
         fdf = pd.DataFrame(dups_only).join(conn_df)
         dropped_df = fdf.drop(columns=[0])
-        return passed_df, dropped_df
+
+        # Find the items that represent retransmissions, and keep them in a separate df
+        dups_series = conn_df.duplicated(subset='seq_num', keep='first')
+        dups_only = dups_series[dups_series == True]
+        fdf = pd.DataFrame(dups_only).join(conn_df)
+        retransmit_df = fdf.drop(columns=[0])
+
+
+
+        return passed_df, dropped_df, retransmit_df
 
     def create_plots(self, graph_file_name, plot_title):
 
