@@ -4,6 +4,7 @@ import os
 import threading
 from pathlib import Path
 import random
+import numpy
 
 from enum import Enum
 from signal import SIGINT
@@ -66,7 +67,7 @@ class Iperf3Simulator:
         else:
             self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_test", time_str + "_" + self.simulation_name)
         """
-        self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data","bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_train_fixed_topology_random_timing",
+        self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data","ufixed_topology_random_timing_3_flows_tcp_noise_10",
                                         time_str + "_" + self.simulation_name)
 
         os.mkdir(self.res_dirname, 0o777)
@@ -220,7 +221,7 @@ def create_sim_name(cwnd_algo_dict):
 
 if __name__ == '__main__':
     # interval accuracy: a number between 0 to 3. For value n, the accuracy will be set to 1/10^n
-    #sleep(60*60*2.5)
+    # sleep(60*60*12)
     interval_accuracy = 3
     # Simulation's parameters initializing:
     srv_delay = 5e3
@@ -270,31 +271,34 @@ if __name__ == '__main__':
     #for host_delay in range(4500, 5000, 100):
         # for srv_bw in range(10, 100, 20):
             # for queue_size in range(100, 1000, 100):
-    while iteration < 250:
-        for algo in Algo:
-            algo_dict[algo.name] = 1  # random.randint(2, 4) # how many flows of each type
-        # algo_dict['bbr']=10
-        total_delay = 2 * (host_delay + srv_delay)
-        simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
-                                                 srv_bw=srv_bw,
-                                                 srv_delay=srv_delay, rtr_queue_size=queue_size)
-        simulation_name = create_sim_name(algo_dict)
-        iteration += 1
-        """
-        if algo.name == "cubic":
-            simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration - 10,
-                                        iperf_start_after=10,
-                                        background_noise=background_noise,
-                                        interval_accuracy=interval_accuracy)
-        else:
-        """
-        simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
-                                    #iperf_start_after=0,
-                                    iperf_start_after=6000,
-                                    background_noise=background_noise,
-                                    interval_accuracy=interval_accuracy, iteration=iteration)
-        # iperf_start_after=500, background_noise=100)
-        simulator.StartSimulation()
-        #simulator.process_results(generate_graphs=True, keep_dump_files=True)
-        simulator.process_results(generate_graphs=False, keep_dump_files=True)
-        clean_sim()
+    #while iteration < 250:
+    for host_bw in numpy.linspace(1, 200, 10):
+        for srv_bw in numpy.linspace(50, 100, 5):
+            for queue_size in numpy.linspace(100, 1000, 5):
+                for algo in Algo:
+                    algo_dict[algo.name] = 1  # random.randint(2, 4) # how many flows of each type
+                # algo_dict['vegas']=10
+                total_delay = 2 * (host_delay + srv_delay)
+                simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
+                                                         srv_bw=srv_bw,
+                                                         srv_delay=srv_delay, rtr_queue_size=queue_size)
+                simulation_name = create_sim_name(algo_dict)
+                iteration += 1
+                """
+                if algo.name == "cubic":
+                    simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration - 10,
+                                                iperf_start_after=10,
+                                                background_noise=background_noise,
+                                                interval_accuracy=interval_accuracy)
+                else:
+                """
+                simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
+                                            #iperf_start_after=0,
+                                            iperf_start_after=6000,
+                                            background_noise=background_noise,
+                                            interval_accuracy=interval_accuracy, iteration=iteration)
+                # iperf_start_after=500, background_noise=100)
+                simulator.StartSimulation()
+                #simulator.process_results(generate_graphs=True, keep_dump_files=True)
+                simulator.process_results(generate_graphs=False, keep_dump_files=False)
+                clean_sim()

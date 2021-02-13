@@ -82,8 +82,8 @@ class my_net(Module):
         x = self.maxpool_layer5(x)
 
         x = x.squeeze(2)
-        x = self.conv1d_layer5(x)
 
+        x = self.conv1d_layer5(x)
         x = x.transpose(1, 2)
         x = x.transpose(0, 1)
         x, _ = self.gru(x)
