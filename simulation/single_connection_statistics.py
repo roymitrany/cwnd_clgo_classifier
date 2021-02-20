@@ -55,7 +55,7 @@ def parse_seq_line(line):
         conn_index = TcpdumpStatistics.get_connection_identifier(src_ip, src_port, dst_ip, dst_port)
         return conn_index, time_str, throughput, ts_val, seq_num
     else:
-        return '0', '0', '0', '0'
+        return '0', '0', '0', '0', '0'
 
 
 class SingleConnStatistics:
@@ -125,7 +125,10 @@ class SingleConnStatistics:
         # Mbps to Bytes
 
         # Add qdisc columns, only for existing keys (inner join)
-        qdisc_df = pd.read_csv(rtr_q_filename, sep="\t", header=None)
+        try:
+            qdisc_df = pd.read_csv(rtr_q_filename, sep="\t", header=None)
+        except:
+            print ("rtr_q problem")
         qdisc_df.columns = ['Time', 'Total Bytes in Queue', 'Num of Packets', 'Num of Drops']
         qdisc_df['Time'] = qdisc_df['Time'].map(lambda time_str: time_str_to_timedelta(time_str))
         qdisc_df = qdisc_df.set_index('Time')
@@ -193,6 +196,8 @@ class SingleConnStatistics:
             if int(line.find('length 0')) > 0:  # ACK only, ignore
                 continue
             conn_index, time_str, length_str, ts_val, seq_num = parse_seq_line(line)
+            if time_str == '0':
+                continue
             dtime = datetime.strptime(time_str[0:self.interval_accuracy - 6], "%H:%M:%S.%f") - datetime(1900, 1, 1)
             conn_list.append([conn_index, dtime, int(length_str), int(ts_val), seq_num])
 

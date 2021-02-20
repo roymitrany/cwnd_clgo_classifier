@@ -97,12 +97,13 @@ if __name__ == '__main__':
     if IS_DEEPCCI:
         model = deepcci_net().to(device)
         is_deepcci = "deepcci_net"
-        unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'CBIQ', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'CBIQ', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         # unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
     else:
         model = my_net().to(device)
         is_deepcci = "my_net"
-        unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         # unused_parameters = None
     model.apply(init_weights)
     criterion = CrossEntropyLoss().to(device)

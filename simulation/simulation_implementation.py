@@ -1,10 +1,12 @@
 #!/usr/bin/python3
 
 import os
+import os.path
 import threading
 from pathlib import Path
 import random
 import numpy
+from multiprocessing import Process
 
 from enum import Enum
 from signal import SIGINT
@@ -67,7 +69,7 @@ class Iperf3Simulator:
         else:
             self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_test", time_str + "_" + self.simulation_name)
         """
-        self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data","ufixed_topology_random_timing_3_flows_tcp_noise_10",
+        self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data/with_data_repetition/queue_size_500","unfixed_host_bw_srv_bw_with_random_timing",
                                         time_str + "_" + self.simulation_name)
 
         os.mkdir(self.res_dirname, 0o777)
@@ -92,14 +94,15 @@ class Iperf3Simulator:
         self.net.getNodeByName(host).cmd(cmd)
 
     def process_results(self, generate_graphs=False, keep_dump_files=False):
-        threads = list()
+        processes = list()
         for client in self.simulation_topology.host_list:
-            x = threading.Thread(target=create_csv, args=(self, client))
-            threads.append(x)
+            # x = threading.Thread(target=create_csv, args=(self, client))
+            x = Process(target=create_csv, args=(self, client))
+            processes.append(x)
             x.start()
 
-        for index, thread in enumerate(threads):
-            thread.join()
+        for index, proc in enumerate(processes):
+            proc.join()
 
         if generate_graphs:
             tcpdump_statistsics = TcpdumpStatistics(self.port_algo_dict, self.interval_accuracy)
@@ -153,13 +156,13 @@ class Iperf3Simulator:
             # Running tcpdump on client side, saving to txt file (a separate txt file for each client):
             capture_filename = os.path.join(self.res_dirname, "client_%s.txt" % client)
             interface_name = "r-%s" % client
-            cmd = "tcpdump -i %s 'tcp port %d'>%s&" % (interface_name, test_port, capture_filename)
+            cmd = "tcpdump -n -i %s 'tcp port %d'>%s&" % (interface_name, test_port, capture_filename)
             rtr.cmd(cmd)
 
             # Running tcpdump on server side, saving to txt file (a separate txt file for each client):
             capture_filename = os.path.join(self.res_dirname, "server_%s.txt" % client)
             self.file_captures.append(capture_filename)
-            cmd = "tcpdump -i r-srv 'tcp port %d'>%s&" % (test_port, capture_filename)
+            cmd = "tcpdump -n -i r-srv 'tcp port %d'>%s&" % (test_port, capture_filename)
             rtr.cmd(cmd)
             client_counter += 1
 
@@ -191,6 +194,7 @@ class Iperf3Simulator:
         # Gather statistics from the router:
         q_proc = rtr.popen('python tc_qdisc_implementation.py r-srv %s %d'
                            % (self.rtr_q_filename, self.interval_accuracy))
+        print("==========DEBUG==============" + str(q_proc.pid))
 
         # Wait until all commands are completed:
         for client, line in pmonitor(popens, timeoutms=1000):
@@ -201,7 +205,11 @@ class Iperf3Simulator:
         for process in srv_procs:
             process.send_signal(SIGINT)
         q_proc.send_signal(SIGINT)
-        # CLI(self.net)
+
+        # make sure q_disc file is saved before leaving mininet
+        for t in range(15):
+            if os.path.isfile(self.rtr_q_filename):
+                break
         self.net.stop()
 
 
@@ -221,7 +229,7 @@ def create_sim_name(cwnd_algo_dict):
 
 if __name__ == '__main__':
     # interval accuracy: a number between 0 to 3. For value n, the accuracy will be set to 1/10^n
-    # sleep(60*60*12)
+    #sleep(60*60*6)
     interval_accuracy = 3
     # Simulation's parameters initializing:
     srv_delay = 5e3
@@ -271,13 +279,15 @@ if __name__ == '__main__':
     #for host_delay in range(4500, 5000, 100):
         # for srv_bw in range(10, 100, 20):
             # for queue_size in range(100, 1000, 100):
-    #while iteration < 250:
-    for host_bw in numpy.linspace(1, 200, 10):
-        for srv_bw in numpy.linspace(50, 100, 5):
-            for queue_size in numpy.linspace(100, 1000, 5):
+    # while iteration < 250:
+    for srv_bw in numpy.linspace(50, 100, 5):
+        for host_bw in numpy.linspace(srv_bw, srv_bw + 100, 5):
+            # for queue_size in numpy.linspace(100, 1000, 10):
+            iteration = 0
+            while iteration < 10:
                 for algo in Algo:
                     algo_dict[algo.name] = 1  # random.randint(2, 4) # how many flows of each type
-                # algo_dict['vegas']=10
+                # algo_dict['vegas'] = 10
                 total_delay = 2 * (host_delay + srv_delay)
                 simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
                                                          srv_bw=srv_bw,
