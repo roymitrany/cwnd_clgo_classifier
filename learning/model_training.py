@@ -11,15 +11,7 @@ from torch.nn import Linear, ReLU, CrossEntropyLoss, Sequential, Conv2d, MaxPool
 from learning.utils import *
 from learning.my_net import *
 from learning.deepcci_net import *
-
-# consts definitions
-NUM_OF_CLASSIFICATION_PARAMETERS = 2 # timestemp & CBIQ
-NUM_OF_TIME_SAMPLES = 60000
-NUM_OF_CONGESTION_CONTROL_LABELING = 3 # Reno, Cubic, & BBR
-NUM_OF_CONV_FILTERS = 50
-NUM_OF_EPOCHS = 100
-IS_DEEPCCI = False
-IS_BATCH = True
+from learning.env import *
 
 def init_weights(model):
     if type(model) == Linear:
@@ -103,6 +95,7 @@ if __name__ == '__main__':
         model = my_net().to(device)
         is_deepcci = "my_net"
         # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Connection Num of Drops', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         # unused_parameters = None
     model.apply(init_weights)
@@ -111,7 +104,7 @@ if __name__ == '__main__':
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.9)
     tn = datetime.now()
     time_str = "_" + str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(tn.minute) + "-" + str(tn.second)
-    directory = graphs_path + is_deepcci + time_str
+    directory = graphs_path + "my_net with 1sec session duration"
     if not os.path.exists(directory):
         os.makedirs(directory)
     plot_file_name = directory + "/statistics.csv"

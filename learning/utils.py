@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 # import project functions
 from learning.env import *
 from learning.results_manager import *
+"""
 # consts definitions
 NUM_OF_CLASSIFICATION_PARAMETERS = 2 # timestemp & CBIQ
 NUM_OF_TIME_SAMPLES = 60000
@@ -18,6 +19,8 @@ NUM_OF_CONV_FILTERS = 50
 NUM_OF_HIDDEN_LAYERS = 100
 BATCH_SIZE = 32
 TRAINING_VALIDATION_RATIO = 0.3
+"""
+from learning.env import *
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -32,25 +35,25 @@ def reshape_deepcci_data(input_data, validation_data, input_labeling, validation
     # converting training dataframes into torch format
     input_data = torch.from_numpy(input_data)
     #input_data = input_data.permute(0, 2, 1)
-    input_data = input_data.reshape(len(input_data), 1, NUM_OF_TIME_SAMPLES)
+    input_data = input_data.reshape(len(input_data), 1, CHUNK_SIZE)
     # converting the target into torch format
     input_labeling = torch.from_numpy(input_labeling)
     # converting validation dataframes into torch format
     validation_data = torch.from_numpy(validation_data)
     #validation_data = validation_data.permute(0, 2, 1)
-    validation_data = validation_data.reshape(len(validation_data), 1, NUM_OF_TIME_SAMPLES)
+    validation_data = validation_data.reshape(len(validation_data), 1, CHUNK_SIZE)
     # converting the target into torch format
     validation_labeling = torch.from_numpy(validation_labeling)
     return input_data, validation_data, input_labeling, validation_labeling
 
 def reshape_my_data(input_data, validation_data, input_labeling, validation_labeling):
     # converting training dataframes into torch format
-    input_data = input_data.reshape(len(input_data), 1, NUM_OF_TIME_SAMPLES, NUM_OF_CLASSIFICATION_PARAMETERS)
+    input_data = input_data.reshape(len(input_data), 1, CHUNK_SIZE, NUM_OF_CLASSIFICATION_PARAMETERS)
     input_data = torch.from_numpy(input_data)  # convert to tensor
     # converting the target into torch format
     input_labeling = torch.from_numpy(input_labeling)
     # converting validation dataframes into torch format
-    validation_data = validation_data.reshape(len(validation_data), 1, NUM_OF_TIME_SAMPLES, NUM_OF_CLASSIFICATION_PARAMETERS)
+    validation_data = validation_data.reshape(len(validation_data), 1, CHUNK_SIZE, NUM_OF_CLASSIFICATION_PARAMETERS)
     validation_data = torch.from_numpy(validation_data)
     # converting the target into torch format
     validation_labeling = torch.from_numpy(validation_labeling)
@@ -65,7 +68,7 @@ def create_dataloader(data, labeling, is_batch):
     return dataloader
 
 def create_data(training_files_path, normalization_type, unused_parameters, is_deepcci, is_batch):
-    result_manager = ResultsManager(training_files_path, normalization_type, NUM_OF_TIME_SAMPLES, unused_parameters)
+    result_manager = ResultsManager(training_files_path, normalization_type, NUM_OF_TIME_SAMPLES, unused_parameters, chunk_size=CHUNK_SIZE, start_after=START_AFTER, end_before=END_BEFORE)
     training_labeling = result_manager.get_train_df()
     input_dataframe = result_manager.get_normalized_df_list()
     # converting the list to numpy array after pre- processing

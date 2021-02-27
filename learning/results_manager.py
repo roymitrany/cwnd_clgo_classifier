@@ -92,7 +92,7 @@ class AbsoluteNormalization2(Normalizer):
 
 class ResultsManager:
 
-    def __init__(self, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters): #, dataframe_beginning=0, dataframe_end=60000):
+    def __init__(self, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters, chunk_size, start_after = 0, end_before = 0): #, dataframe_beginning=0, dataframe_end=60000):
         """The init function does all the building of the collections, using all results sub folders under
         :param results_path: A String with full path to results location
         """
@@ -117,28 +117,34 @@ class ResultsManager:
                     stat_df = pd.read_csv(csv_filename, index_col=None, header=0)
                     if row_count - 1 < min_num_of_rows:
                         continue
-                    stat_df = stat_df.take(stat_df.index[row_count - min_num_of_rows - 1:])  # remove samples that were taken after the conventional measuring time.
+                    # remove samples that were taken after the conventional measuring time:
+                    stat_df = stat_df.take(stat_df.index[row_count - min_num_of_rows - 1:])
+                    # keep only samples taken between the random beginning and end of all flows:
+                    #stat_df = stat_df[start_after:min_num_of_rows-end_before]
                     if unused_parameters is not None:
                         stat_df = stat_df.drop(columns=unused_parameters)
-                    if "single_connection_stat_bbr" in csv_file:
-                        train_list.append(["bbr", 0])
-                    elif "single_connection_stat_cubic" in csv_file:
-                        train_list.append(["cubic", 1])
-                    elif "single_connection_stat_reno" in csv_file:
-                        train_list.append(["reno", 2])
-                        """
-                    elif "single_connection_stat_vegas" in csv_file:
-                        train_list.append(["vegas", 3])
-                    elif "single_connection_stat_bic" in csv_file:
-                        train_list.append(["bic", 4])
-                    elif "single_connection_stat_westwood" in csv_file:
-                        train_list.append(["westwood", 5])
-                        """
-                    else:
-                        continue
+                    # split dataframe to chunks:
+                    number_of_chunks = stat_df.shape[0] / chunk_size + stat_df.shape[0] % chunk_size
+                    for stat_df_chunk in np.array_split(stat_df, number_of_chunks):
+                        if "single_connection_stat_bbr" in csv_file:
+                            train_list.append(["bbr", 0])
+                        elif "single_connection_stat_cubic" in csv_file:
+                            train_list.append(["cubic", 1])
+                        elif "single_connection_stat_reno" in csv_file:
+                            train_list.append(["reno", 2])
+                            """
+                        elif "single_connection_stat_vegas" in csv_file:
+                            train_list.append(["vegas", 3])
+                        elif "single_connection_stat_bic" in csv_file:
+                            train_list.append(["bic", 4])
+                        elif "single_connection_stat_westwood" in csv_file:
+                            train_list.append(["westwood", 5])
+                            """
+                        else:
+                            continue
 
-                    self.normalizer.add_result(stat_df, iter_name)
-                    print("added %s to list" % iter_name)
+                        self.normalizer.add_result(stat_df_chunk, iter_name)
+                        print("added %s to list" % iter_name)
         self.train_df = pd.DataFrame(train_list, columns=["id", "label"])
 
         self.normalizer.normalize()

@@ -1,5 +1,6 @@
 from learning.utils import *
 import torch.nn as nn
+import math
 
 class deepcci_net(Module):
     def __init__(self):
@@ -7,6 +8,7 @@ class deepcci_net(Module):
         self.channels = 64
         self.num_layers = 100
         self.hidden_size = 64
+        self.max_pool_size = math.floor((CHUNK_SIZE / DEEPCCI_NUM_OF_TIME_SAMPLES) ** 0.2) # 4 * (CHUNK_SIZE / 60000)
         # 1
         self.conv1d_layer1_1 = nn.Conv1d(self.channels, self.channels, kernel_size=3, padding=1)
         self.BN_layer1_1 = nn.BatchNorm1d(self.channels)
@@ -14,7 +16,7 @@ class deepcci_net(Module):
         self.conv1d_layer2_1 = nn.Conv1d(self.channels, self.channels, kernel_size=3, padding=1)
         self.BN_layer2_1 = nn.BatchNorm1d(self.channels)
         self.Relu_layer_1 = nn.ReLU(inplace=False)
-        self.maxpool_layer_1 = nn.MaxPool1d(kernel_size=4, stride=4, ceil_mode=False)
+        self.maxpool_layer_1 = nn.MaxPool1d(kernel_size=self.max_pool_size, stride=self.max_pool_size, ceil_mode=False)
         # 2
         self.conv1d_layer1_2 = nn.Conv1d(self.channels, self.channels, kernel_size=3, padding=1)
         self.BN_layer1_2 = nn.BatchNorm1d(self.channels)
@@ -22,7 +24,7 @@ class deepcci_net(Module):
         self.conv1d_layer2_2 = nn.Conv1d(self.channels, self.channels, kernel_size=3, padding=1)
         self.BN_layer2_2 = nn.BatchNorm1d(self.channels)
         self.Relu_layer_2 = nn.ReLU(inplace=False)
-        self.maxpool_layer_2 = nn.MaxPool1d(kernel_size=4, stride=4, ceil_mode=False)
+        self.maxpool_layer_2 = nn.MaxPool1d(kernel_size=self.max_pool_size, stride=self.max_pool_size, ceil_mode=False)
         # 3
         self.conv1d_layer1_3 = nn.Conv1d(self.channels, self.channels, kernel_size=3, padding=1)
         self.BN_layer1_3 = nn.BatchNorm1d(self.channels)
@@ -30,7 +32,7 @@ class deepcci_net(Module):
         self.conv1d_layer2_3 = nn.Conv1d(self.channels, self.channels, kernel_size=3, padding=1)
         self.BN_layer2_3 = nn.BatchNorm1d(self.channels)
         self.Relu_layer_3 = nn.ReLU(inplace=False)
-        self.maxpool_layer_3 = nn.MaxPool1d(kernel_size=4, stride=4, ceil_mode=False)
+        self.maxpool_layer_3 = nn.MaxPool1d(kernel_size=self.max_pool_size, stride=self.max_pool_size, ceil_mode=False)
         # 4
         self.conv1d_layer1_4 = nn.Conv1d(self.channels, self.channels, kernel_size=3, padding=1)
         self.BN_layer1_4 = nn.BatchNorm1d(self.channels)
@@ -38,7 +40,7 @@ class deepcci_net(Module):
         self.conv1d_layer2_4 = nn.Conv1d(self.channels, self.channels, kernel_size=3, padding=1)
         self.BN_layer2_4 = nn.BatchNorm1d(self.channels)
         self.Relu_layer_4 = nn.ReLU(inplace=False)
-        self.maxpool_layer_4 = nn.MaxPool1d(kernel_size=4, stride=4, ceil_mode=False)
+        self.maxpool_layer_4 = nn.MaxPool1d(kernel_size=self.max_pool_size, stride=self.max_pool_size, ceil_mode=False)
         # 5
         self.conv1d_layer1_5 = nn.Conv1d(self.channels, self.channels, kernel_size=3, padding=1)
         self.BN_layer1_5 = nn.BatchNorm1d(self.channels)
@@ -46,7 +48,7 @@ class deepcci_net(Module):
         self.conv1d_layer2_5 = nn.Conv1d(self.channels, self.channels, kernel_size=3, padding=1)
         self.BN_layer2_5 = nn.BatchNorm1d(self.channels)
         self.Relu_layer_5 = nn.ReLU(inplace=False)
-        self.maxpool_layer_5 = nn.MaxPool1d(kernel_size=4, stride=4, ceil_mode=False)
+        self.maxpool_layer_5 = nn.MaxPool1d(kernel_size=self.max_pool_size, stride=self.max_pool_size, ceil_mode=False)
 
         # 1
         self.BN_layer_1 = nn.BatchNorm1d(100)
@@ -163,9 +165,11 @@ class deepcci_net(Module):
         x = x.transpose(1, 2)
         x = self.BN_layer_3(x)
 
+        last_maxpool_layer = nn.MaxPool1d(kernel_size=math.floor(x.shape[2] / DEEPCCI_NUM_OF_TIME_SAMPLES), stride=math.floor(x.shape[2] / DEEPCCI_NUM_OF_TIME_SAMPLES), ceil_mode=False)
+        x = last_maxpool_layer(x)
         x = self.last_conv1d_layer(x)
         x = self.last_BN_layer(x)
 
-        x_variant = x[:, 0:3, :]
+        x_variant = x[:, 0:3, 0:DEEPCCI_NUM_OF_TIME_SAMPLES]
 
         return x_variant
