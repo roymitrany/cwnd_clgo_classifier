@@ -25,6 +25,7 @@ from simulation.tc_qdisc_statistics import TcQdiscStatistics
 from simulation.graph_implementation import GraphImplementation
 from learning.env import *
 
+
 def create_csv(sim_obj, client, generate_graphs=False):
     print("calculating statistics for %s" % client)
     in_file = os.path.join(sim_obj.res_dirname, 'client_%s.txt' % client)
@@ -32,14 +33,15 @@ def create_csv(sim_obj, client, generate_graphs=False):
     rtr_file = os.path.join(sim_obj.res_dirname, 'rtr_q.txt')
     graph_file_name = os.path.join(sim_obj.res_dirname, 'Conn_Graph_%s.png' % client)
     plot_title = client
-    interval_accuracy= sim_obj.interval_accuracy
-    q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name, plot_title, generate_graphs, interval_accuracy)
+    interval_accuracy = sim_obj.interval_accuracy
+    q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name, plot_title, generate_graphs,
+                                      interval_accuracy)
     q_line_obj.conn_df.to_csv(os.path.join(sim_obj.res_dirname, 'single_connection_stat_%s.csv' % client))
 
 
 class Iperf3Simulator:
     def __init__(self, simulation_topology, simulation_name, seconds=10, iperf_start_after=0,
-                 background_noise=0, interval_accuracy=1, iteration = 0):
+                 background_noise=0, interval_accuracy=1, iteration=0):
         """
         :param interval_accuracy:
         :param simulation_topology: The topology class to be used
@@ -69,7 +71,9 @@ class Iperf3Simulator:
         else:
             self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_test", time_str + "_" + self.simulation_name)
         """
-        self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data/with_data_repetition/queue_size_500","unfixed_host_bw_srv_bw_with_random_timing_0.01_sampling_rate",
+        self.res_dirname = os.path.join(Path(os.getcwd()).parent,
+                                        "classification_data/with_data_repetition/queue_size_500",
+                                        "unfixed_host_bw_srv_bw_with_random_timing_0.01_sampling_rate",
                                         time_str + "_" + self.simulation_name)
 
         os.mkdir(self.res_dirname, 0o777)
@@ -181,13 +185,8 @@ class Iperf3Simulator:
             cwnd_algo = client[0:client.find("_")]
             # cmd = 'iperf3 -c %s -t %d -p %d -C %s' % (srv_ip, self.seconds, 5201 + client_counter, self.congestion_control_algorithm[client_counter % 2])
             start_after = random.randint(0, self.iperf_start_after) / 1000
-            # start_after = self.iperf_start_after
-            # cmd = 'sleep %f && iperf3 -c %s -t %d -p %d -C %s' % (
-            #     start_after, srv_ip, self.seconds, 5201 + client_counter, cwnd_algo)
             cmd = 'sleep %f && iperf3 -c %s -t %d -p %d -C %s' % (
-            start_after, srv_ip, self.seconds, 5201 + client_counter, cwnd_algo)
-            # cmd = 'iperf3 -c %s -t %d -p %d -C %s &' % (srv_ip, self.seconds, 5201 + client_counter, cwnd_algo)
-            print("sleeeeeeeeeeeeeeeeeeeeeeping %s " % cmd)
+                start_after, srv_ip, self.seconds, 5201 + client_counter, cwnd_algo)
             popens[client] = (self.net.getNodeByName(client)).popen(cmd, shell=True)
             client_counter += 1
 
@@ -229,7 +228,7 @@ def create_sim_name(cwnd_algo_dict):
 
 if __name__ == '__main__':
     # interval accuracy: a number between 0 to 3. For value n, the accuracy will be set to 1/10^n
-    sleep(60*60*18)
+    sleep(60 * 60 * 18)
     interval_accuracy = 3
     # Simulation's parameters initializing:
     srv_delay = 5e3
@@ -276,9 +275,9 @@ if __name__ == '__main__':
     srv_bw = 50
     queue_size = 500
     # for host_bw in range(10, 100, 20):
-    #for host_delay in range(4500, 5000, 100):
-        # for srv_bw in range(10, 100, 20):
-            # for queue_size in range(100, 1000, 100):
+    # for host_delay in range(4500, 5000, 100):
+    # for srv_bw in range(10, 100, 20):
+    # for queue_size in range(100, 1000, 100):
     # while iteration < 250:
     process_results = True
     for srv_bw in numpy.linspace(50, 100, 5):
@@ -306,13 +305,13 @@ if __name__ == '__main__':
                 else:
                 """
                 simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
-                                            #iperf_start_after=0,
+                                            # iperf_start_after=0,
                                             iperf_start_after=START_AFTER,
                                             background_noise=background_noise,
                                             interval_accuracy=interval_accuracy, iteration=iteration)
                 # iperf_start_after=500, background_noise=100)
                 simulator.StartSimulation()
-                #simulator.process_results(generate_graphs=True, keep_dump_files=True)
+                # simulator.process_results(generate_graphs=True, keep_dump_files=True)
 
                 simulator.process_results(generate_graphs=False, keep_dump_files=False)
                 clean_sim()

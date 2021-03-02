@@ -39,7 +39,7 @@ if __name__ == '__main__':
             p = Popen(["/sbin/tc", "-s", "qdisc", "show", "dev", if_name], stdout=subprocess.PIPE,
                       universal_newlines=True)
             output = p.communicate()
-            output_file.write(output[0])
+            # output_file.write(output[0])
             # parse queue length
             match = re.search(r'dropped\s+(\d+).*backlog\s+(\d+[kK]?)b\s+(\d+)p', output[0], re.DOTALL)
             if match:
