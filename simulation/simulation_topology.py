@@ -9,7 +9,7 @@ Congestion control reavluation classification topology:
 
 """
 from logging import info
-
+from itertools import chain
 # from mininet.link import TCLink
 from mininet.node import Node
 from mininet.topo import Topo
@@ -29,14 +29,15 @@ class LinuxRouter(Node):
 
 
 class SimulationTopology(Topo):
-    def __init__(self, algo_dict, host_bw=None, host_delay=None, srv_bw=None, srv_delay=None, rtr_queue_size=None):
-        self.algo_dict = algo_dict
+    def __init__(self, algo_streams, host_bw=None, host_delay=None, srv_bw=None, srv_delay=None, rtr_queue_size=None):
+        self.algo_streams = algo_streams
         self.host_bw = host_bw
         self.host_delay = host_delay
         self.srv_bw = srv_bw
         self.srv_delay = srv_delay
         self.rtr_queue_size = rtr_queue_size
         self.host_list = []
+        self.monitored_host_list = []
 
         self.as_addr_prefix = "10.0."
 
@@ -46,7 +47,7 @@ class SimulationTopology(Topo):
 
     def to_dict(self):
         dict = {}
-        dict["algo_dict"] = self.algo_dict
+        dict["algo_streams"] = self.algo_streams
         dict["host_bw"] = self.host_bw
         dict["host_delay"] = self.host_delay
         dict["srv_bw"] = self.srv_bw
@@ -61,6 +62,10 @@ class SimulationTopology(Topo):
                             defaultRoute="via " + client_subnet_prefix + '.1'
                             )
         self.host_list.append(host)
+        # Add only monitored hosts to the monitored hosts list
+        total_monitored_hosts = sum(self.algo_streams.measured_dict.values())
+        if index < total_monitored_hosts:
+            self.monitored_host_list.append(host)
 
     def build(self, **_opts):
         # The router configuration:
@@ -68,7 +73,7 @@ class SimulationTopology(Topo):
 
         # Hosts configuration:
         host_number = 0
-        for key, val in self.algo_dict.items():
+        for key, val in chain(self.algo_streams.measured_dict.items(), self.algo_streams.unmeasured_dict.items()):
             for h in range(0, val):
                 self.add_host(key, host_number)
                 self.addLink(self.host_list[host_number], self.rtr,

@@ -1,3 +1,10 @@
+import time
+debug_file_name = "qdisc_debugggg.txt"
+output_file = open(debug_file_name, 'w')
+output_file.write("-----------started qdisc script ---------")
+output_file.close()
+time.sleep(0.1)
+
 import signal
 import subprocess
 import traceback
@@ -5,7 +12,6 @@ from datetime import datetime
 from subprocess import Popen
 from sys import argv
 import re  # xu
-import time
 
 run = True
 
@@ -29,11 +35,10 @@ if __name__ == '__main__':
     print("tick_interval_accuracy: %d" % tick_interval_accuracy)
     # assert tick_interval_accuracy<0 or tick_interval_accuracy>4, "accuracy (last parameter) should be a number between 0 to 4"
     signal.signal(signal.SIGINT, signal_handler)
-    debug_file_name = "qdisc_debug/" + datetime.now().strftime("%H_%M_%S")
-    output_file = open(debug_file_name, 'w')
+    #debug_file_name = "qdisc_debug/" + datetime.now().strftime("%H_%M_%S")
 
     last_dropped = 0
-    output_file.write("-----------started qdisc script ---------")
+    output_file = open(debug_file_name, 'w')
     while run:
         try:
             p = Popen(["/sbin/tc", "-s", "qdisc", "show", "dev", if_name], stdout=subprocess.PIPE,

@@ -128,7 +128,9 @@ class SingleConnStatistics:
         try:
             qdisc_df = pd.read_csv(rtr_q_filename, sep="\t", header=None)
         except:
-            print ("rtr_q problem")
+            print ("ERROR: No qdisc file. Terminating!!!")
+            sys.exit()
+
         qdisc_df.columns = ['Time', 'Total Bytes in Queue', 'Num of Packets', 'Num of Drops']
         qdisc_df['Time'] = qdisc_df['Time'].map(lambda time_str: time_str_to_timedelta(time_str))
         qdisc_df = qdisc_df.set_index('Time')

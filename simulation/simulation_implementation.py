@@ -1,16 +1,17 @@
 #!/usr/bin/python3
-
-import os
+import sys
+sys.path.append(".")
 import os.path
 import threading
 from pathlib import Path
 import random
 import numpy
 from multiprocessing import Process
-
 from enum import Enum
-from signal import SIGINT
+from signal import SIGINT, SIGKILL
 from time import sleep
+
+from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.log import setLogLevel
 from mininet.net import Mininet
@@ -37,6 +38,12 @@ def create_csv(sim_obj, client, generate_graphs=False):
     q_line_obj = SingleConnStatistics(in_file, out_file, rtr_file, graph_file_name, plot_title, generate_graphs,
                                       interval_accuracy)
     q_line_obj.conn_df.to_csv(os.path.join(sim_obj.res_dirname, 'single_connection_stat_%s.csv' % client))
+
+
+class AlgoStreams:
+    def __init__(self, measured_dict, unmeasured_dict):
+        self.measured_dict = measured_dict
+        self.unmeasured_dict = unmeasured_dict
 
 
 class Iperf3Simulator:
@@ -71,9 +78,8 @@ class Iperf3Simulator:
         else:
             self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_test", time_str + "_" + self.simulation_name)
         """
-        self.res_dirname = os.path.join(Path(os.getcwd()).parent,
-                                        "classification_data/with_data_repetition/queue_size_500",
-                                        "unfixed_host_bw_srv_bw_with_random_timing_0.01_sampling_rate",
+        self.res_dirname = os.path.join(Path(os.getcwd()),
+                                        "classification",
                                         time_str + "_" + self.simulation_name)
 
         os.mkdir(self.res_dirname, 0o777)
@@ -81,14 +87,6 @@ class Iperf3Simulator:
         # Set results file names:
         self.iperf_out_filename = os.path.join(self.res_dirname, "iperf_output.txt")
         self.rtr_q_filename = os.path.join(self.res_dirname, "rtr_q.txt")
-
-        # Create the simulation parameters file
-        '''topo_param_filename = os.path.join(self.res_dirname, "topo_params.txt")
-        param_file = open(topo_param_filename, 'w')
-        param_dict = simulation_topology.to_dict()
-        param_json = json.dumps(param_dict)
-        param_file.write(param_json)
-        param_file.close()'''
 
     def SetCongestionControlAlgorithm(self, host, tcp_algo):
         """
@@ -99,7 +97,7 @@ class Iperf3Simulator:
 
     def process_results(self, generate_graphs=False, keep_dump_files=False):
         processes = list()
-        for client in self.simulation_topology.host_list:
+        for client in self.simulation_topology.monitored_host_list:
             # x = threading.Thread(target=create_csv, args=(self, client))
             x = Process(target=create_csv, args=(self, client))
             processes.append(x)
@@ -127,7 +125,6 @@ class Iperf3Simulator:
 
     def StartSimulation(self):
         self.net.start()
-        # CLI(self.net)
 
         srv = self.net.getNodeByName(self.simulation_topology.srv)
         srv_ip = srv.IP()
@@ -141,6 +138,7 @@ class Iperf3Simulator:
         if self.background_noise > 0:
             noise_gen.popen('python noise_generator.py %s %s' % (srv_ip, self.background_noise))
         client_counter = 0
+
         for client in self.simulation_topology.host_list:
             # Modify TCP algorithms (because iperf3 does not support vegas in -C parameter):
             cwnd_algo = client[0:client.find("_")]
@@ -156,18 +154,21 @@ class Iperf3Simulator:
             srv_cmd = 'iperf3 -s -p %d &' % test_port
             srv_procs.append(srv.popen(srv_cmd))
 
-            # Throughput measuring- using tcpdump:
-            # Running tcpdump on client side, saving to txt file (a separate txt file for each client):
-            capture_filename = os.path.join(self.res_dirname, "client_%s.txt" % client)
-            interface_name = "r-%s" % client
-            cmd = "tcpdump -n -i %s 'tcp port %d'>%s&" % (interface_name, test_port, capture_filename)
-            rtr.cmd(cmd)
+            # Run tcpdump only on monitored hosts
+            if client in self.simulation_topology.monitored_host_list:
+                # Throughput measuring- using tcpdump:
+                # Running tcpdump on client side, saving to txt file (a separate txt file for each client):
+                capture_filename = os.path.join(self.res_dirname, "client_%s.txt" % client)
+                interface_name = "r-%s" % client
+                cmd = "tcpdump -n -i %s 'tcp port %d'>%s&" % (interface_name, test_port, capture_filename)
+                rtr.cmd(cmd)
 
-            # Running tcpdump on server side, saving to txt file (a separate txt file for each client):
-            capture_filename = os.path.join(self.res_dirname, "server_%s.txt" % client)
-            self.file_captures.append(capture_filename)
-            cmd = "tcpdump -n -i r-srv 'tcp port %d'>%s&" % (test_port, capture_filename)
-            rtr.cmd(cmd)
+                # Running tcpdump on server side, saving to txt file (a separate txt file for each client):
+                capture_filename = os.path.join(self.res_dirname, "server_%s.txt" % client)
+                self.file_captures.append(capture_filename)
+                cmd = "tcpdump -n -i r-srv 'tcp port %d'>%s&" % (test_port, capture_filename)
+                rtr.cmd(cmd)
+
             client_counter += 1
 
             # Disable TSO for the client
@@ -191,7 +192,7 @@ class Iperf3Simulator:
             client_counter += 1
 
         # Gather statistics from the router:
-        q_proc = rtr.popen('python tc_qdisc_implementation.py r-srv %s %d'
+        q_proc = rtr.popen('python simulation/tc_qdisc_implementation.py r-srv %s %d'
                            % (self.rtr_q_filename, self.interval_accuracy))
         print("==========DEBUG==============" + str(q_proc.pid))
 
@@ -202,13 +203,16 @@ class Iperf3Simulator:
         # Kill the server's iperf -s processes, the router's queue monitor and tcpdumps:
         sleep(5)
         for process in srv_procs:
-            process.send_signal(SIGINT)
+            process.send_signal(SIGKILL)
         q_proc.send_signal(SIGINT)
 
         # make sure q_disc file is saved before leaving mininet
         for t in range(15):
             if os.path.isfile(self.rtr_q_filename):
                 break
+            else:
+                print("qdisc file not ready: " + str(t))
+                sleep(1)
         self.net.stop()
 
 
@@ -228,7 +232,8 @@ def create_sim_name(cwnd_algo_dict):
 
 if __name__ == '__main__':
     # interval accuracy: a number between 0 to 3. For value n, the accuracy will be set to 1/10^n
-    sleep(60 * 60 * 18)
+    #sleep(60 * 60 * 18)
+
     interval_accuracy = 3
     # Simulation's parameters initializing:
     srv_delay = 5e3
@@ -236,8 +241,9 @@ if __name__ == '__main__':
     # Algo = Enum('Algo', 'cubic reno bbr')
     # Algo = Enum('Algo', 'vegas bic westwood reno bbr cubic')
     Algo = Enum('Algo', 'reno bbr cubic')
-    algo_dict = {}
-    simulation_duration = 60  # 60 # 80 # 120  # seconds.
+    measured_dict = {}
+    unmeasured_dict = {}
+    simulation_duration = 20  # 60 # 80 # 120  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (
@@ -280,30 +286,26 @@ if __name__ == '__main__':
     # for queue_size in range(100, 1000, 100):
     # while iteration < 250:
     process_results = True
-    for srv_bw in numpy.linspace(50, 100, 5):
-        for host_bw in numpy.linspace(srv_bw, srv_bw + 100, 5):
+    for srv_bw in numpy.linspace(50, 100, 1):
+        for host_bw in numpy.linspace(srv_bw, srv_bw + 100, 1):
             # for queue_size in numpy.linspace(100, 1000, 10):
             iteration = 0
             while iteration < 10:
-                for algo in Algo:
-                    algo_dict[algo.name] = 1  # random.randint(2, 4) # how many flows of each type
-                algo_dict['reno'] = 10
-                algo_dict['bbr'] = 10
-                algo_dict['cubic'] = 10
+
+                measured_dict['reno'] = 2
+                measured_dict['bbr'] = 2
+                measured_dict['cubic'] = 2
+                unmeasured_dict['reno'] = 10
+                unmeasured_dict['bbr'] = 10
+                unmeasured_dict['cubic'] = 10
+                algo_streams = AlgoStreams(measured_dict, unmeasured_dict)
+
                 total_delay = 2 * (host_delay + srv_delay)
-                simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
+                simulation_topology = SimulationTopology(algo_streams, host_delay=host_delay, host_bw=host_bw,
                                                          srv_bw=srv_bw,
                                                          srv_delay=srv_delay, rtr_queue_size=queue_size)
-                simulation_name = create_sim_name(algo_dict)
+                simulation_name = create_sim_name(measured_dict)
                 iteration += 1
-                """
-                if algo.name == "cubic":
-                    simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration - 10,
-                                                iperf_start_after=10,
-                                                background_noise=background_noise,
-                                                interval_accuracy=interval_accuracy)
-                else:
-                """
                 simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
                                             # iperf_start_after=0,
                                             iperf_start_after=START_AFTER,
