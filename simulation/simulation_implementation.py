@@ -78,8 +78,9 @@ class Iperf3Simulator:
         else:
             self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_test", time_str + "_" + self.simulation_name)
         """
-        self.res_dirname = os.path.join(Path(os.getcwd()),
-                                        "classification",
+        self.res_dirname = os.path.join(Path(os.getcwd()).parent,
+                                        "classification_data",
+                                        "Roy",
                                         time_str + "_" + self.simulation_name)
 
         os.mkdir(self.res_dirname, 0o777)
@@ -97,7 +98,7 @@ class Iperf3Simulator:
 
     def process_results(self, generate_graphs=False, keep_dump_files=False):
         processes = list()
-        for client in self.simulation_topology.monitored_host_list:
+        for client in self.simulation_topology.measured_host_list:
             # x = threading.Thread(target=create_csv, args=(self, client))
             x = Process(target=create_csv, args=(self, client))
             processes.append(x)
@@ -154,8 +155,8 @@ class Iperf3Simulator:
             srv_cmd = 'iperf3 -s -p %d &' % test_port
             srv_procs.append(srv.popen(srv_cmd))
 
-            # Run tcpdump only on monitored hosts
-            if client in self.simulation_topology.monitored_host_list:
+            # Run tcpdump only on measured hosts
+            if client in self.simulation_topology.measured_host_list:
                 # Throughput measuring- using tcpdump:
                 # Running tcpdump on client side, saving to txt file (a separate txt file for each client):
                 capture_filename = os.path.join(self.res_dirname, "client_%s.txt" % client)
@@ -192,7 +193,7 @@ class Iperf3Simulator:
             client_counter += 1
 
         # Gather statistics from the router:
-        q_proc = rtr.popen('python simulation/tc_qdisc_implementation.py r-srv %s %d'
+        q_proc = rtr.popen('python tc_qdisc_implementation.py r-srv %s %d'
                            % (self.rtr_q_filename, self.interval_accuracy))
         print("==========DEBUG==============" + str(q_proc.pid))
 
@@ -243,7 +244,7 @@ if __name__ == '__main__':
     Algo = Enum('Algo', 'reno bbr cubic')
     measured_dict = {}
     unmeasured_dict = {}
-    simulation_duration = 20  # 60 # 80 # 120  # seconds.
+    simulation_duration = 60  # 60 # 80 # 120  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (
@@ -286,8 +287,8 @@ if __name__ == '__main__':
     # for queue_size in range(100, 1000, 100):
     # while iteration < 250:
     process_results = True
-    for srv_bw in numpy.linspace(50, 100, 1):
-        for host_bw in numpy.linspace(srv_bw, srv_bw + 100, 1):
+    for srv_bw in numpy.linspace(50, 100, 5):
+        for host_bw in numpy.linspace(srv_bw, srv_bw + 100, 5):
             # for queue_size in numpy.linspace(100, 1000, 10):
             iteration = 0
             while iteration < 10:

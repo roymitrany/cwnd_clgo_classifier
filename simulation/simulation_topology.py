@@ -17,6 +17,7 @@ from mininet.topo import Topo
 
 class LinuxRouter(Node):
     "A Node with IP forwarding enabled."
+
     def config(self, **params):
         super(LinuxRouter, self).config(**params)
         # Enable forwarding on the router
@@ -36,8 +37,8 @@ class SimulationTopology(Topo):
         self.srv_bw = srv_bw
         self.srv_delay = srv_delay
         self.rtr_queue_size = rtr_queue_size
-        self.host_list = []
-        self.monitored_host_list = []
+        self.host_list = []  # All hosts, measured and unmeasured
+        self.measured_host_list = []
 
         self.as_addr_prefix = "10.0."
 
@@ -62,10 +63,10 @@ class SimulationTopology(Topo):
                             defaultRoute="via " + client_subnet_prefix + '.1'
                             )
         self.host_list.append(host)
-        # Add only monitored hosts to the monitored hosts list
-        total_monitored_hosts = sum(self.algo_streams.measured_dict.values())
-        if index < total_monitored_hosts:
-            self.monitored_host_list.append(host)
+        # Add only measured hosts to the measured hosts list
+        total_measured_hosts = sum(self.algo_streams.measured_dict.values())
+        if index < total_measured_hosts:
+            self.measured_host_list.append(host)
 
     def build(self, **_opts):
         # The router configuration:
@@ -106,7 +107,7 @@ class SimulationTopology(Topo):
         # Add noise generator. Its index is the next one after the server:
         noise_gen_addr = self.as_addr_prefix + str(host_number) + '.10'
         self.noise_gen = self.addHost('noise_gen', ip=noise_gen_addr + '/24',
-                                defaultRoute="via " + self.as_addr_prefix + str(host_number) + '.1')
+                                      defaultRoute="via " + self.as_addr_prefix + str(host_number) + '.1')
         self.addLink(self.noise_gen, self.rtr,
                      intfName1='noise-gen-r',
                      intfName2='r-noise-gen',
