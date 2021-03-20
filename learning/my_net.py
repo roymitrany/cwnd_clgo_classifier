@@ -87,6 +87,7 @@ class my_net(Module):
         # x = x.squeeze(2)
 
         x = self.conv1d_layer5(x)
+        """
         x = x.transpose(1, 2)
         x = x.transpose(0, 1)
         x, _ = self.gru(x)
@@ -110,7 +111,8 @@ class my_net(Module):
         x = x.transpose(0, 1)
         x = x.transpose(1, 2)
         x = self.BN_final(x)
-
+        """
         x = self.conv1d_final(x)
         x = x.squeeze(2)
+
         return x

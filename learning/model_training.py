@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # importing the libraries
 import pickle
 from time import sleep
@@ -32,17 +33,23 @@ def train(training_loader, model, criterion, optimizer, is_deepcci):
         data = data.to(device)
         labeling = labeling.to(device)
         # prediction for training set
-        classification_labeling = model(data.type('torch.FloatTensor'))  # data must be a double
-        # measure accuracy and record loss
-        loss = criterion(classification_labeling, labeling.type('torch.LongTensor'))  # labeling must be an integer
+        if device == torch.device("cuda"):
+            classification_labeling = model(data.type('torch.cuda.FloatTensor'))  # data must be a double
+            # measure accuracy and record loss
+            loss = criterion(classification_labeling,
+                             labeling.type('torch.cuda.LongTensor'))  # labeling must be an integer
+        else:
+            classification_labeling = model(data.type('torch.FloatTensor'))  # data must be a double
+            # measure accuracy and record loss
+            loss = criterion(classification_labeling, labeling.type('torch.LongTensor'))  # labeling must be an integer
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         training_loss.append(loss.item())
         training_accuracy.append(accuracy(classification_labeling, labeling, topk=(1,), is_deepcci=is_deepcci).item())
-        if epoch % 2 == 0:
+        #if epoch % 2 == 0:
             # printing the validation loss
-            print('Epoch : ', epoch + 1, '\t', 'loss :', training_loss[epoch], '\t', 'accuracy:', training_accuracy[epoch])
+            #print('Iteration : ', epoch + 1, '\t', 'loss :', training_loss[epoch], '\t', 'accuracy:', training_accuracy[epoch])
     print('training is done')
     return training_loss, training_accuracy
 
@@ -58,14 +65,19 @@ def validate(validation_loader, model, criterion, is_deepcci):
             data = data.to(device)
             labeling = labeling.to(device)
             # prediction for validation set
-            classification_labeling = model(data.type('torch.FloatTensor'))  # data must be a double
-            # measure accuracy and record loss
-            loss = criterion(classification_labeling, labeling.type('torch.LongTensor'))  # labeling must be an integer
+            if device == torch.device("cuda"):
+                classification_labeling = model(data.type('torch.cuda.FloatTensor'))  # data must be a double
+                # measure accuracy and record loss
+                loss = criterion(classification_labeling, labeling.type('torch.cuda.LongTensor'))  # labeling must be an integer
+            else:
+                classification_labeling = model(data.type('torch.FloatTensor'))  # data must be a double
+                # measure accuracy and record loss
+                loss = criterion(classification_labeling, labeling.type('torch.LongTensor'))  # labeling must be an integer
             validation_loss.append(loss.item())
             validation_accuracy.append(accuracy(classification_labeling, labeling, topk=(1,), is_deepcci=is_deepcci).item())
-            if epoch % 2 == 0:
+            #if epoch % 2 == 0:
                 # printing the validation loss
-                print('Epoch : ', epoch + 1, '\t', 'loss :', validation_loss[epoch], '\t', 'accuracy:', validation_accuracy[epoch])
+                #print('Iteration : ', epoch + 1, '\t', 'loss :', validation_loss[epoch], '\t', 'accuracy:', validation_accuracy[epoch])
     print('validation is done')
     return validation_loss, validation_accuracy
 
@@ -85,7 +97,7 @@ def run(model, criterion, optimizer, scheduler, unused_parameters, is_deepcci, i
     return training_loss, training_accuracy, validation_loss, validation_accuracy
 
 if __name__ == '__main__':
-    # sleep(60*60*8)
+    #sleep(60*60*2)
     if IS_DEEPCCI:
         model = deepcci_net().to(device)
         is_deepcci = "deepcci_net"
@@ -104,15 +116,16 @@ if __name__ == '__main__':
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.9)
     tn = datetime.now()
     time_str = "_" + str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(tn.minute) + "-" + str(tn.second)
-    directory = graphs_path + "my_net with 1sec session duration"
+    #directory = graphs_path + "10bbr_cubic_reno_tcp_background_noise, "+ is_deepcci + ", " + "chunk_" + str(CHUNK_SIZE) +", shuffle_" + str(IS_SHUFFLE) + ", batch_" + str(BATCH_SIZE)
+    directory = graphs_path + is_deepcci + "_chunk_" + str(CHUNK_SIZE) +"_shuffle_" + str(IS_SHUFFLE) + "_batch_" + str(BATCH_SIZE)
     if not os.path.exists(directory):
         os.makedirs(directory)
     plot_file_name = directory + "/statistics.csv"
     training_loss, training_accuracy, validation_loss, validation_accuracy = run(model, criterion, optimizer, scheduler, unused_parameters, IS_DEEPCCI, IS_BATCH, plot_file_name)
     print('done')
     # saving the trained model
-    torch.save(model, training_parameters_path + '_mytraining.pt')
-    torch.save(model.state_dict(), training_parameters_path + '_mytraining_state_dict.pt')
+    torch.save(model, directory + '/model.pt')
+    torch.save(model.state_dict(), directory + '/state_dict.pt')
     plot_file_name = directory + "/training.png"
     training_graph = Graph_Creator(training_loss, training_accuracy, NUM_OF_EPOCHS, IS_BATCH, plot_file_name=plot_file_name, plot_fig_name="training statistics")
     training_graph.create_graphs()

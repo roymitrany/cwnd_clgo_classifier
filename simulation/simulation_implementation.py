@@ -80,9 +80,7 @@ class Iperf3Simulator:
         """
         self.res_dirname = os.path.join(Path(os.getcwd()).parent,
                                         "classification_data",
-                                        "Roy",
-                                        time_str + "_" + self.simulation_name)
-
+                                        "with_data_repetition", "queue_size_500", "tcp_noise", "START_AFTER", "75_bbr_cubic_reno_background_flows", time_str + "_" + self.simulation_name)
         os.mkdir(self.res_dirname, 0o777)
 
         # Set results file names:
@@ -233,7 +231,7 @@ def create_sim_name(cwnd_algo_dict):
 
 if __name__ == '__main__':
     # interval accuracy: a number between 0 to 3. For value n, the accuracy will be set to 1/10^n
-    #sleep(60 * 60 * 18)
+    sleep(60 * 60 * 24)
 
     interval_accuracy = 3
     # Simulation's parameters initializing:
@@ -244,7 +242,7 @@ if __name__ == '__main__':
     Algo = Enum('Algo', 'reno bbr cubic')
     measured_dict = {}
     unmeasured_dict = {}
-    simulation_duration = 60  # 60 # 80 # 120  # seconds.
+    simulation_duration = 60 + START_AFTER # 60 # 80 # 120  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (
@@ -274,8 +272,8 @@ if __name__ == '__main__':
     """
     # background_noise = 1000
     background_noise = 0
-    host_delay = 25
-    srv_delay = 25
+    host_delay = 25 #2.5
+    srv_delay = 25 #2.5
     iteration = 0
 
     host_bw = 50
@@ -293,12 +291,12 @@ if __name__ == '__main__':
             iteration = 0
             while iteration < 10:
 
-                measured_dict['reno'] = 2
-                measured_dict['bbr'] = 2
-                measured_dict['cubic'] = 2
-                unmeasured_dict['reno'] = 10
-                unmeasured_dict['bbr'] = 10
-                unmeasured_dict['cubic'] = 10
+                measured_dict['reno'] = 1
+                measured_dict['bbr'] = 1
+                measured_dict['cubic'] = 1
+                unmeasured_dict['reno'] = 25
+                unmeasured_dict['bbr'] = 25
+                unmeasured_dict['cubic'] = 25
                 algo_streams = AlgoStreams(measured_dict, unmeasured_dict)
 
                 total_delay = 2 * (host_delay + srv_delay)

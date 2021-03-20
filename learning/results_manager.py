@@ -109,7 +109,11 @@ class ResultsManager:
 
         # Build dataframe array and train array
         train_list = list()
+        iteration = 0
         for (iter_name, res_folder) in self.res_folder_dict.items():
+            if chunk_size < 5000 and iteration > 4: # added for 1 second session duration- overfitting debugging.
+                break
+            iteration += 1
             for csv_file in res_folder.csv_files_list:
                 csv_filename = os.path.join(res_folder.res_path, csv_file)
                 with open(csv_filename) as f:
@@ -117,6 +121,8 @@ class ResultsManager:
                     stat_df = pd.read_csv(csv_filename, index_col=None, header=0)
                     if row_count - 1 < min_num_of_rows:
                         continue
+                    # remove samples taken before all flows have started sessions:
+                    #stat_df = stat_df[START_AFTER:]
                     # remove samples that were taken after the conventional measuring time:
                     stat_df = stat_df.take(stat_df.index[row_count - min_num_of_rows - 1:])
                     # keep only samples taken between the random beginning and end of all flows:

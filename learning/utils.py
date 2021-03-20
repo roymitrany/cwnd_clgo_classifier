@@ -2,10 +2,13 @@ import os
 import torch
 import torch.utils as torch_utils
 import numpy
+import re
+import statistics
 from sklearn.model_selection import train_test_split
 from torch.nn import Linear, ReLU, CrossEntropyLoss, Sequential, Conv2d, MaxPool2d, Module, BatchNorm2d
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 # import project functions
 from learning.env import *
 from learning.results_manager import *
@@ -21,8 +24,8 @@ BATCH_SIZE = 32
 TRAINING_VALIDATION_RATIO = 0.3
 """
 from learning.env import *
-# GPU
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+from numpy import loadtxt
+
 
 def reshape_deepcci_data(input_data, validation_data, input_labeling, validation_labeling):
     reshape_vector = numpy.ones(DEEPCCI_NUM_OF_TIME_SAMPLES)
@@ -62,7 +65,7 @@ def reshape_my_data(input_data, validation_data, input_labeling, validation_labe
 def create_dataloader(data, labeling, is_batch):
     dataset = torch_utils.data.TensorDataset(data, labeling)
     if is_batch:
-        dataloader = torch_utils.data.DataLoader(dataset, batch_size=BATCH_SIZE)
+        dataloader = torch_utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=IS_SHUFFLE)#batch_size=int(len(data) / NUM_OF_BATCHES))
     else:
         dataloader = torch_utils.data.DataLoader(dataset, batch_size=len(data))
     return dataloader
@@ -137,6 +140,128 @@ def accuracy(output, target, topk, is_deepcci):
         result_summary[i] = torch.FloatTensor(result_summary[i])
         result_summary[i] = [torch.mean(result_summary[i], -1)]
     return result_summary
+
+def accuracy_per_type(output, target, list_of_classes):
+
+    curr_output = output
+    curr_target = target
+
+    with torch.no_grad():
+        batch_size = curr_target.size(0)
+        _, pred = torch.max(curr_output, 1)
+        acc = [0 for c in list_of_classes]
+        for c in list_of_classes:
+            acc[c] = ((pred == curr_target) * (curr_target == c)).float() / (max(curr_target == c).sum(), 1)
+    return acc.mul_(100.0 / batch_size)
+
+
+def get_accuracy_vs_session_duration(results_path, txt_filename, plot_name, session_duration):
+    my_net_accuracy_list = []
+    deepcci_net_accuracy_list = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir):
+            continue
+        if session_duration is not None:
+            if len(re.findall(str(session_duration)+'_', res_dir)) == 0:
+                continue
+        res_file = os.path.join(res_dir, txt_filename)
+        with open(res_file) as f:
+            accuracy = f.readlines()
+            accuracy = [x.strip() for x in accuracy]
+            accuracy = [float(i) for i in accuracy]
+            if "my_net" in res_file:
+                my_net_accuracy_list.append(statistics.mean(accuracy[80:]))
+            else:
+                deepcci_net_accuracy_list.append(statistics.mean(accuracy[80:]))
+    return my_net_accuracy_list, deepcci_net_accuracy_list
+
+
+def create_acuuracy_vs_session_duration_graph(results_path, txt_filename, plot_name, session_duration):
+    my_net_accuracy_list, deepcci_net_accuracy_list = get_accuracy_vs_session_duration(results_path, txt_filename, plot_name, session_duration)
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    p1, = plt.plot(session_duration, my_net_accuracy_list)
+    p2, = plt.plot(session_duration, deepcci_net_accuracy_list[::-1])
+    plt.title(plot_name)
+    plt.legend((p1, p2), ('my_net', 'deepcci_net'))
+    axes = plt.gca()
+    axes.set(xlabel='session duration[seconds]', ylabel='accuracy')
+    #axes.set_xlim([0, len(my_net_accuracy_list)])
+    plt.xticks(session_duration)
+    axes.set_ylim([0, numpy.amax(my_net_accuracy_list)])
+    axes.grid()
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+    """
+    from learning.utils import *
+    result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/unfixed_session_duration/30_background_tcp_flows"
+    create_2d_graph_from_file(result_path,"validation_accuracy","accuracy_vs_session_duration", [1, 3, 6, 10, 30, 60])
+    """
+
+def create_acuuracy_vs_number_of_flows_graph(results_path, txt_filename, plot_name, number_of_flows, session_duration):
+    my_net_accuracy_list = []
+    deepcci_net_accuracy_list = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir):
+            continue
+        my_net_accuracy, deepcci_net_accuracy = get_accuracy_vs_session_duration(res_dir, txt_filename, plot_name, session_duration)
+        my_net_accuracy_list.append(my_net_accuracy)
+        deepcci_net_accuracy_list.append(deepcci_net_accuracy[::-1])
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    p1, = plt.plot(number_of_flows, my_net_accuracy_list)
+    p2, = plt.plot(number_of_flows, deepcci_net_accuracy_list[::-1])
+    plt.title(plot_name)
+    plt.legend((p1, p2), ('my_net', 'deepcci_net'))
+    axes = plt.gca()
+    axes.set(xlabel='session duration[seconds]', ylabel='accuracy')
+    #axes.set_xlim([0, len(my_net_accuracy_list)])
+    plt.xticks(number_of_flows)
+    axes.set_ylim([0, numpy.amax(my_net_accuracy_list)])
+    axes.grid()
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+    """
+    from learning.utils import *
+    result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/unfixed_session_duration/bbr_cubic_reno_background_tcp_flows/"
+    create_acuuracy_vs_number_of_flows_graph(result_path,"validation_accuracy","accuracy_vs_number_of_flows_60seconds_session_duration", [0, 15, 30, 75], 60000)
+    """
+
+
+def create_3d_graph_from_file(results_path, txt_filename, plot_name, x_values, y_values):
+    my_net_accuracy_list = []
+    deepcci_net_accuracy_list = []
+    X = []
+    Y = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir):
+            continue
+        my_net_accuracy_list_temp, deepcci_net_accuracy_list_temp = get_accuracy_vs_session_duration(res_dir, txt_filename, plot_name, x_values)
+        my_net_accuracy_list.append(my_net_accuracy_list_temp)
+        deepcci_net_accuracy_list.append(deepcci_net_accuracy_list_temp[::-1])
+        X.append(x_values)
+        Y.append(y_values)
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    #X, Y = np.meshgrid(x_values, y_values)
+    Z1 = np.array(my_net_accuracy_list)
+    Z2 = np.array(deepcci_net_accuracy_list)
+    ax.plot_surface(X, Y, Z1)
+    ax.plot_surface(X, Y, Z2)
+    ax.set_xlabel('session duration[seconds]')
+    ax.set_ylabel('number of background flows')
+    ax.set_zlabel('accuracy')
+    plt.title(plot_name)
+    plt.legend((Z1, Z2), ('my_net', 'deepcci_net'))
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+    """
+    from learning.utils import *
+    result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/unfixed_session_duration/"
+    create_3d_graph_from_file(result_path,"validation_accuracy","accuracy_vs_session_duration", [1, 3, 6, 10, 30, 60], [0, 15, 30, 75])
+    """
 
 
 class Graph_Creator:
