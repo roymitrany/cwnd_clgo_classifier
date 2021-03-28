@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # importing the libraries
 import pickle
+import threading
 from time import sleep
 from datetime import datetime
 # for evaluating the model
@@ -12,7 +13,8 @@ from torch.nn import Linear, ReLU, CrossEntropyLoss, Sequential, Conv2d, MaxPool
 from learning.utils import *
 from learning.my_net import *
 from learning.deepcci_net import *
-from learning.env import *
+#from learning.env import *
+import learning.env
 
 def init_weights(model):
     if type(model) == Linear:
@@ -97,7 +99,7 @@ def run(model, criterion, optimizer, scheduler, unused_parameters, is_deepcci, i
     return training_loss, training_accuracy, validation_loss, validation_accuracy
 
 if __name__ == '__main__':
-    #sleep(60*60*2)
+    #sleep(60*20)
     if IS_DEEPCCI:
         model = deepcci_net().to(device)
         is_deepcci = "deepcci_net"
@@ -109,7 +111,7 @@ if __name__ == '__main__':
         # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Connection Num of Drops', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-        # unused_parameters = None
+        unused_parameters = None
     model.apply(init_weights)
     criterion = CrossEntropyLoss().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
@@ -132,4 +134,25 @@ if __name__ == '__main__':
     plot_file_name = directory + "/validation.png"
     validation_graph = Graph_Creator(validation_loss, validation_accuracy, NUM_OF_EPOCHS, IS_BATCH, plot_file_name=plot_file_name, plot_fig_name="validation statistics")
     validation_graph.create_graphs()
+
+"""
+if __name__ == '__main__':
+    # Automatic graphs generation:
+    #for IS_DEEPCCI in [False, True]:
+    for IS_DEEPCCI in [False]:
+        number_of_flows = [0, 15, 30, 75]
+        for flow in number_of_flows:
+            dir = str(flow) + '_bbr_cubic_reno_background_flows'
+            #training_files_path = os.path.join(absolute_path, cnn_train_and_test_files_directory, "START_AFTER/", dir)
+            training_files_path = os.path.join(absolute_path, cnn_train_and_test_files_directory, dir)
+            dir = str(flow) + '_background_tcp_flows/'
+            graphs_path = os.path.join(absolute_path,
+                                       #r'graphs/unfixed_session_duration/START_AFTER/' + dir)
+                                       r'graphs/unfixed_session_duration/bbr_cubic_reno_background_tcp_flows_with_all_parameters/' + dir)
+            for CHUNK_SIZE in [6000, 10000, 30000, 60000]:
+                #cmd = ['python', 'model_training.py']
+                #theproc = subprocess.Popen([sys.executable, "model_training.py"]).wait()
+                run_in_loop()
+                sleep(60 * 2)
+"""
 

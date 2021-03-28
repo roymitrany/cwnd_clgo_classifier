@@ -242,7 +242,7 @@ if __name__ == '__main__':
     Algo = Enum('Algo', 'reno bbr cubic')
     measured_dict = {}
     unmeasured_dict = {}
-    simulation_duration = 60 + START_AFTER # 60 # 80 # 120  # seconds.
+    simulation_duration = 60 + START_AFTER / 1000 # 60 # 80 # 120  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (

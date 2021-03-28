@@ -114,5 +114,4 @@ class my_net(Module):
         """
         x = self.conv1d_final(x)
         x = x.squeeze(2)
-
         return x

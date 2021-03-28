@@ -2,6 +2,8 @@ import abc
 import os
 import re
 import glob
+
+import numpy
 from dataclasses import dataclass
 import numpy as np
 from typing import Dict

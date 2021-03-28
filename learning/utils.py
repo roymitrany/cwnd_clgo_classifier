@@ -155,15 +155,16 @@ def accuracy_per_type(output, target, list_of_classes):
     return acc.mul_(100.0 / batch_size)
 
 
-def get_accuracy_vs_session_duration(results_path, txt_filename, plot_name, session_duration):
+def get_accuracy_vs_session_duration(results_path, txt_filename, plot_name, single_session_duration):
     my_net_accuracy_list = []
     deepcci_net_accuracy_list = []
     for dir_name in os.listdir(results_path):
+        session_duration = re.findall(r'\d+', dir_name)
         res_dir = os.path.join(results_path, dir_name)
         if not os.path.isdir(res_dir):
             continue
-        if session_duration is not None:
-            if len(re.findall(str(session_duration)+'_', res_dir)) == 0:
+        if single_session_duration is not None:
+            if len(re.findall(str(single_session_duration)+'_', res_dir)) == 0:
                 continue
         res_file = os.path.join(res_dir, txt_filename)
         with open(res_file) as f:
@@ -171,53 +172,72 @@ def get_accuracy_vs_session_duration(results_path, txt_filename, plot_name, sess
             accuracy = [x.strip() for x in accuracy]
             accuracy = [float(i) for i in accuracy]
             if "my_net" in res_file:
-                my_net_accuracy_list.append(statistics.mean(accuracy[80:]))
+                my_net_accuracy_list.append((statistics.mean(accuracy[80:]), int(session_duration[0]) / 1000))
             else:
-                deepcci_net_accuracy_list.append(statistics.mean(accuracy[80:]))
+                deepcci_net_accuracy_list.append((statistics.mean(accuracy[80:]), int(session_duration[0]) / 1000))
     return my_net_accuracy_list, deepcci_net_accuracy_list
 
 
-def create_acuuracy_vs_session_duration_graph(results_path, txt_filename, plot_name, session_duration):
-    my_net_accuracy_list, deepcci_net_accuracy_list = get_accuracy_vs_session_duration(results_path, txt_filename, plot_name, session_duration)
+def create_acuuracy_vs_session_duration_graph(results_path, txt_filename, plot_name):
+    my_net_accuracy_list, deepcci_net_accuracy_list = get_accuracy_vs_session_duration(results_path, txt_filename, plot_name)
     plt.cla()  # clear the current axes
     plt.clf()  # clear the current figure
-    p1, = plt.plot(session_duration, my_net_accuracy_list)
-    p2, = plt.plot(session_duration, deepcci_net_accuracy_list[::-1])
+    my_net_accuracy_list = sorted(my_net_accuracy_list, key=lambda tup: tup[1])
+    session_duration = [x[1] for x in my_net_accuracy_list]
+    accuracy = [x[0] for x in my_net_accuracy_list]
+    p1, = plt.plot(session_duration, accuracy)
     plt.title(plot_name)
-    plt.legend((p1, p2), ('my_net', 'deepcci_net'))
+    if deepcci_net_accuracy_list:
+        deepcci_net_accuracy_list = sorted(deepcci_net_accuracy_list, key=lambda tup: tup[1])
+        session_duration = [x[1] for x in deepcci_net_accuracy_list]
+        accuracy = [x[0] for x in deepcci_net_accuracy_list]
+        p2, = plt.plot(session_duration, accuracy)
+        plt.legend((p1, p2), ('my_net', 'deepcci_net'))
     axes = plt.gca()
     axes.set(xlabel='session duration[seconds]', ylabel='accuracy')
     #axes.set_xlim([0, len(my_net_accuracy_list)])
-    plt.xticks(session_duration)
+    #plt.xticks(session_duration)
     axes.set_ylim([0, numpy.amax(my_net_accuracy_list)])
     axes.grid()
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
     """
     from learning.utils import *
     result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/unfixed_session_duration/30_background_tcp_flows"
-    create_2d_graph_from_file(result_path,"validation_accuracy","accuracy_vs_session_duration", [1, 3, 6, 10, 30, 60])
+    create_acuuracy_vs_session_duration_graph(result_path,"validation_accuracy","accuracy_vs_session_duration", [1, 3, 6, 10, 30, 60])
     """
 
-def create_acuuracy_vs_number_of_flows_graph(results_path, txt_filename, plot_name, number_of_flows, session_duration):
+def create_acuuracy_vs_number_of_flows_graph(results_path, txt_filename, plot_name, session_duration):
     my_net_accuracy_list = []
     deepcci_net_accuracy_list = []
     for dir_name in os.listdir(results_path):
+        number_of_flows = re.findall(r'\d+', dir_name)
         res_dir = os.path.join(results_path, dir_name)
         if not os.path.isdir(res_dir):
             continue
         my_net_accuracy, deepcci_net_accuracy = get_accuracy_vs_session_duration(res_dir, txt_filename, plot_name, session_duration)
-        my_net_accuracy_list.append(my_net_accuracy)
-        deepcci_net_accuracy_list.append(deepcci_net_accuracy[::-1])
+        if my_net_accuracy:
+            my_net_accuracy_list_accuracy = [x[0] for x in my_net_accuracy]
+            my_net_accuracy_list.append((int(number_of_flows[0]), my_net_accuracy_list_accuracy[0]))
+        if deepcci_net_accuracy:
+            deepcci_net_accuracy_list_accuracy = [x[0] for x in deepcci_net_accuracy]
+            deepcci_net_accuracy_list.append((int(number_of_flows[0]), deepcci_net_accuracy_list_accuracy[0]))
     plt.cla()  # clear the current axes
     plt.clf()  # clear the current figure
-    p1, = plt.plot(number_of_flows, my_net_accuracy_list)
-    p2, = plt.plot(number_of_flows, deepcci_net_accuracy_list[::-1])
     plt.title(plot_name)
-    plt.legend((p1, p2), ('my_net', 'deepcci_net'))
+    my_net_accuracy_list = sorted(my_net_accuracy_list, key=lambda tup: tup[0])
+    number_of_flows = [x[0] for x in my_net_accuracy_list]
+    accuracy = [x[1] for x in my_net_accuracy_list]
+    p1, = plt.plot(number_of_flows, accuracy)
+    if deepcci_net_accuracy_list:
+        deepcci_net_accuracy_list = sorted(deepcci_net_accuracy_list, key=lambda tup: tup[0])
+        number_of_flows = [x[0] for x in deepcci_net_accuracy_list]
+        accuracy = [x[1] for x in deepcci_net_accuracy_list]
+        p2, = plt.plot(number_of_flows, accuracy)
+        plt.legend((p1, p2), ('my_net', 'deepcci_net'))
     axes = plt.gca()
-    axes.set(xlabel='session duration[seconds]', ylabel='accuracy')
+    axes.set(xlabel='number of flows', ylabel='accuracy')
     #axes.set_xlim([0, len(my_net_accuracy_list)])
-    plt.xticks(number_of_flows)
+    #plt.xticks(number_of_flows)
     axes.set_ylim([0, numpy.amax(my_net_accuracy_list)])
     axes.grid()
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
