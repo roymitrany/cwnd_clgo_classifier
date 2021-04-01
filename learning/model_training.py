@@ -29,6 +29,7 @@ def train(training_loader, model, criterion, optimizer, is_deepcci):
     model.train()
     training_loss = []
     training_accuracy = []
+    training_accuracy_per_type = []
     print('start training')
     for epoch, (data, labeling) in enumerate(training_loader):
         # use GPU
@@ -49,11 +50,12 @@ def train(training_loader, model, criterion, optimizer, is_deepcci):
         optimizer.step()
         training_loss.append(loss.item())
         training_accuracy.append(accuracy(classification_labeling, labeling, topk=(1,), is_deepcci=is_deepcci).item())
+        training_accuracy_per_type.append(accuracy_per_type(classification_labeling, labeling))
         #if epoch % 2 == 0:
             # printing the validation loss
             #print('Iteration : ', epoch + 1, '\t', 'loss :', training_loss[epoch], '\t', 'accuracy:', training_accuracy[epoch])
     print('training is done')
-    return training_loss, training_accuracy
+    return training_loss, training_accuracy, training_accuracy_per_type
 
 def validate(validation_loader, model, criterion, is_deepcci):
     # enter validation mode
@@ -61,6 +63,7 @@ def validate(validation_loader, model, criterion, is_deepcci):
     model.eval()
     validation_loss = []
     validation_accuracy = []
+    validation_accuracy_per_type = []
     with torch.no_grad():
         for epoch, (data, labeling) in enumerate(validation_loader):
             # use GPU
@@ -77,29 +80,31 @@ def validate(validation_loader, model, criterion, is_deepcci):
                 loss = criterion(classification_labeling, labeling.type('torch.LongTensor'))  # labeling must be an integer
             validation_loss.append(loss.item())
             validation_accuracy.append(accuracy(classification_labeling, labeling, topk=(1,), is_deepcci=is_deepcci).item())
+            validation_accuracy_per_type.append(accuracy_per_type(classification_labeling, labeling))
             #if epoch % 2 == 0:
                 # printing the validation loss
                 #print('Iteration : ', epoch + 1, '\t', 'loss :', validation_loss[epoch], '\t', 'accuracy:', validation_accuracy[epoch])
     print('validation is done')
-    return validation_loss, validation_accuracy
+    return validation_loss, validation_accuracy, validation_accuracy_per_type
 
 def run(model, criterion, optimizer, scheduler, unused_parameters, is_deepcci, is_batch, plot_file_name):
     normalization_type = AbsoluteNormalization1()
     training_loader, validation_loader = create_data(training_files_path=training_files_path, normalization_type=normalization_type, unused_parameters=unused_parameters, is_deepcci=is_deepcci, is_batch=is_batch)
     training_loss, training_accuracy, validation_loss, validation_accuracy = ([None] * NUM_OF_EPOCHS for i in range(4))
+    training_accuracy_per_type, validation_accuracy_per_type = ([None] * NUM_OF_EPOCHS for i in range(2))
     f_graph = open(plot_file_name, "w+")
     f_graph.write('epoch, training_loss, training_accuracy, validation_loss, validation_accuracy\n')
     for epoch in range(0, NUM_OF_EPOCHS):
         print('start epoch {}'.format(epoch))
-        training_loss[epoch], training_accuracy[epoch] = train(training_loader, model, criterion, optimizer, is_deepcci)
-        validation_loss[epoch], validation_accuracy[epoch] = validate(validation_loader, model, criterion, is_deepcci)
+        training_loss[epoch], training_accuracy[epoch], training_accuracy_per_type[epoch] = train(training_loader, model, criterion, optimizer, is_deepcci)
+        validation_loss[epoch], validation_accuracy[epoch], validation_accuracy_per_type[epoch] = validate(validation_loader, model, criterion, is_deepcci)
         scheduler.step()
         f_graph.write("{},{},{},{},{}\n".format(epoch, training_loss[epoch][-1], training_accuracy[epoch][-1], validation_loss[epoch][-1], validation_accuracy[epoch][-1]))
     f_graph.close()
-    return training_loss, training_accuracy, validation_loss, validation_accuracy
+    return training_loss, training_accuracy, training_accuracy_per_type, validation_loss, validation_accuracy, validation_accuracy_per_type
 
 if __name__ == '__main__':
-    #sleep(60*20)
+    sleep(60*60*3)
     if IS_DEEPCCI:
         model = deepcci_net().to(device)
         is_deepcci = "deepcci_net"
@@ -123,16 +128,16 @@ if __name__ == '__main__':
     if not os.path.exists(directory):
         os.makedirs(directory)
     plot_file_name = directory + "/statistics.csv"
-    training_loss, training_accuracy, validation_loss, validation_accuracy = run(model, criterion, optimizer, scheduler, unused_parameters, IS_DEEPCCI, IS_BATCH, plot_file_name)
+    training_loss, training_accuracy, training_accuracy_per_type, validation_loss, validation_accuracy, validation_accuracy_per_type = run(model, criterion, optimizer, scheduler, unused_parameters, IS_DEEPCCI, IS_BATCH, plot_file_name)
     print('done')
     # saving the trained model
     torch.save(model, directory + '/model.pt')
     torch.save(model.state_dict(), directory + '/state_dict.pt')
     plot_file_name = directory + "/training.png"
-    training_graph = Graph_Creator(training_loss, training_accuracy, NUM_OF_EPOCHS, IS_BATCH, plot_file_name=plot_file_name, plot_fig_name="training statistics")
+    training_graph = Graph_Creator(training_loss, training_accuracy, training_accuracy_per_type, NUM_OF_EPOCHS, IS_BATCH, plot_file_name=plot_file_name, plot_fig_name="training statistics")
     training_graph.create_graphs()
     plot_file_name = directory + "/validation.png"
-    validation_graph = Graph_Creator(validation_loss, validation_accuracy, NUM_OF_EPOCHS, IS_BATCH, plot_file_name=plot_file_name, plot_fig_name="validation statistics")
+    validation_graph = Graph_Creator(validation_loss, validation_accuracy, validation_accuracy_per_type, NUM_OF_EPOCHS, IS_BATCH, plot_file_name=plot_file_name, plot_fig_name="validation statistics")
     validation_graph.create_graphs()
 
 """

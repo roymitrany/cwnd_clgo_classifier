@@ -141,18 +141,22 @@ def accuracy(output, target, topk, is_deepcci):
         result_summary[i] = [torch.mean(result_summary[i], -1)]
     return result_summary
 
-def accuracy_per_type(output, target, list_of_classes):
-
+def accuracy_per_type(output, target, topk=(1,)):
+    maxk = max(topk)
     curr_output = output
     curr_target = target
-
+    num_of_classes = len(output[0])
     with torch.no_grad():
         batch_size = curr_target.size(0)
-        _, pred = torch.max(curr_output, 1)
-        acc = [0 for c in list_of_classes]
-        for c in list_of_classes:
-            acc[c] = ((pred == curr_target) * (curr_target == c)).float() / (max(curr_target == c).sum(), 1)
-    return acc.mul_(100.0 / batch_size)
+        _, pred = curr_output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        acc = [0 for c in range(num_of_classes)]
+        for c in range(num_of_classes):
+            num_of_traget = curr_target == c
+            correct = pred.eq(curr_target.view(1, -1).expand_as(pred)) * num_of_traget
+            acc[c] = correct[:1].view(-1).float().sum(0, keepdim=True).mul_(100.0 / (num_of_traget.sum())).item()
+            #acc[c] = ((pred == curr_target) * (curr_target == c)).float() / (max(curr_target == c).sum(), 1)
+    return acc
 
 
 def get_accuracy_vs_session_duration(results_path, txt_filename, plot_name, single_session_duration):
@@ -285,16 +289,17 @@ def create_3d_graph_from_file(results_path, txt_filename, plot_name, x_values, y
 
 
 class Graph_Creator:
-    def __init__(self, loss, accuracy, num_of_epochs, is_batch, plot_file_name="Graph.png", plot_fig_name="Statistics"):
+    def __init__(self, loss, accuracy, accuracy_per_type, num_of_epochs, is_batch, plot_file_name="Graph.png", plot_fig_name="Statistics"):
         #loss = np.array(loss, dtype=np.float32)
         #accuracy = np.array(accuracy, dtype=np.float32)
         # clear plt before starting new statistics, otherwise it add up to the previous one
         self.is_batch = is_batch
         self.loss = loss
         self.accuracy = accuracy
+        self.accuracy_per_type = accuracy_per_type
         plt.cla()  # clear the current axes
         plt.clf()  # clear the current figure
-        fig1, (ax1, ax2) = plt.subplots(2, constrained_layout=True)
+        fig1, (ax1, ax2, ax3) = plt.subplots(3, constrained_layout=True)
         fig1.suptitle(plot_fig_name)
         ax1.set(xlabel='epoch', ylabel='loss')
         ax1.set_xlim([0, num_of_epochs])
@@ -305,20 +310,22 @@ class Graph_Creator:
         self.fig1 = fig1
         self.loss_ax = ax1
         self.accuracy_ax = ax2
+        self.accuracy_per_type_ax = ax3
         if self.is_batch:
             self.average_loss = numpy.mean(loss, axis=1)
             self.average_accuracy = numpy.mean(accuracy, axis=1)
-            fig2, (ax3, ax4) = plt.subplots(2, constrained_layout=True)
+            self.average_accuracy_per_type = numpy.mean(accuracy_per_type, axis=1)
+            fig2, (ax4, ax5) = plt.subplots(2, constrained_layout=True)
             fig2.suptitle(plot_fig_name)
-            ax3.set(xlabel='epoch', ylabel='loss')
-            ax3.set_xlim([0, num_of_epochs])
-            ax3.set_ylim([0, numpy.amax(loss)])
-            ax4.set(xlabel='epoch', ylabel='accuracy')
+            ax4.set(xlabel='epoch', ylabel='loss')
             ax4.set_xlim([0, num_of_epochs])
-            ax4.set_ylim([0, numpy.amax(accuracy)])
+            ax4.set_ylim([0, numpy.amax(loss)])
+            ax5.set(xlabel='epoch', ylabel='accuracy')
+            ax5.set_xlim([0, num_of_epochs])
+            ax5.set_ylim([0, numpy.amax(accuracy)])
             self.fig2 = fig2
-            self.batches_loss_ax = ax3
-            self.batches_accuracy_ax = ax4
+            self.batches_loss_ax = ax4
+            self.batches_accuracy_ax = ax5
         self.plot_file_name = plot_file_name
 
     def create_loss_plot(self, loss, ax):
@@ -332,22 +339,33 @@ class Graph_Creator:
         accuracy_df.plot(kind='line', ax=ax, title='accuracy')
         self.write_to_file("accuracy", accuracy)
 
+    def create_accuracy_per_type_plot(self, accuracy_per_type, ax):
+        accuracy_per_type_df = pd.DataFrame(accuracy_per_type)
+        for type in range(accuracy_per_type_df.shape[1]):
+            accuracy_per_type_df[type].plot(kind='line', ax=ax, title='accuracy per type')
+        ax.legend(["bbr", "cubic", "reno"])
+        self.write_to_file("accuracy_per_type", accuracy_per_type)
+
     def create_graphs(self):
         if self.is_batch:
             self.create_loss_plot(self.average_loss, self.loss_ax)
             self.create_accuracy_plot(self.average_accuracy, self.accuracy_ax)
+            self.create_accuracy_per_type_plot(self.average_accuracy_per_type, self.accuracy_per_type_ax)
             self.loss_ax.grid()
             self.accuracy_ax.grid()
+            self.accuracy_per_type_ax.grid()
             self.save_and_show(self.fig1)
             self.plot_file_name = self.plot_file_name.replace('.png', ('_batches_figures.png'))
             self.create_loss_plot(self.loss, self.batches_loss_ax)
             self.create_accuracy_plot(self.accuracy, self.batches_accuracy_ax)
+            # self.create_accuracy_per_type_plot(self.accuracy_per_type, self.batches_accuracy_per_type_ax)
             self.batches_loss_ax.grid()
             self.batches_accuracy_ax.grid()
             self.save_and_show(self.fig2)
         else:
             self.create_loss_plot(self.loss, self.loss_ax)
             self.create_accuracy_plot(self.accuracy, self.accuracy_ax)
+            self.create_accuracy_per_type_plot(self.average_accuracy_per_type, self.accuracy_per_type_ax)
             self.loss_ax.grid()
             self.accuracy_ax.grid()
             self.save_and_show(self.fig1)
