@@ -50,7 +50,8 @@ def train(training_loader, model, criterion, optimizer, is_deepcci):
         optimizer.step()
         training_loss.append(loss.item())
         training_accuracy.append(accuracy(classification_labeling, labeling, topk=(1,), is_deepcci=is_deepcci).item())
-        training_accuracy_per_type.append(accuracy_per_type(classification_labeling, labeling))
+        if not is_deepcci:
+            training_accuracy_per_type.append(accuracy_per_type(classification_labeling, labeling))
         #if epoch % 2 == 0:
             # printing the validation loss
             #print('Iteration : ', epoch + 1, '\t', 'loss :', training_loss[epoch], '\t', 'accuracy:', training_accuracy[epoch])
@@ -80,7 +81,8 @@ def validate(validation_loader, model, criterion, is_deepcci):
                 loss = criterion(classification_labeling, labeling.type('torch.LongTensor'))  # labeling must be an integer
             validation_loss.append(loss.item())
             validation_accuracy.append(accuracy(classification_labeling, labeling, topk=(1,), is_deepcci=is_deepcci).item())
-            validation_accuracy_per_type.append(accuracy_per_type(classification_labeling, labeling))
+            if not is_deepcci:
+                validation_accuracy_per_type.append(accuracy_per_type(classification_labeling, labeling))
             #if epoch % 2 == 0:
                 # printing the validation loss
                 #print('Iteration : ', epoch + 1, '\t', 'loss :', validation_loss[epoch], '\t', 'accuracy:', validation_accuracy[epoch])
@@ -89,7 +91,7 @@ def validate(validation_loader, model, criterion, is_deepcci):
 
 def run(model, criterion, optimizer, scheduler, unused_parameters, is_deepcci, is_batch, plot_file_name):
     normalization_type = AbsoluteNormalization1()
-    training_loader, validation_loader = create_data(training_files_path=training_files_path, normalization_type=normalization_type, unused_parameters=unused_parameters, is_deepcci=is_deepcci, is_batch=is_batch)
+    training_loader, validation_loader = create_data(training_files_path=training_files_path, normalization_type=normalization_type, unused_parameters=unused_parameters, is_deepcci=is_deepcci, is_batch=is_batch, diverse_training_folder=diverse_training_folder)
     training_loss, training_accuracy, validation_loss, validation_accuracy = ([None] * NUM_OF_EPOCHS for i in range(4))
     training_accuracy_per_type, validation_accuracy_per_type = ([None] * NUM_OF_EPOCHS for i in range(2))
     f_graph = open(plot_file_name, "w+")
@@ -103,8 +105,16 @@ def run(model, criterion, optimizer, scheduler, unused_parameters, is_deepcci, i
     f_graph.close()
     return training_loss, training_accuracy, training_accuracy_per_type, validation_loss, validation_accuracy, validation_accuracy_per_type
 
+def test_model(model, criterion, is_deepcci, is_batch):
+    normalization_type = AbsoluteNormalization1()
+    _, validation_loader = create_data(training_files_path=training_files_path, normalization_type=normalization_type, unused_parameters=unused_parameters, is_deepcci=is_deepcci, is_batch=is_batch, diverse_training_folder=diverse_training_folder)
+    validation_loss, validation_accuracy = ([None] * NUM_OF_EPOCHS for i in range(2))
+    validation_accuracy_per_type = [None] * NUM_OF_EPOCHS
+    validation_loss, validation_accuracy, validation_accuracy_per_type = validate(validation_loader, model, criterion, is_deepcci)
+    return numpy.mean(validation_loss), numpy.mean(validation_accuracy), numpy.mean(validation_accuracy_per_type, axis=0)
+
 if __name__ == '__main__':
-    sleep(60*60*3)
+    #sleep(60*30)
     if IS_DEEPCCI:
         model = deepcci_net().to(device)
         is_deepcci = "deepcci_net"
@@ -116,30 +126,40 @@ if __name__ == '__main__':
         # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Connection Num of Drops', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        #unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         unused_parameters = None
-    model.apply(init_weights)
-    criterion = CrossEntropyLoss().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.9)
     tn = datetime.now()
-    time_str = "_" + str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(tn.minute) + "-" + str(tn.second)
-    #directory = graphs_path + "10bbr_cubic_reno_tcp_background_noise, "+ is_deepcci + ", " + "chunk_" + str(CHUNK_SIZE) +", shuffle_" + str(IS_SHUFFLE) + ", batch_" + str(BATCH_SIZE)
-    directory = graphs_path + is_deepcci + "_chunk_" + str(CHUNK_SIZE) +"_shuffle_" + str(IS_SHUFFLE) + "_batch_" + str(BATCH_SIZE)
+    time_str = "_" + str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
+        tn.minute) + "-" + str(tn.second)
+    # directory = graphs_path + "10bbr_cubic_reno_tcp_background_noise, "+ is_deepcci + ", " + "chunk_" + str(CHUNK_SIZE) +", shuffle_" + str(IS_SHUFFLE) + ", batch_" + str(BATCH_SIZE)
+    directory = graphs_path + is_deepcci + "_chunk_" + str(CHUNK_SIZE) + "_shuffle_" + str(
+        IS_SHUFFLE) + "_batch_" + str(BATCH_SIZE)
     if not os.path.exists(directory):
         os.makedirs(directory)
     plot_file_name = directory + "/statistics.csv"
-    training_loss, training_accuracy, training_accuracy_per_type, validation_loss, validation_accuracy, validation_accuracy_per_type = run(model, criterion, optimizer, scheduler, unused_parameters, IS_DEEPCCI, IS_BATCH, plot_file_name)
-    print('done')
-    # saving the trained model
-    torch.save(model, directory + '/model.pt')
-    torch.save(model.state_dict(), directory + '/state_dict.pt')
-    plot_file_name = directory + "/training.png"
-    training_graph = Graph_Creator(training_loss, training_accuracy, training_accuracy_per_type, NUM_OF_EPOCHS, IS_BATCH, plot_file_name=plot_file_name, plot_fig_name="training statistics")
-    training_graph.create_graphs()
-    plot_file_name = directory + "/validation.png"
-    validation_graph = Graph_Creator(validation_loss, validation_accuracy, validation_accuracy_per_type, NUM_OF_EPOCHS, IS_BATCH, plot_file_name=plot_file_name, plot_fig_name="validation statistics")
-    validation_graph.create_graphs()
-
+    criterion = CrossEntropyLoss().to(device)
+    if IS_TEST_ONLY:
+        plot_file_name = directory + "/validation.png"
+        model.load_state_dict(torch.load(model_path))
+        validation_loss, validation_accuracy, validation_accuracy_per_type = test_model(model, criterion, IS_DEEPCCI, IS_BATCH)
+        with open(plot_file_name.replace('.png', ('_' + "f1")), 'w') as f:
+            for item in [validation_loss, validation_accuracy, validation_accuracy_per_type]:
+                f.write("%s\n" % item)
+    else:
+        model.apply(init_weights)
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.9)
+        training_loss, training_accuracy, training_accuracy_per_type, validation_loss, validation_accuracy, validation_accuracy_per_type = run(model, criterion, optimizer, scheduler, unused_parameters, IS_DEEPCCI, IS_BATCH, plot_file_name)
+        print('done')
+        # saving the trained model
+        torch.save(model, directory + '/model.pt')
+        torch.save(model.state_dict(), directory + '/state_dict.pt')
+        plot_file_name = directory + "/training.png"
+        training_graph = Graph_Creator(training_loss, training_accuracy, training_accuracy_per_type, NUM_OF_EPOCHS, IS_BATCH, plot_file_name=plot_file_name, plot_fig_name="training statistics")
+        training_graph.create_graphs()
+        plot_file_name = directory + "/validation.png"
+        validation_graph = Graph_Creator(validation_loss, validation_accuracy, validation_accuracy_per_type, NUM_OF_EPOCHS, IS_BATCH, plot_file_name=plot_file_name, plot_fig_name="validation statistics")
+        validation_graph.create_graphs()
 """
 if __name__ == '__main__':
     # Automatic graphs generation:

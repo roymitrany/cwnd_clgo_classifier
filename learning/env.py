@@ -16,27 +16,33 @@ global IS_DEEPCCI
 """
 
 absolute_path = r'/home/dean/PycharmProjects/cwnd_clgo_classifier/'
-cnn_train_and_test_files_directory = r'classification_data/with_data_repetition/queue_size_500/tcp_noise'
+cnn_train_and_test_files_directory = r'classification_data/with_data_repetition/queue_size_500/tcp_noise/'
 # cnn_train_and_test_files_directory = r'classification_data/without_data_repetition'
 # training_files_path = os.path.join(absolute_path, cnn_train_and_test_files_directory, r'bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_train')
-training_files_path = os.path.join(absolute_path, cnn_train_and_test_files_directory, r'START_AFTER/0_bbr_cubic_reno_background_flows')
-#training_files_path = os.path.join(absolute_path, cnn_train_and_test_files_directory, r'0_bbr_cubic_reno_background_flows_small_rtt_queue_size_500')
+training_files_path = os.path.join(absolute_path, cnn_train_and_test_files_directory, r'0_bbr_cubic_reno_background_flows')
+diverse_training_folder = [r'75_bbr_cubic_reno_background_flows', r'30_bbr_cubic_reno_background_flows', r'15_bbr_cubic_reno_background_flows', r'0_bbr_cubic_reno_background_flows']
+#training_files_path = os.path.join(absolute_path, cnn_train_and_test_files_directory)
+# training_files_path = os.path.join(absolute_path, cnn_train_and_test_files_directory, r'unfixed_host_bw_srv_bw_with_random_timing_1000udp')
+# training_files_path = os.path.join(absolute_path, cnn_train_and_test_files_directory, r'0_bbr_cubic_reno_background_flows_small_rtt_queue_size_500')
 # training_files_path = os.path.join(absolute_path, cnn_train_and_test_files_directory, r'10_vegas_background_flows')
-# training_files_path = os.path.join(absolute_path, cnn_train_and_test_files_directory, r'debugging')
+#training_files_path = os.path.join(absolute_path, cnn_train_and_test_files_directory, r'debugging')
 testing_files_path = os.path.join(absolute_path, cnn_train_and_test_files_directory, r'bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_test')
 training_parameters_path = os.path.join(absolute_path, r'cnn_training_parameters/')
 testing_results_path = os.path.join(absolute_path, r'data/test_results/')
 #graphs_path = os.path.join(absolute_path, r'graphs/unfixed_session_duration/bbr_cubic_reno_background_tcp_flows/15_background_tcp_flows/')
-graphs_path = os.path.join(absolute_path, r'graphs/unfixed_session_duration/bbr_cubic_reno_background_tcp_flows_with_all_parameters/per_type/START_AFTER/0_background_tcp_flows_small_rtt/')
-#graphs_path = os.path.join(absolute_path, r'graphs/unfixed_session_duration/START_AFTER/bbr_cubic_reno_background_tcp_flows_with_all_parameters/75_background_tcp_flows/')
+#graphs_path = os.path.join(absolute_path, r'graphs/Thesis/f1/0_background_flows/')
+graphs_path = os.path.join(absolute_path,r'graphs/Thesis/test_only_scalability/diverse_training/f1_all_parameters/10seconds/different_background_flows/')
+# graphs_path = os.path.join(absolute_path, r'graphs/unfixed_session_duration/START_AFTER/bbr_cubic_reno_background_tcp_flows_with_all_parameters/75_background_tcp_flows/')
 # graphs_path = os.path.join(absolute_path, r'graphs/unfixed_session_duration/10_background_tcp_vegas_flows/')
+#model_path = os.path.join(absolute_path, r'graphs/Thesis/test_only_scalability/f1_all_parameters_model/10seconds_75_background_flows/state_dict.pt')
+model_path = os.path.join(absolute_path, r'graphs/Thesis/test_only_scalability/diverse_training/f1_all_parameters/10seconds/different_background_flows/state_dict.pt')
 
 # consts definitions
 #NUM_OF_CLASSIFICATION_PARAMETERS = 2 # timestemp & CBIQ
 NUM_OF_CLASSIFICATION_PARAMETERS = 10 # timestemp & CBIQ
 NUM_OF_TIME_SAMPLES = 60000
 NUM_OF_HIDDEN_LAYERS = 100
-CHUNK_SIZE = 5000
+CHUNK_SIZE = 10000
 DEEPCCI_NUM_OF_TIME_SAMPLES = int(CHUNK_SIZE / 1000)
 NUM_OF_CONGESTION_CONTROL_LABELING = 3 # Reno, Cubic, & BBR
 NUM_OF_CONV_FILTERS = 50
@@ -49,6 +55,8 @@ END_BEFORE = 0
 IS_SHUFFLE = False
 IS_DEEPCCI = False
 IS_BATCH = True
+IS_TEST_ONLY = True
+IS_DIVERSE = False
 
 # GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -1,5 +1,6 @@
 import abc
 import os
+import random
 import re
 import glob
 
@@ -94,7 +95,7 @@ class AbsoluteNormalization2(Normalizer):
 
 class ResultsManager:
 
-    def __init__(self, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters, chunk_size, start_after = 0, end_before = 0): #, dataframe_beginning=0, dataframe_end=60000):
+    def __init__(self, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters, chunk_size, is_diverse, diverse_training_folder = [], start_after = 0, end_before = 0): #, dataframe_beginning=0, dataframe_end=60000):
         """The init function does all the building of the collections, using all results sub folders under
         :param results_path: A String with full path to results location
         """
@@ -102,12 +103,23 @@ class ResultsManager:
         self.res_folder_dict = dict()
         # Create a dictionary that reflects the results file structure
         # create a list of subfolders under results dir
-        for dir_name in os.listdir(results_path):
-            res_dir = os.path.join(results_path, dir_name)
-            if not os.path.isdir(res_dir):
-                continue
-            csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
-            self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
+        if is_diverse:
+            for dir_name in diverse_training_folder:
+                sub_folder = os.listdir(os.path.join(os.path.join(absolute_path, cnn_train_and_test_files_directory), dir_name))
+                for i in range(50):
+                    random_subfolder = random.choice(sub_folder)
+                    res_dir = os.path.join(results_path, dir_name, random_subfolder)
+                    if not os.path.isdir(res_dir):
+                        continue
+                    csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
+                    self.res_folder_dict[random_subfolder] = ResFolder(res_dir, csv_files_list)
+        else:
+            for dir_name in os.listdir(results_path):
+                res_dir = os.path.join(results_path, dir_name)
+                if not os.path.isdir(res_dir):
+                    continue
+                csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
+                self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
 
         # Build dataframe array and train array
         train_list = list()
