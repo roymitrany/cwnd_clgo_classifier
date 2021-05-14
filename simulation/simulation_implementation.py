@@ -80,7 +80,8 @@ class Iperf3Simulator:
         """
         self.res_dirname = os.path.join(Path(os.getcwd()).parent,
                                         "classification_data",
-                                        "with_data_repetition", "queue_size_500", "tcp_noise", "START_AFTER", "75_bbr_cubic_reno_background_flows", time_str + "_" + self.simulation_name)
+                                        # "with_data_repetition", "queue_size_500", "tcp_noise", "START_AFTER", "75_bbr_cubic_reno_background_flows", time_str + "_" + self.simulation_name)
+                                        "with_data_repetition", "queue_size_500", "thesis_new_topology", "30_background_flows_multiple_rtr", time_str + "_" + self.simulation_name)
         os.mkdir(self.res_dirname, 0o777)
 
         # Set results file names:
@@ -129,7 +130,12 @@ class Iperf3Simulator:
         srv_ip = srv.IP()
         popens = {}
         srv_procs = []
-        rtr = self.net.getNodeByName(self.simulation_topology.rtr)
+        rtr_original = self.net.getNodeByName(self.simulation_topology.rtr1)
+        rtr = self.net.getNodeByName(self.simulation_topology.rtr2)
+
+        self.net['r1'].cmd("ip route add 10.1.0.0/24 via 10.100.0.2 dev r1-r2")
+        for i in range(30):
+            self.net['r2'].cmd("ip route add 10.0." + str(i) +".0/24 via 10.100.0.1 dev r2-r1")
 
         # Generate background noise
         noise_gen = self.net.getNodeByName(self.simulation_topology.noise_gen)
@@ -158,25 +164,35 @@ class Iperf3Simulator:
                 # Throughput measuring- using tcpdump:
                 # Running tcpdump on client side, saving to txt file (a separate txt file for each client):
                 capture_filename = os.path.join(self.res_dirname, "client_%s.txt" % client)
-                interface_name = "r-%s" % client
-                cmd = "tcpdump -n -i %s 'tcp port %d'>%s&" % (interface_name, test_port, capture_filename)
+                interface_name = "r1-%s" % client
+                client_mac = self.net.getNodeByName(client).MAC()
+                # cmd = "tcpdump -n -i %s 'tcp port %d'>%s&" % (interface_name, test_port, capture_filename)
+                cmd = "tcpdump -n -i r2-r1 'tcp port %d'>%s&" % (test_port, capture_filename)
+                # cmd = "tcpdump -n -i r2-r1 'ether host %s'>%s&" % (client_mac, capture_filename)
                 rtr.cmd(cmd)
+                capture_filename = os.path.join(self.res_dirname, "original_client_%s.txt" % client)
+                cmd = "tcpdump -n -i %s 'tcp port %d'>%s&" % (interface_name, test_port, capture_filename)
+                rtr_original.cmd(cmd)
 
                 # Running tcpdump on server side, saving to txt file (a separate txt file for each client):
                 capture_filename = os.path.join(self.res_dirname, "server_%s.txt" % client)
                 self.file_captures.append(capture_filename)
-                cmd = "tcpdump -n -i r-srv 'tcp port %d'>%s&" % (test_port, capture_filename)
+                cmd = "tcpdump -n -i r2-srv 'tcp port %d'>%s&" % (test_port, capture_filename)
                 rtr.cmd(cmd)
+                capture_filename = os.path.join(self.res_dirname, "original_server_%s.txt" % client)
+                cmd = "tcpdump -n -i r1-r2 'tcp port %d'>%s&" % (test_port, capture_filename)
+                rtr_original.cmd(cmd)
 
             client_counter += 1
 
             # Disable TSO for the client
-            cmd = "ethtool -K %s-r tso off" % client
+            cmd = "ethtool -K %s-r1 tso off" % client
             self.net.getNodeByName(client).cmd(cmd)
 
         # Disable TSO for router
-        cmd = "ethtool -K r-srv tso off"
+        cmd = "ethtool -K r1-srv tso off"
         rtr.cmd(cmd)
+        rtr_original.cmd(cmd)
 
         sleep(5)
         # Traffic generation loop:
@@ -191,8 +207,12 @@ class Iperf3Simulator:
             client_counter += 1
 
         # Gather statistics from the router:
-        q_proc = rtr.popen('python tc_qdisc_implementation.py r-srv %s %d'
+        q_proc = rtr.popen('python tc_qdisc_implementation.py r2-srv %s %d'
                            % (self.rtr_q_filename, self.interval_accuracy))
+        rtr_q_filename = "original_" + self.rtr_q_filename
+        q_proc = rtr_original.popen('python tc_qdisc_implementation.py r1-r2 %s %d'
+                           % (rtr_q_filename, self.interval_accuracy))
+
         print("==========DEBUG==============" + str(q_proc.pid))
 
         # Wait until all commands are completed:
@@ -220,6 +240,7 @@ def clean_sim():
     os.system(cmd)
 
 
+
 def create_sim_name(cwnd_algo_dict):
     name = ''
     if len(cwnd_algo_dict) == 0:
@@ -231,7 +252,7 @@ def create_sim_name(cwnd_algo_dict):
 
 if __name__ == '__main__':
     # interval accuracy: a number between 0 to 3. For value n, the accuracy will be set to 1/10^n
-    sleep(60 * 60 * 24)
+    #sleep(60 * 60 * 10.5)
 
     interval_accuracy = 3
     # Simulation's parameters initializing:
@@ -294,9 +315,9 @@ if __name__ == '__main__':
                 measured_dict['reno'] = 1
                 measured_dict['bbr'] = 1
                 measured_dict['cubic'] = 1
-                unmeasured_dict['reno'] = 25
-                unmeasured_dict['bbr'] = 25
-                unmeasured_dict['cubic'] = 25
+                unmeasured_dict['reno'] = 10#25
+                unmeasured_dict['bbr'] = 10#25
+                unmeasured_dict['cubic'] = 10#25
                 algo_streams = AlgoStreams(measured_dict, unmeasured_dict)
 
                 total_delay = 2 * (host_delay + srv_delay)

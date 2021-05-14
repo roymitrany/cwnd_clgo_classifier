@@ -70,16 +70,19 @@ class SimulationTopology(Topo):
 
     def build(self, **_opts):
         # The router configuration:
-        self.rtr = self.addNode('a', cls=LinuxRouter)
+        #self.rtr1 = self.addNode('r1', cls=LinuxRouter)
+        #self.rtr2 = self.addNode('r2', cls=LinuxRouter)
+        self.rtr1 = self.addHost('r1', cls=LinuxRouter, ip='10.0.0.1/24')
+        self.rtr2 = self.addHost('r2', cls=LinuxRouter, ip='10.1.0.1/24')
 
         # Hosts configuration:
         host_number = 0
         for key, val in chain(self.algo_streams.measured_dict.items(), self.algo_streams.unmeasured_dict.items()):
             for h in range(0, val):
                 self.add_host(key, host_number)
-                self.addLink(self.host_list[host_number], self.rtr,
-                             intfName1='%s_%s-r' % (key, str(host_number)),
-                             intfName2='r-%s_%s' % (key, str(host_number)),
+                self.addLink(self.host_list[host_number], self.rtr1,
+                             intfName1='%s_%s-r1' % (key, str(host_number)),
+                             intfName2='r1-%s_%s' % (key, str(host_number)),
                              params2={'ip': self.as_addr_prefix + str(host_number) + '.1/24'},
                              bw=self.host_bw,
                              use_tbf=True,
@@ -87,30 +90,13 @@ class SimulationTopology(Topo):
                              )
                 host_number += 1
 
-        # The Server (the receiver) configuration Its index is the current host number defined in clients loop:
-        srv_addr = self.as_addr_prefix + str(host_number) + '.10'
-        self.srv = self.addHost('srv', ip=srv_addr + '/24',
-                                defaultRoute="via " + self.as_addr_prefix + str(host_number) + '.1')
-        self.addLink(self.srv, self.rtr,
-                     intfName1='srv-r',
-                     intfName2='r-srv',
-                     params2={
-                         'ip': self.as_addr_prefix + str(host_number) + '.1/24',
-                         'delay': str(self.srv_delay)
-                     },
-                     bw=self.srv_bw,
-                     use_tbf=True,
-                     max_queue_size=int(self.rtr_queue_size)
-                     )
-        host_number += 1
-
         # Add noise generator. Its index is the next one after the server:
         noise_gen_addr = self.as_addr_prefix + str(host_number) + '.10'
         self.noise_gen = self.addHost('noise_gen', ip=noise_gen_addr + '/24',
                                       defaultRoute="via " + self.as_addr_prefix + str(host_number) + '.1')
-        self.addLink(self.noise_gen, self.rtr,
-                     intfName1='noise-gen-r',
-                     intfName2='r-noise-gen',
+        self.addLink(self.noise_gen, self.rtr1,
+                     intfName1='noise-gen-r1',
+                     intfName2='r1-noise-gen',
                      params2={
                          'ip': self.as_addr_prefix + str(host_number) + '.1/24'
                      },
@@ -120,3 +106,37 @@ class SimulationTopology(Topo):
                      delay=self.host_delay
                      )
         host_number += 1
+
+        # The Server (the receiver) configuration Its index is the current host number defined in clients loop:
+        srv_addr ="10.1.0.10"
+        self.srv = self.addHost('srv', ip=srv_addr + '/24',
+                                defaultRoute="via " + "10.1.0" + '.1')
+        self.addLink(self.srv, self.rtr2,
+                     intfName1='srv-r2',
+                     intfName2='r2-srv',
+                     params2={
+                         'ip': "10.1.0.1/24",
+                         'delay': str(self.srv_delay)
+                     },
+                     bw=self.srv_bw,
+                     use_tbf=True,
+                     max_queue_size=int(self.rtr_queue_size)
+                     )
+
+
+        # Configuration of the link between the two routers:
+        self.addLink(self.rtr1, self.rtr2,
+                     intfName1='r1-r2',
+                     intfName2='r2-r1',
+                     params1={
+                         'ip': "10.100.0.1/24",
+                         'delay': str(self.srv_delay)
+                     },
+                     params2={
+                         'ip': "10.100.0.2/24",
+                         'delay': str(self.srv_delay)
+                     },
+                     bw=self.srv_bw,
+                     use_tbf=True,
+                     max_queue_size=int(self.rtr_queue_size)
+                     )
