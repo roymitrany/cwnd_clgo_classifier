@@ -114,7 +114,7 @@ def test_model(model, criterion, is_deepcci, is_batch):
     return numpy.mean(validation_loss), numpy.mean(validation_accuracy), numpy.mean(validation_accuracy_per_type, axis=0)
 
 if __name__ == '__main__':
-    #sleep(60*60*1.5)
+    #sleep(60*60*0.15)
     if IS_DEEPCCI:
         model = deepcci_net().to(device)
         is_deepcci = "deepcci_net"
@@ -125,15 +125,16 @@ if __name__ == '__main__':
         is_deepcci = "my_net"
         # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Connection Num of Drops', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-        unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-        #unused_parameters = ['CBIQ', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        #unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        unused_parameters = ['CBIQ', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         #unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-        #unused_parameters = None
+        #unused_parameters = ['CBIQ']
+        unused_parameters = None
     tn = datetime.now()
     time_str = "_" + str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
         tn.minute) + "-" + str(tn.second)
     # directory = graphs_path + "10bbr_cubic_reno_tcp_background_noise, "+ is_deepcci + ", " + "chunk_" + str(CHUNK_SIZE) +", shuffle_" + str(IS_SHUFFLE) + ", batch_" + str(BATCH_SIZE)
-    directory = graphs_path + is_deepcci + "15new_chunk_" + str(CHUNK_SIZE) + "_shuffle_" + str(
+    directory = graphs_path + is_deepcci + "_chunk_" + str(CHUNK_SIZE) + "_shuffle_" + str(
         IS_SHUFFLE) + "_batch_" + str(BATCH_SIZE)
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -141,7 +142,7 @@ if __name__ == '__main__':
     criterion = CrossEntropyLoss().to(device)
     if IS_TEST_ONLY:
         plot_file_name = directory + "/validation.png"
-        model.load_state_dict(torch.load(model_path))
+        model.load_state_dict(torch.load(model_path), strict=False)
         validation_loss, validation_accuracy, validation_accuracy_per_type = test_model(model, criterion, IS_DEEPCCI, IS_BATCH)
         with open(plot_file_name.replace('.png', ('_' + "f1")), 'w') as f:
             for item in [validation_loss, validation_accuracy, validation_accuracy_per_type]:

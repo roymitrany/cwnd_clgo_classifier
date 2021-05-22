@@ -117,7 +117,7 @@ class SingleConnStatistics:
                 'Goodput Total':in_goodput_series}
         temp_df = pd.concat(data, axis=1)
         temp_df['CBIQ'] = temp_df['Goodput Total'] - temp_df['Out Total']
-        temp_df['CBIQ'] = temp_df['CBIQ'].map(lambda num: num / 8 * 10 ** (6 - self.interval_accuracy))
+        temp_df['CBIQ'] = temp_df['CBIQ'].map(lambda num: int(num / 8 * 10 ** (6 - self.interval_accuracy)))
         temp_df = temp_df.drop(columns=['Goodput Total'])
         self.conn_df = self.conn_df.join(temp_df)
         self.conn_df = self.conn_df.drop(columns=['In Goodput', 'In Total', 'Out Total'])

@@ -141,6 +141,10 @@ class ResultsManager:
                     stat_df = stat_df.take(stat_df.index[row_count - min_num_of_rows - 1:])
                     # keep only samples taken between the random beginning and end of all flows:
                     #stat_df = stat_df[start_after:min_num_of_rows-end_before]
+
+                    # Taking care of CBIQ calculation irregulars:
+                    stat_df['CBIQ']=stat_df.where(stat_df < 1, 0)
+
                     if unused_parameters is not None:
                         stat_df = stat_df.drop(columns=unused_parameters)
                     # split dataframe to chunks:

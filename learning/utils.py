@@ -106,7 +106,6 @@ def accuracy_aux(output, target, topk=(1,), is_f1=True):
         if len(topk) == 1:
             if is_f1:
                 return f1_score(target.cpu(), np.argmax(output.cpu(), axis=1), average='macro')
-            is_f1
             correct_k = correct[:1].view(-1).float().sum(0, keepdim=True)
             return correct_k.mul_(100.0 / batch_size)
         res = []
@@ -391,31 +390,45 @@ def create_test_only_graph(results_path, txt_filename, plot_name):
     create_test_only_graph(result_path,"validation_f1","Accuracy VS Number of Background Flows")
     """
 
-def get_test_only_graph(results_path, txt_filename, plot_name):
+def get_test_only_graph(results_path, txt_filename, plot_name, is_scatter = False):
     my_net_all_parameters_accuracy_list = []
     for dir_name in os.listdir(results_path):
         res_dir = os.path.join(results_path, dir_name)
         if not os.path.isdir(res_dir):
+            continue
+        if "model" in res_dir or "old" in res_dir:
             continue
         x_axis = re.findall(r'\d+', dir_name)
         res_file = os.path.join(res_dir, txt_filename)
         with open(res_file) as f:
             accuracy = f.readlines()
             accuracy = [x.strip() for x in accuracy]
-            my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[1])))
+            if is_scatter:
+                my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[-1])))
+            else:
+                my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[1])))
     return my_net_all_parameters_accuracy_list
 
 def create_test_only_graphs(results_path, txt_filename, plot_name):
     my_net_all_parameters_accuracy_list = []
+    # graph_legend = ["10seconds", "20seconds", "60seconds"]
+    graph_legend = ["all_parameters", "cbiq", "deepcci", "throughput"]
+    graph_legend_aligned = []
     for dir_name in os.listdir(results_path):
         res_dir = os.path.join(results_path, dir_name)
         if not os.path.isdir(res_dir):
             continue
-        for sub_dir in os.listdir(os.path.join(results_path, dir_name, res_dir)):
-            if "model" in sub_dir:
+        for res_sub_dir in os.listdir(os.path.join(results_path, dir_name, res_dir)):
+            if not os.path.isdir(res_dir) or "20" not in res_sub_dir:
                 continue
-            result_path = os.path.join(results_path, dir_name, res_dir, sub_dir)
-            my_net_all_parameters_accuracy_list.append(get_test_only_graph(result_path, txt_filename, plot_name))
+            for sub_dir in os.listdir(os.path.join(results_path, dir_name, res_sub_dir)):
+                if "model" in sub_dir:
+                    continue
+                for graph_type in graph_legend:
+                    if graph_type in res_dir:
+                        graph_legend_aligned.append(graph_type)
+                result_path = os.path.join(results_path, dir_name, res_dir, res_sub_dir, sub_dir)
+                my_net_all_parameters_accuracy_list.append(get_test_only_graph(result_path, txt_filename, plot_name))
     plt.cla()  # clear the current axes
     plt.clf()  # clear the current figure
     for i in range(len(my_net_all_parameters_accuracy_list)):
@@ -426,8 +439,45 @@ def create_test_only_graphs(results_path, txt_filename, plot_name):
     axes = plt.gca()
     axes.set(xlabel='number of flows', ylabel='F1')
     axes.grid()
+    plt.legend(graph_legend_aligned)
     plt.title(plot_name)
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+def create_test_only_diverse_graphs(results_path, txt_filename, plot_name):
+    my_net_all_parameters_accuracy_list = []
+    my_net_all_parameters_scatter = []
+    graph_legend = ["diverse", "0_background_flows", "75_background_flows"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir):
+            continue
+        if "points" in res_dir:
+            my_net_all_parameters_scatter.append(get_test_only_graph(os.path.join(results_path, dir_name), txt_filename, plot_name, True))
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        result_path = os.path.join(results_path, dir_name, res_dir)
+        my_net_all_parameters_accuracy_list.append(get_test_only_graph(result_path, txt_filename, plot_name))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    for i in range(len(my_net_all_parameters_accuracy_list)):
+        my_net_all_parameters_accuracy = sorted(my_net_all_parameters_accuracy_list[i], key=lambda tup: tup[0])
+        x_axis = [x[0] for x in my_net_all_parameters_accuracy]
+        y_axis = [x[1] for x in my_net_all_parameters_accuracy]
+        plt.plot(x_axis, y_axis)
+    for i in range(len(my_net_all_parameters_scatter)):
+        my_net_all_parameters_accuracy = sorted(my_net_all_parameters_scatter[i], key=lambda tup: tup[0])
+        x_axis = [x[0] for x in my_net_all_parameters_accuracy]
+        y_axis = [x[1] for x in my_net_all_parameters_accuracy]
+        plt.scatter(x_axis, y_axis)
+    axes = plt.gca()
+    axes.set(xlabel='number of flows', ylabel='F1')
+    axes.grid()
+    plt.legend(graph_legend_aligned)
+    plt.title(plot_name)
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
 
 def get_f1_vs_background_flows(results_path, txt_filename, plot_name):
     my_net_all_parameters_accuracy_list = []
@@ -451,7 +501,7 @@ def create_f1_vs_background_flows_multiple_session_duration_graph(results_path, 
     graph_legend_aligned = []
     for dir_name in os.listdir(results_path):
         res_dir = os.path.join(results_path, dir_name)
-        if not os.path.isdir(res_dir) or "old" in res_dir:
+        if not os.path.isdir(res_dir) or "old" in res_dir or "multiple_rtr" in res_dir:
             continue
         for sub_dir in os.listdir(os.path.join(results_path, dir_name, res_dir)):
             if session_duration not in sub_dir:
@@ -475,6 +525,47 @@ def create_f1_vs_background_flows_multiple_session_duration_graph(results_path, 
     plt.legend(graph_legend_aligned)
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
+def create_multiple_rtr_graph(results_path, txt_filename, plot_name, session_duration):
+    f1_list = []
+    graph_legend = ["all_parameters", "cbiq", "deepcci", "throughput"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for sub_dir in os.listdir(os.path.join(results_path, dir_name, res_dir)):
+            result_path = os.path.join(results_path, dir_name, res_dir, sub_dir)
+            if not os.path.isdir(result_path) or "old" in result_path:
+                continue
+            for graph_type in graph_legend:
+                if graph_type in sub_dir:
+                    graph_legend_aligned.append(graph_type)
+            f1_list.append(get_f1_vs_background_flows(result_path, txt_filename, plot_name))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    rtr1 = [x[0][1] for x in f1_list]
+    rtr2 = [x[1][1] for x in f1_list]
+
+    plt.figure(figsize=(10, 5))
+    ind = np.arange(len(rtr1))
+    width = 0.3
+    plt.bar(ind, rtr1, width)
+    plt.bar(ind + width, rtr2, width)
+    plt.xticks(ind + width / 2, graph_legend_aligned)
+
+    axes = plt.gca()
+    axes.set(xlabel='Datasets', ylabel='F1')
+    axes.grid()
+    plt.title(plot_name)
+    plt.legend(("rtr1", "rtr2"), loc="best")
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+    """
+    from learning.utils import *
+    result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/Thesis/new_topology/multiple_rtr/30_background_flows/"
+    create_multiple_rtr_graph(result_path,"validation_accuracy","F1 for 30 Background Flows", "20")
+    """
+
 class Graph_Creator:
     def __init__(self, loss, accuracy, accuracy_per_type, num_of_epochs, is_batch, plot_file_name="Graph.png", plot_fig_name="Statistics"):
         #loss = np.array(loss, dtype=np.float32)
@@ -490,10 +581,10 @@ class Graph_Creator:
         fig1.suptitle(plot_fig_name)
         ax1.set(xlabel='epoch', ylabel='loss')
         ax1.set_xlim([0, num_of_epochs])
-        ax1.set_ylim([0, numpy.amax(loss)])
+        #ax1.set_ylim([0, numpy.amax(loss)])
         ax2.set(xlabel='epoch', ylabel='accuracy')
         ax2.set_xlim([0, num_of_epochs])
-        ax2.set_ylim([0, numpy.amax(accuracy)])
+        #ax2.set_ylim([0, numpy.amax(accuracy)])
         self.fig1 = fig1
         self.loss_ax = ax1
         self.accuracy_ax = ax2
@@ -506,10 +597,10 @@ class Graph_Creator:
             fig2.suptitle(plot_fig_name)
             ax4.set(xlabel='epoch', ylabel='loss')
             ax4.set_xlim([0, num_of_epochs])
-            ax4.set_ylim([0, numpy.amax(loss)])
+            #ax4.set_ylim([0, numpy.amax(loss)])
             ax5.set(xlabel='epoch', ylabel='accuracy')
             ax5.set_xlim([0, num_of_epochs])
-            ax5.set_ylim([0, numpy.amax(accuracy)])
+            #ax5.set_ylim([0, numpy.amax(accuracy)])
             self.fig2 = fig2
             self.batches_loss_ax = ax4
             self.batches_accuracy_ax = ax5
