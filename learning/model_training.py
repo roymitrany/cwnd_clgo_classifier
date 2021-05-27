@@ -125,11 +125,11 @@ if __name__ == '__main__':
         is_deepcci = "my_net"
         # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Connection Num of Drops', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-        #unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-        unused_parameters = ['CBIQ', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        # unused_parameters = ['CBIQ', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         #unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         #unused_parameters = ['CBIQ']
-        unused_parameters = None
+        #unused_parameters = None
     tn = datetime.now()
     time_str = "_" + str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
         tn.minute) + "-" + str(tn.second)

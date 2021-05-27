@@ -447,18 +447,27 @@ def create_test_only_diverse_graphs(results_path, txt_filename, plot_name):
     my_net_all_parameters_accuracy_list = []
     my_net_all_parameters_scatter = []
     graph_legend = ["diverse", "0_background_flows", "75_background_flows"]
+    scatter_legend = ["0", "15", "30", "75"]
     graph_legend_aligned = []
+    scatter_legend_aligned = []
     for dir_name in os.listdir(results_path):
         res_dir = os.path.join(results_path, dir_name)
         if not os.path.isdir(res_dir):
             continue
         if "points" in res_dir:
-            my_net_all_parameters_scatter.append(get_test_only_graph(os.path.join(results_path, dir_name), txt_filename, plot_name, True))
-        for graph_type in graph_legend:
-            if graph_type in dir_name:
-                graph_legend_aligned.append(graph_type)
-        result_path = os.path.join(results_path, dir_name, res_dir)
-        my_net_all_parameters_accuracy_list.append(get_test_only_graph(result_path, txt_filename, plot_name))
+            for scatter_type in scatter_legend:
+                if scatter_type in dir_name:
+                    scatter_legend_aligned.append(scatter_type)
+            if "added_points" in res_dir:
+                my_net_all_parameters_scatter.append(get_test_only_graph(os.path.join(results_path, dir_name), txt_filename, plot_name, True))
+            else:
+                my_net_all_parameters_scatter.append(get_test_only_graph(os.path.join(results_path, dir_name), txt_filename, plot_name, False))
+        else:
+            for graph_type in graph_legend:
+                if graph_type in dir_name:
+                    graph_legend_aligned.append(graph_type)
+            result_path = os.path.join(results_path, dir_name, res_dir)
+            my_net_all_parameters_accuracy_list.append(get_test_only_graph(result_path, txt_filename, plot_name))
     plt.cla()  # clear the current axes
     plt.clf()  # clear the current figure
     for i in range(len(my_net_all_parameters_accuracy_list)):
@@ -470,11 +479,11 @@ def create_test_only_diverse_graphs(results_path, txt_filename, plot_name):
         my_net_all_parameters_accuracy = sorted(my_net_all_parameters_scatter[i], key=lambda tup: tup[0])
         x_axis = [x[0] for x in my_net_all_parameters_accuracy]
         y_axis = [x[1] for x in my_net_all_parameters_accuracy]
-        plt.scatter(x_axis, y_axis)
+        plt.scatter(x_axis, y_axis, color = "red")
     axes = plt.gca()
     axes.set(xlabel='number of flows', ylabel='F1')
     axes.grid()
-    plt.legend(graph_legend_aligned)
+    plt.legend(graph_legend_aligned)#, loc=(0.75,0.5))
     plt.title(plot_name)
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
@@ -484,6 +493,8 @@ def get_f1_vs_background_flows(results_path, txt_filename, plot_name):
     for dir_name in os.listdir(results_path):
         res_dir = os.path.join(results_path, dir_name)
         if not os.path.isdir(res_dir):
+            continue
+        if "old" in res_dir:
             continue
         x_axis = re.findall(r'\d+', dir_name)
         res_file = os.path.join(res_dir, txt_filename)
@@ -557,7 +568,7 @@ def create_multiple_rtr_graph(results_path, txt_filename, plot_name, session_dur
     axes.set(xlabel='Datasets', ylabel='F1')
     axes.grid()
     plt.title(plot_name)
-    plt.legend(("rtr1", "rtr2"), loc="best")
+    plt.legend(("rtr2", "rtr1"), loc="best")
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
     """
