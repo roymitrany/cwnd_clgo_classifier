@@ -39,7 +39,7 @@ class TcpdumpStatistics:
         if search_obj:
             return search_obj.group(1), search_obj.group(2)
         else:
-            return None, None
+            return None
 
     @staticmethod
     def parse_line(line, port_algo_dict={}):
