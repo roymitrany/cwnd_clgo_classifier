@@ -105,14 +105,22 @@ class ResultsManager:
         # create a list of subfolders under results dir
         if is_diverse:
             for dir_name in diverse_training_folder:
-                sub_folder = os.listdir(os.path.join(os.path.join(absolute_path, cnn_train_and_test_files_directory), dir_name))
-                for i in range(50):
+                sub_folder = os.path.join(os.path.join(absolute_path, cnn_train_and_test_files_directory), dir_name)
+                for sub_dir_name in os.listdir(sub_folder):
+                    res_dir = os.path.join(results_path, sub_folder, sub_dir_name)
+                    if not os.path.isdir(res_dir):
+                        continue
+                    csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
+                    self.res_folder_dict[sub_dir_name] = ResFolder(res_dir, csv_files_list)
+                """
+                #for i in range(50):
                     random_subfolder = random.choice(sub_folder)
                     res_dir = os.path.join(results_path, dir_name, random_subfolder)
                     if not os.path.isdir(res_dir):
                         continue
                     csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
                     self.res_folder_dict[random_subfolder] = ResFolder(res_dir, csv_files_list)
+                """
         else:
             for dir_name in os.listdir(results_path):
                 res_dir = os.path.join(results_path, dir_name)
@@ -142,14 +150,26 @@ class ResultsManager:
                     # keep only samples taken between the random beginning and end of all flows:
                     #stat_df = stat_df[start_after:min_num_of_rows-end_before]
 
-                    # Taking care of CBIQ calculation irregulars:
-                    stat_df['CBIQ']=stat_df.where(stat_df < 1, 0)
-
                     if unused_parameters is not None:
                         stat_df = stat_df.drop(columns=unused_parameters)
                     # split dataframe to chunks:
                     number_of_chunks = stat_df.shape[0] / chunk_size + stat_df.shape[0] % chunk_size
                     for stat_df_chunk in np.array_split(stat_df, number_of_chunks):
+                        if not IS_DEEPCCI and NUM_OF_CLASSIFICATION_PARAMETERS != 3:
+                            try:
+                                # Taking care of CBIQ calculation irregulars:
+                                # stat_df_chunk['CBIQ']=stat_df_chunk.where(stat_df_chunk < 1, 0)
+                                stat_df_chunk['CBIQ'] = abs(stat_df_chunk['CBIQ'])
+                                # stat_df_chunk['CBIQ'] = 0
+                                # stat_df_chunk.loc[stat_df_chunk.CBIQ < 1, 'CBIQ'] = 0
+                                # stat_df_chunk['CBIQ']=stat_df_chunk['CBIQ'].where(stat_df_chunk['CBIQ'] < 1, 0)
+                                stat_df_chunk.loc[stat_df_chunk.CBIQ < 1, 'CBIQ'] = 0
+                                #stat_df_chunk.loc[stat_df_chunk.CBIQ == 2896.0, 'CBIQ'] = 0
+                                if "new_topology" in csv_filename:
+                                    stat_df_chunk['CBIQ'] = 0
+                            except:
+                                pass
+
                         if "single_connection_stat_bbr" in csv_file:
                             train_list.append(["bbr", 0])
                         elif "single_connection_stat_cubic" in csv_file:

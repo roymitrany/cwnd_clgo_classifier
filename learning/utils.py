@@ -372,7 +372,7 @@ def create_test_only_graph(results_path, txt_filename, plot_name):
         with open(res_file) as f:
             accuracy = f.readlines()
             accuracy = [x.strip() for x in accuracy]
-            my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[1])))
+            my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[-1])))
     plt.cla()  # clear the current axes
     plt.clf()  # clear the current figure
     my_net_all_parameters_accuracy_list = sorted(my_net_all_parameters_accuracy_list, key=lambda tup: tup[0])
@@ -494,14 +494,14 @@ def get_f1_vs_background_flows(results_path, txt_filename, plot_name):
         res_dir = os.path.join(results_path, dir_name)
         if not os.path.isdir(res_dir):
             continue
-        if "old" in res_dir:
+        if "old" in res_dir or "model" in res_dir:
             continue
         x_axis = re.findall(r'\d+', dir_name)
         res_file = os.path.join(res_dir, txt_filename)
         try:
             with open(res_file) as f:
                 accuracy = f.readlines()
-                my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[-1])))
+                my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[1])))
         except:
             continue
     return my_net_all_parameters_accuracy_list
@@ -576,6 +576,44 @@ def create_multiple_rtr_graph(results_path, txt_filename, plot_name, session_dur
     result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/Thesis/new_topology/multiple_rtr/30_background_flows/"
     create_multiple_rtr_graph(result_path,"validation_accuracy","F1 for 30 Background Flows", "20")
     """
+
+def create_diverse_multiple_rtr_graph(results_path, txt_filename, plot_name, session_duration):
+    f1_list = []
+    graph_legend = ["5parameters", "cbiq", "deepcci", "throughput"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir or "model" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        f1_list.append(get_f1_vs_background_flows(res_dir, txt_filename, plot_name))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    rtr1 = [x[0][1] for x in f1_list]
+    rtr2 = [x[1][1] for x in f1_list]
+
+    plt.figure(figsize=(10, 5))
+    ind = np.arange(len(rtr1))
+    width = 0.3
+    plt.bar(ind, rtr1, width)
+    plt.bar(ind + width, rtr2, width)
+    plt.xticks(ind + width / 2, graph_legend_aligned)
+
+    axes = plt.gca()
+    axes.set(xlabel='Datasets', ylabel='F1')
+    axes.grid()
+    plt.title(plot_name)
+    plt.legend(("rtr2", "rtr1"), loc="best")
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+    """
+    from learning.utils import *
+    result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/Thesis/new_topology/multiple_rtr/30_background_flows/"
+    create_multiple_rtr_graph(result_path,"validation_accuracy","F1 for 30 Background Flows", "20")
+    """
+
 
 class Graph_Creator:
     def __init__(self, loss, accuracy, accuracy_per_type, num_of_epochs, is_batch, plot_file_name="Graph.png", plot_fig_name="Statistics"):
