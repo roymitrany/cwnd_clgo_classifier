@@ -42,10 +42,31 @@ struct OptChars {
 
 BPF_HASH(pkt_array, struct Key, struct SegmentData,200000);
 BPF_HASH(pkt_array_ext, struct Key, struct SegmentDataExt,200000);
+BPF_ARRAY(pkt_out_count, uint32_t, 1);
 BPF_ARRAY(pkt_count, uint32_t, 1);
 BPF_ARRAY(debug_val, long, 1);
 BPF_ARRAY(sniff_mode, uint32_t, 1);
 BPF_ARRAY(start_time, u64, 1);
+
+int out_filter(struct __sk_buff *skb)
+{
+    //int one = 1;
+    //u32 intkey = 0;
+    //uint32_t* global_count = 0;
+
+
+    // count number of packets
+    //global_count = pkt_out_count.lookup(&intkey);
+    //if (global_count) { // check if this map exists
+    //    *global_count+=1;
+    //}
+    //else        // if the map for the key doesn't exist, create one
+    //{
+    //    pkt_out_count.update(&intkey, &one);
+    //}
+    handle_egress(skb);
+    return TC_ACT_OK;
+}
 
 int handle_egress(struct __sk_buff *skb)
 {

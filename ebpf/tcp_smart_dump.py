@@ -3,8 +3,9 @@
 # Licensed under the Apache License, Version 2.0 (the "License")
 import os
 from pathlib import Path
+import socket
 
-print("starting tcp_smart_dump, before inport")
+print("startinggg tcp_smart_dump, before inport")
 import sys
 print (sys.path)
 import sys
@@ -41,6 +42,7 @@ try:
     fn = b.load_func("handle_egress", BPF.SCHED_CLS)
     sniff_mode_table = b.get_table('sniff_mode')
     pkt_count_table = b.get_table('pkt_count')
+    pkt_out_count_table = b.get_table('pkt_out_count')
     debug_val_table = b.get_table('debug_val')
     start_time_table = b.get_table('start_time')
     pkt_array = b.get_table('pkt_array')
@@ -58,11 +60,20 @@ try:
     ipr.tc("add", "clsact", server_intf_index)
 
     # egress
-    ipr.tc("add-filter", "bpf", server_intf_index, ":1", fd=fn.fd, name=fn.name,
-           parent="ffff:fff3", classid=1, direct_action=True)
-    debug_file.write("Egress BPF Filter Added for interface intf!!!!\n")
-    debug_file.flush()
+    #ipr.tc("add-filter", "bpf", server_intf_index, ":1", fd=fn.fd, name=fn.name,
+    #       parent="ffff:fff3", classid=1, direct_action=True)
+    #debug_file.write("Egress BPF Filter Added for interface intf!!!!\n")
+    #debug_file.flush()
+    ffilter = b.load_func("out_filter", BPF.SOCKET_FILTER)
+    BPF.attach_raw_socket(ffilter, sys.argv[2])
 
+    # frontend part
+    socketfd = ffilter.sock
+
+    sockobj = socket.fromfd(socketfd, socket.AF_PACKET, socket.SOCK_RAW, socket.IPPROTO_IP)
+    sockobj.setblocking(True)
+
+    # ingress
     for intf in intf_list[1:]:
         intf_index = ipr.link_lookup(ifname=intf)[0]
         inft_index_list.append(intf_index)
@@ -81,7 +92,7 @@ try:
             q_disc_file = os.path.join(res_dir, "%d_qdisc.csv" % int(time.time()))
             #q_disc_file = "/home/user/csvs/%d_qdisc.csv" % int(time.time())
             q_disc_cmd = os.path.join(Path(os.getcwd()).parent, "simulation", "tc_qdisc_implementation.py")
-            command_line = 'python3 %s r-srv %s %d'% (q_disc_cmd, q_disc_file, interval_accuracy)
+            command_line = 'python3 %s %s %s %d'% (q_disc_cmd, sys.argv[2], q_disc_file, interval_accuracy)
             args = shlex.split(command_line)
             q_proc = subprocess.Popen(args)
             start_capture_epoch_time = time.time()
@@ -91,6 +102,7 @@ try:
             sniff_mode_table[0] = c_uint32(0)
             q_proc.send_signal(SIGINT)
             packets_count = pkt_count_table[0].value
+            packet_out_count = pkt_out_count_table[0].value
             debug_val = debug_val_table[0].value
             debug_file.write('before dict iteration loop ==============' + str(time.time()) + "\n")
             debug_file.flush()
@@ -121,6 +133,7 @@ try:
                     [conn_index, pkt.timestamp, pkt.length, pkt_ext.tsval, pkt_ext.seq_num])
 
             debug_file.write('num of captured packets: %d\n' % (packets_count))
+            debug_file.write('num of captured packets on the way to server: %d\n' % (packet_out_count))
             debug_file.write('debug_vallj: %d\n' % (debug_val))
             debug_file.flush()
             # Loop on all TCP connections.
@@ -194,6 +207,7 @@ try:
             debug_file.write('------%s cleared pkt_ array ext\n' % str(time.time()))
             debug_file.flush()
             pkt_count_table.clear()
+            pkt_out_count_table.clear()
             debug_file.write('cleared arrays\n')
             debug_file.flush()
 

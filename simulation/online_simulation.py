@@ -19,6 +19,8 @@ import time
 from mininet.node import OVSController
 from mininet.util import pmonitor
 import sys
+
+
 print (sys.path)
 sys.path.insert(0, '/home/another/PycharmProjects/cwnd_clgo_classifier')
 print (sys.path)
@@ -53,10 +55,7 @@ class Iperf3Simulator:
 
         self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "online",
                                         time_str + "_" + self.simulation_name)
-        os.mkdir(self.res_dirname, 0o777)
-
-        # Set results file names:
-        self.rtr_q_filename = os.path.join(self.res_dirname, "rtr_q.txt")
+        #os.mkdir(self.res_dirname, 0o777)
 
     def SetCongestionControlAlgorithm(self, host, tcp_algo):
         """
@@ -81,6 +80,8 @@ class Iperf3Simulator:
             noise_gen.popen('python noise_generator.py %s %s' % (srv_ip, self.background_noise))
         client_counter = 0
         intf_name_str = ""
+        #CLI(self.net)
+
         for client in self.simulation_topology.host_list:
             # Modify TCP algorithms (because iperf3 does not support vegas in -C parameter):
             cwnd_algo = client[0:client.find("_")]
@@ -95,7 +96,6 @@ class Iperf3Simulator:
             # otherwise they are stuck in the system, so we keep the proc nums in a list.
             srv_cmd = 'iperf3 -s -p %d &' % test_port
             srv_procs.append(srv.popen(srv_cmd))
-            #CLI(self.net)
 
             inbound_interface_name = "r-%s" % client
             intf_name_str += inbound_interface_name
@@ -105,7 +105,6 @@ class Iperf3Simulator:
             # Disable TSO for the client
             cmd = "ethtool -K %s-r tso off" % client
             self.net.getNodeByName(client).cmd(cmd)
-
 
         # Run the ebpf command with all the interfaces. Server interface should always be the first one!
         ebpf_cmd = os.path.join(Path(os.getcwd()).parent, "ebpf", "tcp_smart_dump.py")
@@ -141,7 +140,6 @@ class Iperf3Simulator:
         sleep(2)
         for process in srv_procs:
             process.send_signal(SIGINT)
-        # q_proc.send_signal(SIGINT)
 
         # CLI(self.net)
         self.net.stop()
@@ -170,7 +168,7 @@ if __name__ == '__main__':
     Algo = Enum('Algo', 'reno bbr cubic')
     # Algo = Enum('Algo', 'cubic')
     algo_dict = {}
-    simulation_duration = 20  # 60 # 80 # 120  # seconds.
+    simulation_duration = 60  # 60 # 80 # 120  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (

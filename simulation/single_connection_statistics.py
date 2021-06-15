@@ -82,6 +82,16 @@ class SingleConnStatistics:
         self.count_throughput(self.in_conn_df, 'In Throughput')
         self.count_throughput(self.out_conn_df, 'Out Throughput')
         self.count_throughput(in_passed_df, 'In Goodput')
+
+        # Calculate CBIQ
+        in_temp_df = self.create_seq_df(self.in_conn_df, 'in_seq_num')
+        out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
+        temp_df = in_temp_df.merge(out_temp_df, how='inner', on=['date_time'])
+        temp_df = temp_df.set_index('date_time')
+        temp_df['CBIQ'] = temp_df['in_seq_num'] - temp_df['out_seq_num']
+        temp_df = temp_df.drop(columns=['in_seq_num', 'out_seq_num'])
+        self.conn_df = self.conn_df.join(temp_df)
+
         self.count_dropped_packets(in_dropped_df, 'Connection Num of Drops')
         self.count_retransmit_packets(in_retransmit_df, 'Connection Num of Retransmits')
         self.count_ts_val(self.out_conn_df, "Send Time Gap")
@@ -91,20 +101,11 @@ class SingleConnStatistics:
         # self.conn_df = pd.concat([in_throughput_df, out_throughput_df, dropped_df, ts_val_df],
         #                         axis=1)  # Outer join between in and out df
         self.conn_df.index.name = 'Time'
-        # Create the Byte in Queue column
-        # Add Total column that indicates the number of bytes passed so far
-        in_total_series = self.conn_df['In Throughput'].cumsum()
-        out_total_series = self.conn_df['Out Throughput'].cumsum()
-        in_goodput_series = self.conn_df['In Goodput'].cumsum()
-        data = {'In Total': in_total_series,
-                'Out Total': out_total_series,
-                'Goodput Total': in_goodput_series}
-        temp_df = pd.concat(data, axis=1)
-        temp_df['CBIQ'] = temp_df['Goodput Total'] - temp_df['Out Total']
-        temp_df['CBIQ'] = temp_df['CBIQ'].map(lambda num: int(num / 8 * 10 ** (6 - self.interval_accuracy)))
-        temp_df = temp_df.drop(columns=['Goodput Total'])
-        self.conn_df = self.conn_df.join(temp_df)
-        self.conn_df = self.conn_df.drop(columns=['In Goodput', 'In Total', 'Out Total'])
+
+        #temp_df['CBIQ'] = temp_df['CBIQ'].map(lambda num: int(num / 8 * 10 ** (6 - self.interval_accuracy)))
+        #temp_df = temp_df.drop(columns=['in_seq_num', 'out_seq_num'])
+        #self.conn_df = self.conn_df.join(temp_df)
+        #self.conn_df = self.conn_df.drop(columns=['In Goodput'])
         # The gap between the total in and the total out indicates what's in the queue. We want to convert form
         # Mbps to Bytes
 
@@ -112,13 +113,15 @@ class SingleConnStatistics:
             # Add qdisc columns, only for existing keys (inner join)
             qdisc_df = pd.read_csv(self.rtr_q_filename, sep="\t", header=None)
             qdisc_df.columns = ['Time', 'Total Bytes in Queue', 'Num of Packets', 'Num of Drops']
+            reference_start_time = qdisc_df['Time'][0]
             qdisc_df['Time'] = qdisc_df['Time'].map(lambda time_str: time_str_to_timedelta(time_str))
             qdisc_df = qdisc_df.set_index('Time')
             self.conn_df = self.conn_df.join(qdisc_df, lsuffix='_caller')
             self.conn_df = self.conn_df.fillna(method='ffill')
 
         # Convert the time string into time offset float
-        self.conn_df['timestamp'] = self.conn_df['Time'].map(lambda x: get_delta(x, self.conn_df['Time'][0]))
+        #self.conn_df['timestamp'] = self.conn_df['Time'].map(lambda x: get_delta(x, self.conn_df['Time'][0]))
+        self.conn_df['timestamp'] = self.conn_df['Time'].map(lambda x: get_delta(x, reference_start_time))
         self.conn_df = self.conn_df.set_index('timestamp')
         self.conn_df = self.conn_df.drop(columns=['Time'])
 
@@ -168,7 +171,11 @@ class SingleConnStatistics:
         values = {column: 0}
         self.conn_df = self.conn_df.fillna(value=values)
 
-        # 09:17:58.297429 IP 10.0.1.10.44848 > 10.0.10.10.5202: Flags [.], seq 1486:2934, ack 1, win 83, options [nop,nop,TS val 4277329349 ecr 645803186], length 1448
+    def create_seq_df(self, conn_df, col_name):
+        temp_df = conn_df.drop_duplicates(subset=["date_time"],keep='first')
+        temp_df = temp_df.drop(columns=['conn_index', 'length', 'ts_val'])
+        temp_df.columns = ['date_time', col_name]
+        return temp_df
 
     @staticmethod
     def reduce_dropped_packets(conn_df):
@@ -194,24 +201,6 @@ class SingleConnStatistics:
 
         return passed_df, dropped_df, retransmit_df
 
-
-class OfflineSingleConnStatistics(SingleConnStatistics):
-    def __init__(self, ingress_file_name, egress_file_name, interval_accuracy, rtr_q_filename=None):
-        super().__init__(interval_accuracy, rtr_q_filename)
-
-        # Parse inbound file. Extract dropped packets and passed packets for the connection
-        file = open(ingress_file_name, 'r')
-        lines = file.readlines()
-        self.in_conn_df = self.build_conn_df(lines,
-                                             interval_accuracy)  # take out all the lines that are not related to the connection
-
-        # Parse outbound file. Extract passed packets for the connection
-        file = open(egress_file_name, 'r')
-        lines = file.readlines()
-        self.out_conn_df = self.build_conn_df(lines,
-                                              interval_accuracy)  # take out all the lines that are not related to the connection
-
-        self.build_df()
 
     @staticmethod
     def build_conn_df(lines, interval_accuracy):
@@ -265,9 +254,9 @@ class OnlineSingleConnStatistics(SingleConnStatistics):
 if __name__ == '__main__':
     intv_accuracy = 3
     abs_path = "/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/csvs"
-    in_file = abs_path + "/1622959404_167772170_64501_167772938_5201_5.csv"
-    out_file = abs_path + "/1622959404_167772170_64501_167772938_5201_6.csv"
-    rtr_file = abs_path + "/1622959407_qdisc.csv"
+    in_file = abs_path + "/1623675570_167772170_64501_167772938_5201_6.csv"
+    out_file = abs_path + "/1623675570_167772170_64501_167772938_5201_2.csv"
+    rtr_file = abs_path + "/1623675549_qdisc.csv"
     q_line_obj = OnlineSingleConnStatistics(in_file=in_file, out_file=out_file, interval_accuracy= intv_accuracy, rtr_q_filename=rtr_file)
     q_line_obj.conn_df.to_csv(abs_path + '/single_connection_stat_debug.csv')
     # q_line_obj = OfflineSingleConnStatistics(in_file, out_file, rtr_file, intv_accuracy)

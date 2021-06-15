@@ -21,6 +21,7 @@ def signal_handler(signal, frame):
 if __name__ == '__main__':
     queue_len_bytes_dict = {}
     drops_dict = {}
+    loop_count = 0
     # queue_len_packets_list = []
     assert argv != 4, "usage: tc_qdisc_implementation <ifName> <filename> <tick interval accuracy (0-4)>"
     if_name = argv[1]
@@ -35,6 +36,10 @@ if __name__ == '__main__':
     last_dropped = 0
     results_file = open(results_filename, 'w')
     while run:
+        # it's fair to say that in this stage we do not mean to run forever
+        loop_count += 1
+        if loop_count>1000000:
+            break
         p = Popen(["/sbin/tc", "-s", "qdisc", "show", "dev", if_name], stdout=subprocess.PIPE,
                   universal_newlines=True)
         output = p.communicate()
@@ -44,7 +49,6 @@ if __name__ == '__main__':
         out_str = output[0].split('clsact')[0]
 
         match = re.search(r'dropped\s+(\d+).*\n.?backlog\s+(\d+[kK]?)b\s+(\d+)p', out_str, re.DOTALL)
-        debug_file.write("66666666\n")
         if match:
             drops_str = match.group(1)
             drops = int(drops_str) - last_dropped
@@ -58,11 +62,9 @@ if __name__ == '__main__':
             num_of_packets = match.group(3)
             num_of_cut_digits = tick_interval_accuracy-6
             time_str = datetime.now().strftime("%H:%M:%S.%f")[:num_of_cut_digits]
-            debug_file.write(("88888888\n"))
 
             queue_len_bytes_dict[datetime.now().strftime("%H:%M:%S.%f")[:num_of_cut_digits]] = "%s\t%s\t%d" % (
                 num_of_bytes, num_of_packets, drops)
-            debug_file.write(("999999999\n"))
             debug_file.write("%s\t%s\t%s\t%s\n" % (time_str, num_of_bytes, num_of_packets, drops_str))
             results_file.write("%s\t%s\t%s\t%s\n" % (time_str, num_of_bytes, num_of_packets, drops_str))
             if tick_interval_accuracy == 0:
