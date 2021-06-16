@@ -26,6 +26,7 @@ from simulation.single_connection_statistics import OnlineSingleConnStatistics
 
 # TODO: get interval accuracy as parameter
 interval_accuracy = 3
+
 debug_file = open("ebpf_debug.txt", 'w')
 print("starting tcp_smart_dump", file=debug_file)
 traffic_duration = int(sys.argv[1])
@@ -149,16 +150,13 @@ try:
                                       columns=['conn_index', 'date_time', 'length', 'ts_val', 'seq_num'])
                     df.index.name = "num"
 
-                    # Get the capture start time, which is the number of nanoseconds from boot time until capture
+                    # Get the capture start time, which is the number of microseconds from boot time until capture
                     # started.
-                    # Then subtract the start time from packet capture time, which is the  number of nanoseconds from
+                    # Then subtract the start time from packet capture time, which is the  number of microseconds from
                     # boot time until the packet was captured
                     # Add this result to epoch time in nanos at capture start time
-                    # the result is the epoch time in nanos when the packet was captured.
+                    # the result is the epoch time in micros when the packet was captured.
                     start_time = start_time_table[0].value
-                    # TODO: This doen not make any sence !!!! but the second formula seems to work
-                    # Check in reasonable working hours
-                    # df['date_time'] = df['date_time']-start_time+start_capture_time_nanos
                     debug_file.write('------packet capture time since boot: %s \n' % df.at[0,'date_time'])
                     debug_file.write('------capture start time since boot: %s \n' % str(start_time))
                     debug_file.write('------offset: %s \n' % str(df.at[0,'date_time']-start_time))
