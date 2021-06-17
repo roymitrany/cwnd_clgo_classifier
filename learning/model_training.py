@@ -13,6 +13,7 @@ from torch.nn import Linear, ReLU, CrossEntropyLoss, Sequential, Conv2d, MaxPool
 from learning.utils import *
 from learning.my_net import *
 from learning.deepcci_net import *
+from learning.fully_connected_net import *
 #from learning.env import *
 import learning.env
 
@@ -121,31 +122,36 @@ if __name__ == '__main__':
         unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'CBIQ', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         # unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
     else:
-        model = my_net().to(device)
-        is_deepcci = "my_net"
-        # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-        # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Connection Num of Drops', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        if IS_FULLY_CONNECTED:
+            model = fully_connected_net().to(device)
+            is_deepcci = "fully_connected_net"
+            unused_parameters = ['Connection Num of Drops', 'Connection Num of Retransmits', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        else:
+            model = my_net().to(device)
+            is_deepcci = "my_net"
+            # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+            # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Connection Num of Drops', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
 
-        #cbiq:
-        unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+            #cbiq:
+            unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
 
-        #throughput:
-        unused_parameters = ['CBIQ', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-        #unused_parameters = ['Out Throughput', 'CBIQ', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-        #unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+            #throughput:
+            unused_parameters = ['CBIQ', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+            #unused_parameters = ['Out Throughput', 'CBIQ', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+            #unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
 
-        #5parameters:
-        #unused_parameters = ['Connection Num of Drops', 'Connection Num of Retransmits', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-        #unused_parameters = None
+            #5parameters:
+            unused_parameters = ['Connection Num of Drops', 'Connection Num of Retransmits', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+            #unused_parameters = None
 
-        #1parameter at a time:
-        unused_parameters = ['CBIQ', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+            #1parameter at a time:
+            #unused_parameters = ['CBIQ', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
 
     tn = datetime.now()
     time_str = "_" + str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
         tn.minute) + "-" + str(tn.second)
     # directory = graphs_path + "10bbr_cubic_reno_tcp_background_noise, "+ is_deepcci + ", " + "chunk_" + str(CHUNK_SIZE) +", shuffle_" + str(IS_SHUFFLE) + ", batch_" + str(BATCH_SIZE)
-    directory = graphs_path + is_deepcci + "_outthroughput_chunk_" + str(CHUNK_SIZE) + "_shuffle_" + str(
+    directory = graphs_path + is_deepcci + "_fulltconnectednet_chunk_" + str(CHUNK_SIZE) + "_shuffle_" + str(
         IS_SHUFFLE) + "_batch_" + str(BATCH_SIZE)
     if not os.path.exists(directory):
         os.makedirs(directory)

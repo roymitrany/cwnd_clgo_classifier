@@ -54,39 +54,6 @@ def create_accuracy_vs_epoch_graph(results_path, txt_filename, plot_name, short_
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
-def get_f1_vs_session_duration(results_path, txt_filename, plot_name, single_session_duration):
-    my_net_accuracy_list = []
-    my_net_all_parameters_accuracy_list = []
-    deepcci_net_accuracy_list = []
-    for dir_name in os.listdir(results_path):
-        if "old" in dir_name:
-            continue
-        session_duration = re.findall(r'\d+', dir_name)
-        res_dir = os.path.join(results_path, dir_name)
-        if not os.path.isdir(res_dir):
-            continue
-        if single_session_duration is not None:
-            if len(re.findall(str(single_session_duration) + '_', res_dir)) == 0:
-                continue
-        res_file = os.path.join(res_dir, txt_filename)
-        try:
-            with open(res_file) as f:
-                accuracy = f.readlines()
-                accuracy = [x.strip() for x in accuracy]
-                accuracy = [float(i) for i in accuracy]
-                if "my_net" in res_file:
-                    if "5parameters" in res_file:
-                            my_net_all_parameters_accuracy_list.append(
-                                (statistics.mean(accuracy[80:]), int(session_duration[1]) / 1000))
-                    else:
-                        my_net_accuracy_list.append((statistics.mean(accuracy[80:]), int(session_duration[0]) / 1000))
-                else:
-                    deepcci_net_accuracy_list.append((accuracy[1], int(session_duration[0]) / 1000))
-        except:
-            continue
-    return my_net_accuracy_list, my_net_all_parameters_accuracy_list, deepcci_net_accuracy_list
-
-
 # Results2:
 """
 from learning.thesis_graphs_utils import *
@@ -120,44 +87,9 @@ def create_f1_vs_session_duration_graph(results_path, txt_filename, plot_name):
             plt.legend((p1, p3), ('CBIQ', 'Deepcci'))
     axes = plt.gca()
     axes.set(xlabel='session duration[seconds]', ylabel='f1')
-    # axes.set_xlim([0, len(my_net_accuracy_list)])
-    # plt.xticks(session_duration)
-    # axes.set_ylim([0, numpy.amax(my_net_accuracy_list)])
     axes.grid()
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
-def get_f1_vs_nubmber_of_flows(results_path, txt_filename, plot_name, single_session_duration):
-    my_net_accuracy_list = []
-    my_net_all_parameters_accuracy_list = []
-    deepcci_net_accuracy_list = []
-    for dir_name in os.listdir(results_path):
-        if "old" in dir_name:
-            continue
-        session_duration = re.findall(r'\d+', dir_name)
-        res_dir = os.path.join(results_path, dir_name)
-        if not os.path.isdir(res_dir):
-            continue
-        if single_session_duration is not None:
-            if len(re.findall(str(single_session_duration) + '_', res_dir)) == 0:
-                continue
-        res_file = os.path.join(res_dir, txt_filename)
-        try:
-            with open(res_file) as f:
-                accuracy = f.readlines()
-                accuracy = [x.strip() for x in accuracy]
-                accuracy = [float(i) for i in accuracy]
-                if "my_net" in res_file:
-                    if "5parameters" in res_file:
-                            my_net_all_parameters_accuracy_list.append(
-                                (statistics.mean(accuracy[80:]), int(session_duration[1]) / 1000))
-                    else:
-                        my_net_accuracy_list.append((statistics.mean(accuracy[80:]), int(session_duration[0]) / 1000))
-                else:
-                    #deepcci_net_accuracy_list.append((accuracy[1], int(session_duration[0]) / 1000))
-                    deepcci_net_accuracy_list.append((statistics.mean(accuracy[80:]), int(session_duration[0]) / 1000))
-        except:
-            continue
-    return my_net_accuracy_list, my_net_all_parameters_accuracy_list, deepcci_net_accuracy_list
 
 # Results3:
 """
@@ -218,6 +150,121 @@ def create_f1_vs_number_of_flows_graph(results_path, txt_filename, plot_name, se
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
+# Results10:
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/new topology- f1 vs number of background flows (20 seconds)- Results10/"
+create_f1_vs_background_flows_multiple_session_duration_graph(result_path,"validation_accuracy","f1 for 15 Background Flows", "20")
+"""
+def create_f1_vs_background_flows_multiple_session_duration_graph(results_path, txt_filename, plot_name, session_duration):
+    my_net_all_parameters_accuracy_list = []
+    graph_legend = ["All Parameters", "CBIQ", "Deepcci", "Throughput"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir or "multiple_rtr" in res_dir:
+            continue
+        for sub_dir in os.listdir(os.path.join(results_path, dir_name, res_dir)):
+            if session_duration not in sub_dir:
+                continue
+            for graph_type in graph_legend:
+                if graph_type in res_dir:
+                    graph_legend_aligned.append(graph_type)
+            result_path = os.path.join(results_path, dir_name, res_dir, sub_dir)
+            my_net_all_parameters_accuracy_list.append(get_f1_result_for_subfolders_from_accuracy(result_path, txt_filename, plot_name))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    for i in range(len(my_net_all_parameters_accuracy_list)):
+        my_net_all_parameters_accuracy = sorted(my_net_all_parameters_accuracy_list[i], key=lambda tup: tup[0])
+        x_axis = [x[0] for x in my_net_all_parameters_accuracy]
+        y_axis = [x[1] for x in my_net_all_parameters_accuracy]
+        plt.plot(x_axis, y_axis)
+    axes = plt.gca()
+    axes.set(xlabel='number of flows', ylabel='F1')
+    axes.grid()
+    plt.legend(graph_legend_aligned)
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+
+# Results11:
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/new topology- classification of different datasets- in multiple routers- Results11/15_background_flows/20seconds/"
+create_multiple_rtr_graph(result_path,"validation_accuracy","f1 for 15 Background Flows")
+"""
+def create_multiple_rtr_graph(results_path, txt_filename, plot_name):
+    f1_list = []
+    f1_sublist = []
+    graph_legend = ["All Parameters", "CBIQ", "Deepcci", "Throughput"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for sub_dir in os.listdir(os.path.join(results_path, dir_name, res_dir)):
+            result_path = os.path.join(results_path, dir_name, res_dir, sub_dir)
+            if not os.path.isdir(result_path) or "old" in result_path:
+                continue
+            f1_sublist.append(get_f1_result_multiple_rtr(result_path, txt_filename))
+        f1_list.append(f1_sublist)
+        f1_sublist = []
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    rtr1 = [x[0][0] for x in f1_list]
+    rtr2 = [x[1][0] for x in f1_list]
+    plt.figure(figsize=(10, 5))
+    ind = np.arange(len(rtr1))
+    width = 0.3
+    plt.bar(ind, rtr1, width)
+    plt.bar(ind + width, rtr2, width)
+    plt.xticks(ind + width / 2, graph_legend_aligned)
+    axes = plt.gca()
+    axes.set(xlabel='Datasets', ylabel='F1')
+    axes.grid()
+    plt.legend(("rtr2", "rtr1"), loc="best")
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+
+# Results12:
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/pre- trained model- f1 vs number of background flows (different session duration)- Results12/"
+create_f1_vs_background_flows_for_pre_trained_model_and_session_durations(result_path,"validation_f1","f1 vs number of background flows (different session duration)")
+"""
+def create_f1_vs_background_flows_for_pre_trained_model_and_session_durations(results_path, txt_filename, plot_name):
+    my_net_all_parameters_accuracy_list = []
+    graph_legend = ["10 seconds", "20 seconds", "60 seconds"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir):
+            continue
+        for sub_dir_name in os.listdir(res_dir):
+            sub_res_dir = os.path.join(results_path, dir_name, sub_dir_name)
+            if not os.path.isdir(sub_res_dir) or "_model" in sub_res_dir:
+                continue
+            for graph_type in graph_legend:
+                if graph_type in sub_res_dir:
+                    graph_legend_aligned.append(graph_type)
+            result_path = os.path.join(results_path, dir_name, res_dir, sub_res_dir)
+            my_net_all_parameters_accuracy_list.append(get_pre_trained_model_result(result_path, txt_filename, plot_name))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    for i in range(len(my_net_all_parameters_accuracy_list)):
+        my_net_all_parameters_accuracy = sorted(my_net_all_parameters_accuracy_list[i], key=lambda tup: tup[0])
+        x_axis = [x[0] for x in my_net_all_parameters_accuracy]
+        y_axis = [x[1] for x in my_net_all_parameters_accuracy]
+        plt.plot(x_axis, y_axis)
+    axes = plt.gca()
+    axes.set(xlabel='number of flows', ylabel='F1')
+    axes.grid()
+    plt.legend(graph_legend_aligned)
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+
 # Results13:
 """
 from learning.thesis_graphs_utils import *
@@ -230,7 +277,7 @@ def create_f1_vs_number_of_flows(results_path, txt_filename, plot_name):
     graph_legend_aligned = []
     for dir_name in os.listdir(results_path):
         res_dir = os.path.join(results_path, dir_name)
-        if not os.path.isdir(res_dir):
+        if not os.path.isdir(res_dir) or "Throughput" in res_dir:
             continue
         for res_sub_dir in os.listdir(os.path.join(results_path, dir_name, res_dir)):
             if "model" in res_sub_dir:
@@ -301,7 +348,6 @@ def create_f1_vs_background_flows_for_pre_trained_model(results_path, txt_filena
     axes.set(xlabel='number of flows', ylabel='F1')
     axes.grid()
     plt.legend(graph_legend_aligned)#, loc=(0.75,0.5))
-    plt.title(plot_name)
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
@@ -338,7 +384,6 @@ def create_diverse_multiple_rtr_graph(results_path, txt_filename, plot_name, ses
     axes = plt.gca()
     axes.set(xlabel='Datasets', ylabel='F1')
     axes.grid()
-    # plt.title(plot_name)
     plt.legend(("rtr2", "rtr1"), loc="best")
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
@@ -377,6 +422,107 @@ def create_result_for_each_parameter_graph(results_path, txt_filename, plot_name
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
+# Results17:
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/networks comparison- Results17/10 seconds with 75 background flows/"
+create_networks_comparison_graph(result_path,"validation_accuracy","f1 for 75 Background Flows")
+"""
+def create_networks_comparison_graph(results_path, txt_filename, plot_name):
+    f1_list = []
+    graph_legend = ["Fully Connected", "Deepcci", "CNN"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        f1_list.append(get_f1_result(res_dir, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    plt.figure(figsize=(10, 5))
+    f1 = [x[0][1] for x in f1_list]
+    ind = np.arange(len(f1))
+    width = 0.3
+    plt.bar(ind, f1, width)
+    plt.xticks(ind + width / 2, graph_legend_aligned)
+    axes = plt.gca()
+    axes.set(xlabel='Parameter', ylabel='F1')
+    axes.grid()
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+
+def get_f1_vs_session_duration(results_path, txt_filename, plot_name, single_session_duration):
+    my_net_accuracy_list = []
+    my_net_all_parameters_accuracy_list = []
+    deepcci_net_accuracy_list = []
+    for dir_name in os.listdir(results_path):
+        if "old" in dir_name:
+            continue
+        session_duration = re.findall(r'\d+', dir_name)
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir):
+            continue
+        if single_session_duration is not None:
+            if len(re.findall(str(single_session_duration) + '_', res_dir)) == 0:
+                continue
+        res_file = os.path.join(res_dir, txt_filename)
+        try:
+            with open(res_file) as f:
+                accuracy = f.readlines()
+                accuracy = [x.strip() for x in accuracy]
+                accuracy = [float(i) for i in accuracy]
+                if "my_net" in res_file:
+                    if "5parameters" in res_file:
+                            my_net_all_parameters_accuracy_list.append(
+                                (statistics.mean(accuracy[80:]), int(session_duration[1]) / 1000))
+                    else:
+                        my_net_accuracy_list.append((statistics.mean(accuracy[80:]), int(session_duration[0]) / 1000))
+                else:
+                    deepcci_net_accuracy_list.append((accuracy[1], int(session_duration[0]) / 1000))
+        except:
+            continue
+    return my_net_accuracy_list, my_net_all_parameters_accuracy_list, deepcci_net_accuracy_list
+
+
+
+def get_f1_vs_nubmber_of_flows(results_path, txt_filename, plot_name, single_session_duration):
+    my_net_accuracy_list = []
+    my_net_all_parameters_accuracy_list = []
+    deepcci_net_accuracy_list = []
+    for dir_name in os.listdir(results_path):
+        if "old" in dir_name:
+            continue
+        session_duration = re.findall(r'\d+', dir_name)
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir):
+            continue
+        if single_session_duration is not None:
+            if len(re.findall(str(single_session_duration) + '_', res_dir)) == 0:
+                continue
+        res_file = os.path.join(res_dir, txt_filename)
+        try:
+            with open(res_file) as f:
+                accuracy = f.readlines()
+                accuracy = [x.strip() for x in accuracy]
+                accuracy = [float(i) for i in accuracy]
+                if "my_net" in res_file:
+                    if "5parameters" in res_file:
+                            my_net_all_parameters_accuracy_list.append(
+                                (statistics.mean(accuracy[80:]), int(session_duration[1]) / 1000))
+                    else:
+                        my_net_accuracy_list.append((statistics.mean(accuracy[80:]), int(session_duration[0]) / 1000))
+                else:
+                    #deepcci_net_accuracy_list.append((accuracy[1], int(session_duration[0]) / 1000))
+                    deepcci_net_accuracy_list.append((statistics.mean(accuracy[80:]), int(session_duration[0]) / 1000))
+        except:
+            continue
+    return my_net_accuracy_list, my_net_all_parameters_accuracy_list, deepcci_net_accuracy_list
+
+
+
 def get_f1_result(results_path, txt_filename):
     my_net_all_parameters_accuracy_list = []
     if not os.path.isdir(results_path):
@@ -387,6 +533,21 @@ def get_f1_result(results_path, txt_filename):
         with open(res_file) as f:
             accuracy = f.readlines()
             my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[-1])))
+    except:
+        pass
+    return my_net_all_parameters_accuracy_list
+
+
+def get_f1_result_multiple_rtr(results_path, txt_filename):
+    my_net_all_parameters_accuracy_list = []
+    if not os.path.isdir(results_path):
+        return
+    x_axis = re.findall(r'\d+', results_path)
+    res_file = os.path.join(results_path, txt_filename)
+    try:
+        with open(res_file) as f:
+            accuracy = f.readlines()
+            my_net_all_parameters_accuracy_list.append(float(accuracy[-1]))
     except:
         pass
     return my_net_all_parameters_accuracy_list
@@ -406,6 +567,25 @@ def get_f1_result_for_subfolders(results_path, txt_filename, plot_name):
             with open(res_file) as f:
                 accuracy = f.readlines()
                 my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[1])))
+        except:
+            continue
+    return my_net_all_parameters_accuracy_list
+
+
+def get_f1_result_for_subfolders_from_accuracy(results_path, txt_filename, plot_name):
+    my_net_all_parameters_accuracy_list = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir):
+            continue
+        if "old" in res_dir or "model" in dir_name:
+            continue
+        x_axis = re.findall(r'\d+', dir_name)
+        res_file = os.path.join(res_dir, txt_filename)
+        try:
+            with open(res_file) as f:
+                accuracy = f.readlines()
+                my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[-1])))
         except:
             continue
     return my_net_all_parameters_accuracy_list
