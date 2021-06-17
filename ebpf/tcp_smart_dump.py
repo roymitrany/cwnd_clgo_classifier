@@ -8,9 +8,11 @@ import socket
 
 print("startinggg tcp_smart_dump, before inport")
 import sys
-print (sys.path)
+
+print(sys.path)
 import sys
-sys.path.insert(0,'..')
+
+sys.path.insert(0, '..')
 import subprocess
 import traceback
 from os import popen
@@ -28,8 +30,6 @@ from simulation.single_connection_statistics import OnlineSingleConnStatistics
 # TODO: get interval accuracy as parameter
 interval_accuracy = 3
 
-debug_file = open("ebpf_debug.txt", 'w')
-print("starting tcp_smart_dump", file=debug_file)
 traffic_duration = int(sys.argv[1])
 simulation_name = sys.argv[2]
 srv_intf = sys.argv[3]
@@ -41,7 +41,9 @@ interval_duration = 6
 num_of_samples = int(traffic_duration / interval_duration)
 server_intf_index = -1
 res_root_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "online")
-
+debug_file_name = "./debug_files/%d_ebpf_debug.txt" % int(time.time())
+debug_file = open(debug_file_name, 'w')
+print("starting tcp_smart_dump", file=debug_file)
 try:
     b = BPF(src_file="tcp_smart_dump.c", debug=0)
     fn = b.load_func("handle_egress", BPF.SCHED_CLS)
@@ -64,10 +66,10 @@ try:
     ipr.tc("add", "clsact", server_intf_index)
 
     # egress
-    #ipr.tc("add-filter", "bpf", server_intf_index, ":1", fd=fn.fd, name=fn.name,
+    # ipr.tc("add-filter", "bpf", server_intf_index, ":1", fd=fn.fd, name=fn.name,
     #       parent="ffff:fff3", classid=1, direct_action=True)
-    #debug_file.write("Egress BPF Filter Added for interface intf!!!!\n")
-    #debug_file.flush()
+    # debug_file.write("Egress BPF Filter Added for interface intf!!!!\n")
+    # debug_file.flush()
     ffilter = b.load_func("out_filter", BPF.SOCKET_FILTER)
     BPF.attach_raw_socket(ffilter, sys.argv[3])
 
@@ -100,12 +102,12 @@ try:
             # Gather statistics from the router:
             q_disc_file = os.path.join(res_dir, "%d_qdisc.csv" % int(time.time()))
             q_disc_cmd = os.path.join(Path(os.getcwd()).parent, "simulation", "tc_qdisc_implementation.py")
-            command_line = 'python3 %s %s %s %d'% (q_disc_cmd, sys.argv[3], q_disc_file, interval_accuracy)
+            command_line = 'python3 %s %s %s %d' % (q_disc_cmd, sys.argv[3], q_disc_file, interval_accuracy)
             args = shlex.split(command_line)
             q_proc = subprocess.Popen(args)
             start_capture_epoch_time = time.time()
             sniff_mode_table[0] = c_uint32(1)
-            start_time_table[0] = c_uint64(0) # reset start time
+            start_time_table[0] = c_uint64(0)  # reset start time
             time.sleep(interval_duration)
             sniff_mode_table[0] = c_uint32(0)
             q_proc.send_signal(SIGINT)
@@ -164,14 +166,14 @@ try:
                     # Add this result to epoch time in nanos at capture start time
                     # the result is the epoch time in micros when the packet was captured.
                     start_time = start_time_table[0].value
-                    debug_file.write('------packet capture time since boot: %s \n' % df.at[0,'date_time'])
+                    debug_file.write('------packet capture time since boot: %s \n' % df.at[0, 'date_time'])
                     debug_file.write('------capture start time since boot: %s \n' % str(start_time))
-                    debug_file.write('------offset: %s \n' % str(df.at[0,'date_time']-start_time))
+                    debug_file.write('------offset: %s \n' % str(df.at[0, 'date_time'] - start_time))
                     debug_file.write('------capture start epoch time: %s \n' % str(start_capture_epoch_time))
-                    #debug_file.write('------capture start epoch time: %s \n' % str(df.at[0,'date_time']-start_time))
-                    df['date_time'] = df['date_time'] - start_time + start_capture_epoch_time*1000000
-                    #debug_file.write('------epoch in micros: %s \n' % str(df.at[0,'date_time'] - start_time + start_capture_time_micros))
-                    debug_file.write('------val after adding offset: %s \n' % df.at[0,'date_time'])
+                    # debug_file.write('------capture start epoch time: %s \n' % str(df.at[0,'date_time']-start_time))
+                    df['date_time'] = df['date_time'] - start_time + start_capture_epoch_time * 1000000
+                    # debug_file.write('------epoch in micros: %s \n' % str(df.at[0,'date_time'] - start_time + start_capture_time_micros))
+                    debug_file.write('------val after adding offset: %s \n' % df.at[0, 'date_time'])
                     df['date_time'] = pd.to_datetime(df['date_time'], unit='us')
                     df['date_time'] = df['date_time'].dt.tz_localize('UTC').dt.tz_convert('Asia/Jerusalem')
                     df['date_time'] = df['date_time'].dt.strftime('%H:%M:%S.%f')
@@ -185,7 +187,8 @@ try:
                         clnt_df = df
 
                     if "5201" in conn_index:
-                        csv_filename = os.path.join(res_dir, "%d_%s_%s.csv" % (int(time.time()), conn_index, intf_index))
+                        csv_filename = os.path.join(res_dir,
+                                                    "%d_%s_%s.csv" % (int(time.time()), conn_index, intf_index))
                         df.to_csv(csv_filename)
                         debug_file.write('------%s file   saved\n' % str(time.time()))
                         debug_file.flush()
@@ -203,11 +206,11 @@ try:
 
             debug_file.write('------%sbefore clear arrays\n' % str(time.time()))
             debug_file.flush()
-            #pkt_array.items_delete_batch() !!! Not supported in ubuntu 18.04
+            # pkt_array.items_delete_batch() !!! Not supported in ubuntu 18.04
             pkt_array.clear()
             debug_file.write('------%s cleared pkt_ array \n' % str(time.time()))
             debug_file.flush()
-            #pkt_array_ext.items_delete_batch()!!! Not supported in ubuntu 18.04
+            # pkt_array_ext.items_delete_batch()!!! Not supported in ubuntu 18.04
             pkt_array_ext.clear()
             debug_file.write('------%s cleared pkt_ array ext\n' % str(time.time()))
             debug_file.flush()

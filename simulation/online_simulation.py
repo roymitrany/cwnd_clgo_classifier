@@ -101,7 +101,7 @@ class Iperf3Simulator:
 
         # Run the ebpf command with all the interfaces. Server interface should always be the first one!
         ebpf_cmd = os.path.join(Path(os.getcwd()).parent, "ebpf", "tcp_smart_dump.py")
-        cmd = "%s %d %s %s %s&>rtr_ebpf_out.txt" % (ebpf_cmd, simulation_duration, self.simulation_name, "r-srv", intf_name_str)
+        cmd = "%s %d %s %s %s&>debug_files/%s_rtr_ebpf_out.txt" % (ebpf_cmd, simulation_duration, self.simulation_name, "r-srv", intf_name_str, time.time())
         print(cmd)
         rtr_ebpf_proc = rtr.popen(cmd, shell=True)
 
@@ -117,7 +117,8 @@ class Iperf3Simulator:
             cwnd_algo = client[0:client.find("_")]
             start_after = randint(0, self.iperf_start_after) / 1000
             # start_after = self.iperf_start_after
-            cmd = 'sleep %f && iperf3 -c %s -t %d -p %d --bind 10.0.%d.10 --cport 64501 -C %s>ipuff_debig_%s.txt' % (
+            cmd = 'sleep %f && iperf3 -c %s -t %d -p %d --bind 10.0.%d.10 --cport 64501 -C ' \
+                  '%s>debug_files/ipuff_debig_%s.txt' % (
                 start_after, srv_ip, self.seconds, 5201 + client_counter, client_counter, cwnd_algo, client)
             print("sleeeeeeeeeeeeeeeeeeeeeeping %s " % cmd)
             popens[client] = (self.net.getNodeByName(client)).popen(cmd, shell=True)
@@ -161,7 +162,7 @@ if __name__ == '__main__':
     Algo = Enum('Algo', 'reno bbr cubic')
     # Algo = Enum('Algo', 'cubic')
     algo_dict = {}
-    simulation_duration = 60  # 60 # 80 # 120  # seconds.
+    simulation_duration = 20  # 60 # 80 # 120  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (
@@ -178,23 +179,23 @@ if __name__ == '__main__':
     host_delay = 25
     srv_delay = 25
     iteration = 0
-    # for host_bw in range(10, 100, 20):
-    # for host_delay in range(4500, 5000, 100):
-    # for srv_bw in range(10, 100, 20):
-    # for queue_size in range(100, 1000, 100):
-    for algo in Algo:
-        algo_dict[algo.name] = 1  # random.randint(2, 4) # how many flows of each type
-    # algo_dict['bbr']=10
-    total_delay = 2 * (host_delay + srv_delay)
-    simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
-                                             srv_bw=srv_bw,
-                                             srv_delay=srv_delay, rtr_queue_size=queue_size)
-    simulation_name = create_sim_name(algo_dict)
-    iteration += 1
-    simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
-                                iperf_start_after=2,
-                                background_noise=background_noise,
-                                interval_accuracy=interval_accuracy, iteration=iteration)
-    # iperf_start_after=500, background_noise=100)
-    simulator.start_simulation()
-    clean_sim()
+    for host_bw in range(10, 100, 50):
+        for host_delay in range(4500, 5000, 200):
+            # for srv_bw in range(10, 100, 20):
+            # for queue_size in range(100, 1000, 100):
+            for algo in Algo:
+                algo_dict[algo.name] = randint(2, 4) # how many flows of each type
+            # algo_dict['bbr']=10
+            total_delay = 2 * (host_delay + srv_delay)
+            simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
+                                                     srv_bw=srv_bw,
+                                                     srv_delay=srv_delay, rtr_queue_size=queue_size)
+            simulation_name = create_sim_name(algo_dict)
+            iteration += 1
+            simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
+                                        iperf_start_after=2,
+                                        background_noise=background_noise,
+                                        interval_accuracy=interval_accuracy, iteration=iteration)
+            # iperf_start_after=500, background_noise=100)
+            simulator.start_simulation()
+            clean_sim()

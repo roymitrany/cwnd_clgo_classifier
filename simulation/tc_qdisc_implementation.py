@@ -7,7 +7,7 @@ import re  # xu
 import time
 
 run = True
-debug_file_name = "../qdisc_debug/%d_qdisc_debug.csv" % int(time.time())
+debug_file_name = "./debug_files/%d_qdisc_debug.csv" % int(time.time())
 debug_file = open(debug_file_name, 'w')
 # debug_file = open("q_disc_debug.txt", 'w')
 
