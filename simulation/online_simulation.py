@@ -49,13 +49,6 @@ class Iperf3Simulator:
         self.port_algo_dict = {}
         self.background_noise = background_noise
         self.interval_accuracy = interval_accuracy
-        tn = datetime.now()
-        time_str = str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
-            tn.minute) + "-" + str(tn.second)
-
-        self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "online",
-                                        time_str + "_" + self.simulation_name)
-        #os.mkdir(self.res_dirname, 0o777)
 
     def SetCongestionControlAlgorithm(self, host, tcp_algo):
         """
@@ -108,7 +101,7 @@ class Iperf3Simulator:
 
         # Run the ebpf command with all the interfaces. Server interface should always be the first one!
         ebpf_cmd = os.path.join(Path(os.getcwd()).parent, "ebpf", "tcp_smart_dump.py")
-        cmd = "%s %d %s %s&>rtr_ebpf_out.txt" % (ebpf_cmd, simulation_duration, "r-srv", intf_name_str)
+        cmd = "%s %d %s %s %s&>rtr_ebpf_out.txt" % (ebpf_cmd, simulation_duration, self.simulation_name, "r-srv", intf_name_str)
         print(cmd)
         rtr_ebpf_proc = rtr.popen(cmd, shell=True)
 

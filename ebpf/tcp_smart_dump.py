@@ -1,6 +1,7 @@
 #!/home/another/PycharmProjects/cwnd_clgo_classifier/venv/bin/python3
 # Copyright (c) PLUMgrid, Inc.
 # Licensed under the Apache License, Version 2.0 (the "License")
+from datetime import datetime
 import os
 from pathlib import Path
 import socket
@@ -30,14 +31,17 @@ interval_accuracy = 3
 debug_file = open("ebpf_debug.txt", 'w')
 print("starting tcp_smart_dump", file=debug_file)
 traffic_duration = int(sys.argv[1])
-intf_list = sys.argv[2:]
+simulation_name = sys.argv[2]
+srv_intf = sys.argv[3]
+clnt_intf_list = sys.argv[4:]
 inft_index_list = []
 ipr = IPRoute()
 interval_duration = 6
 
 num_of_samples = int(traffic_duration / interval_duration)
 server_intf_index = -1
-res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "csvs")
+res_root_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "online")
+
 try:
     b = BPF(src_file="tcp_smart_dump.c", debug=0)
     fn = b.load_func("handle_egress", BPF.SCHED_CLS)
@@ -54,10 +58,9 @@ try:
     ipr = IPRoute()
 
     # handle server facing interface first, read egress traffic only
-    intf = intf_list[0]
-    server_intf_index = ipr.link_lookup(ifname=intf)[0]
+    server_intf_index = ipr.link_lookup(ifname=srv_intf)[0]
     inft_index_list.append(server_intf_index)
-    print("server interface %s is: %d" % (intf, server_intf_index), file=debug_file)
+    print("server interface %s is: %d" % (srv_intf, server_intf_index), file=debug_file)
     ipr.tc("add", "clsact", server_intf_index)
 
     # egress
@@ -66,7 +69,7 @@ try:
     #debug_file.write("Egress BPF Filter Added for interface intf!!!!\n")
     #debug_file.flush()
     ffilter = b.load_func("out_filter", BPF.SOCKET_FILTER)
-    BPF.attach_raw_socket(ffilter, sys.argv[2])
+    BPF.attach_raw_socket(ffilter, sys.argv[3])
 
     # frontend part
     socketfd = ffilter.sock
@@ -75,7 +78,7 @@ try:
     sockobj.setblocking(True)
 
     # ingress
-    for intf in intf_list[1:]:
+    for intf in clnt_intf_list:
         intf_index = ipr.link_lookup(ifname=intf)[0]
         inft_index_list.append(intf_index)
         print("if %s is: %d" % (intf, intf_index), file=debug_file)
@@ -88,12 +91,16 @@ try:
 
     try:
         for jj in range(num_of_samples):
-
+            # Create results directory for this iteration
+            tn = datetime.now()
+            time_str = str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
+                tn.minute) + "-" + str(tn.second)
+            res_dir = os.path.join(res_root_dir, time_str + '_' + simulation_name)
+            os.mkdir(res_dir, 0o777)
             # Gather statistics from the router:
             q_disc_file = os.path.join(res_dir, "%d_qdisc.csv" % int(time.time()))
-            #q_disc_file = "/home/user/csvs/%d_qdisc.csv" % int(time.time())
             q_disc_cmd = os.path.join(Path(os.getcwd()).parent, "simulation", "tc_qdisc_implementation.py")
-            command_line = 'python3 %s %s %s %d'% (q_disc_cmd, sys.argv[2], q_disc_file, interval_accuracy)
+            command_line = 'python3 %s %s %s %d'% (q_disc_cmd, sys.argv[3], q_disc_file, interval_accuracy)
             args = shlex.split(command_line)
             q_proc = subprocess.Popen(args)
             start_capture_epoch_time = time.time()
