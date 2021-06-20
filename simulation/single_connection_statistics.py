@@ -148,6 +148,9 @@ class SingleConnStatistics:
         time_gap_series = pd.to_datetime(self.in_conn_df['date_time']).diff()
         time_gap_series = time_gap_series.convert_dtypes()
         time_gap_series = time_gap_series.fillna(0)
+        time_gap_series = time_gap_series/1000000 #convert from nano to milli
+        time_gap_series = time_gap_series.astype('int64')
+        print('a')
 
 
         # Join it to th conn df
@@ -274,10 +277,10 @@ class OnlineSingleConnStatistics(SingleConnStatistics):
 
 if __name__ == '__main__':
     intv_accuracy = 3
-    abs_path = "/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/csvs"
-    in_file = abs_path + "/1623739731_167772170_64501_167772938_5201_5.csv"
-    out_file = abs_path + "/1623739731_167772170_64501_167772938_5201_6.csv"
-    rtr_file = abs_path + "/1623739724_qdisc.csv"
+    abs_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online/6.20.2021@14-50-47_1_reno_2_bbr_3_cubic"
+    in_file = abs_path + "/1624189855_167772170_64501_167773706_5201_8.csv"
+    out_file = abs_path + "/1624189855_167772170_64501_167773706_5201_9.csv"
+    rtr_file = abs_path + "/1624189847_qdisc.csv"
     q_line_obj = OnlineSingleConnStatistics(in_file=in_file, out_file=out_file, interval_accuracy= intv_accuracy, rtr_q_filename=rtr_file)
     q_line_obj.conn_df.to_csv(abs_path + '/single_connection_stat_debug.csv')
     # q_line_obj = OfflineSingleConnStatistics(in_file, out_file, rtr_file, intv_accuracy)

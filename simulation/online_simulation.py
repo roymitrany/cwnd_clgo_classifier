@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import os
+import re
 import threading
 from pathlib import Path
 
@@ -18,12 +19,6 @@ from datetime import datetime
 import time
 from mininet.node import OVSController
 from mininet.util import pmonitor
-import sys
-
-
-print (sys.path)
-sys.path.insert(0, '/home/another/PycharmProjects/cwnd_clgo_classifier')
-print (sys.path)
 
 from simulation.simulation_topology import SimulationTopology
 
@@ -73,7 +68,7 @@ class Iperf3Simulator:
             noise_gen.popen('python noise_generator.py %s %s' % (srv_ip, self.background_noise))
         client_counter = 0
         intf_name_str = ""
-        #CLI(self.net)
+        # CLI(self.net)
 
         for client in self.simulation_topology.host_list:
             # Modify TCP algorithms (because iperf3 does not support vegas in -C parameter):
@@ -101,10 +96,10 @@ class Iperf3Simulator:
 
         # Run the ebpf command with all the interfaces. Server interface should always be the first one!
         ebpf_cmd = os.path.join(Path(os.getcwd()).parent, "ebpf", "tcp_smart_dump.py")
-        cmd = "%s %d %s %s %s&>debug_files/%s_rtr_ebpf_out.txt" % (ebpf_cmd, simulation_duration, self.simulation_name, "r-srv", intf_name_str, time.time())
+        cmd = "%s %d %s %s %s&>debug_files/%s_rtr_ebpf_out.txt" % (
+            ebpf_cmd, simulation_duration, self.simulation_name, "r-srv", intf_name_str, time.time())
         print(cmd)
         rtr_ebpf_proc = rtr.popen(cmd, shell=True)
-
 
         # Disable TSO for router
         cmd = "ethtool -K r-srv tso off"
@@ -116,14 +111,14 @@ class Iperf3Simulator:
         for client in self.simulation_topology.host_list:
             cwnd_algo = client[0:client.find("_")]
             start_after = randint(0, self.iperf_start_after) / 1000
-            # start_after = self.iperf_start_after
-            cmd = 'sleep %f && iperf3 -c %s -t %d -p %d --bind 10.0.%d.10 --cport 64501 -C ' \
+            client_port = 64500 + Algo[cwnd_algo].value  # Set client port according to algo. hint for csv file names
+            cmd = 'sleep %f && iperf3 -c %s -t %d -p %d --bind 10.0.%d.10 --cport %d -C ' \
                   '%s>debug_files/ipuff_debig_%s.txt' % (
-                start_after, srv_ip, self.seconds, 5201 + client_counter, client_counter, cwnd_algo, client)
+                      start_after, srv_ip, self.seconds, 5201 + client_counter, client_counter, client_port, cwnd_algo,
+                      client)
             print("sleeeeeeeeeeeeeeeeeeeeeeping %s " % cmd)
             popens[client] = (self.net.getNodeByName(client)).popen(cmd, shell=True)
             client_counter += 1
-
 
         for client, line in pmonitor(popens, timeoutms=1000):
             if client:
@@ -153,6 +148,21 @@ def create_sim_name(cwnd_algo_dict):
     return name[0:-1]
 
 
+def rename_res_files():
+    res_root_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "online")
+    result_files = list(Path(res_root_dir).rglob("*_6450[0-9]_*"))
+    count = 0
+    for res_file in result_files:
+        search_obj = re.search(r'[0-9]+_[0-9]+_(6450[0-9])_[0-9]+_52[0-9][0-9].csv', str(res_file))
+        if not search_obj:
+            continue
+        port = int(search_obj.group(1))
+        curr_algo = Algo(port - 64500).name
+        file_new_name = 'single_connection_stat_%s_%d.csv' % (curr_algo, count)
+        os.rename(res_file, os.path.join(os.path.dirname(res_file), file_new_name))
+        count += 1
+
+
 if __name__ == '__main__':
     # interval accuracy: a number between 0 to 3. For value n, the accuracy will be set to 1/10^n
     interval_accuracy = 3
@@ -175,16 +185,18 @@ if __name__ == '__main__':
     queue_size = 7500
     # for host_bw in range(100, 140, 5):
 
-    background_noise = 0
+    background_noise = 100
     host_delay = 25
     srv_delay = 25
     iteration = 0
-    for host_bw in range(10, 100, 50):
-        for host_delay in range(4500, 5000, 200):
+    for host_bw in range(10, 100, 100):
+        for host_delay in range(4500, 5000, 2000):
             # for srv_bw in range(10, 100, 20):
             # for queue_size in range(100, 1000, 100):
+            i = 1
             for algo in Algo:
-                algo_dict[algo.name] = randint(2, 4) # how many flows of each type
+                algo_dict[algo.name] = i  # how many flows of each type
+                i += 1
             # algo_dict['bbr']=10
             total_delay = 2 * (host_delay + srv_delay)
             simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
@@ -198,4 +210,5 @@ if __name__ == '__main__':
                                         interval_accuracy=interval_accuracy, iteration=iteration)
             # iperf_start_after=500, background_noise=100)
             simulator.start_simulation()
+            rename_res_files()
             clean_sim()

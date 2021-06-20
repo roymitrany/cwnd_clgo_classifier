@@ -50,20 +50,6 @@ BPF_ARRAY(start_time, u64, 1);
 
 int out_filter(struct __sk_buff *skb)
 {
-    //int one = 1;
-    //u32 intkey = 0;
-    //uint32_t* global_count = 0;
-
-
-    // count number of packets
-    //global_count = pkt_out_count.lookup(&intkey);
-    //if (global_count) { // check if this map exists
-    //    *global_count+=1;
-    //}
-    //else        // if the map for the key doesn't exist, create one
-    //{
-    //    pkt_out_count.update(&intkey, &one);
-    //}
     handle_egress(skb);
     return TC_ACT_OK;
 }
@@ -154,7 +140,7 @@ int handle_egress(struct __sk_buff *skb)
     // then filter out.
     // TODO: make this condition more configurable. Maybe as parameter?
     uint16_t src_port = tcp->src_port;
-    if (src_port != 64501){
+    if (src_port < 64501 || src_port > 64510){
         goto ACT_OK;
     }
 
