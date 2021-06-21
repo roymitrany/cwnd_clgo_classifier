@@ -25,7 +25,7 @@ import sys
 import time
 import pandas as pd
 from ctypes import c_int, c_uint32, c_uint64
-from simulation.single_connection_statistics import OnlineSingleConnStatistics
+from online_sim.online_single_connection_statistics import OnlineSingleConnStatistics
 
 # TODO: get interval accuracy as parameter
 interval_accuracy = 3

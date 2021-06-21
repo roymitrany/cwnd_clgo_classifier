@@ -95,8 +95,8 @@ class Iperf3Simulator:
             cmd = "ethtool -K %s-r tso off" % client
             self.net.getNodeByName(client).cmd(cmd)
 
-        # Run the ebpf command with all the interfaces. Server interface should always be the first one!
-        ebpf_cmd = os.path.join(Path(os.getcwd()).parent, "ebpf", "tcp_smart_dump.py")
+        # Run the online_sim command with all the interfaces. Server interface should always be the first one!
+        ebpf_cmd = os.path.join(Path(os.getcwd()).parent, "online_sim", "tcp_smart_dump.py")
         cmd = "%s %d %s %s %s&>debug_files/%s_rtr_ebpf_out.txt" % (
             ebpf_cmd, simulation_duration, self.simulation_name, "r-srv", intf_name_str, time.time())
         print(cmd)

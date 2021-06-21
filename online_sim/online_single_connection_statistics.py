@@ -21,41 +21,6 @@ def get_delta(curr_timedelta, base_timedelta):
     return (curr_timedelta - base_timedelta).seconds + (curr_timedelta - base_timedelta).microseconds / 1000000
 
 
-def parse_ip_port(ipp_str):
-    # Auxiliary function to separate the IP from the port in tcpdump parsing:
-    search_obj = re.search(r'(\S+)\.(\d+)$', ipp_str)
-    if search_obj:
-        return search_obj.group(1), search_obj.group(2)
-    else:
-        return None
-
-
-def parse_seq_line(line):
-    # Parse a single line from TCP dump file, return important values only
-    # The method parses only lines with TCP data, than include seq key
-    # Example of a single line:
-    # 21:00:32.248252 IP 10.0.2.10.54094 > 10.0.3.10.5203: Flags [P.], seq 1:38, ack 1, win 83, options [nop,nop,TS val 3161060119 ecr 3216167312], length 37
-    # search_obj = re.search(r'(\S+) IP (\S+) > (\S+): Flags.* length (\d+)', line)
-    search_obj = re.search(r'(\S+) IP (\S+) > (\S+): Flags.* seq (\d+):.*TS val (\d+) .* length (\d+)', line)
-    if search_obj is None:
-        return '0', '0', '0', '0', '0'
-
-    # Extract the interesting variables:
-    time_str = search_obj.group(1)
-    src_ip_port = search_obj.group(2)
-    src_ip, src_port = TcpdumpStatistics.parse_ip_port(src_ip_port)
-    dst_ip_port = search_obj.group(3)
-    dst_ip, dst_port = TcpdumpStatistics.parse_ip_port(dst_ip_port)
-    seq_num = search_obj.group(4)
-    ts_val = search_obj.group(5)
-    throughput = search_obj.group(6)
-
-    if all(v is not None for v in [src_ip, src_port, dst_ip, dst_port]):
-        # Look for the dictionary element. If it does not exist, create one
-        conn_index = TcpdumpStatistics.get_connection_identifier(src_ip, src_port, dst_ip, dst_port)
-        return conn_index, time_str, throughput, ts_val, seq_num
-    else:
-        return '0', '0', '0', '0'
 
 
 class SingleConnStatistics:
@@ -69,6 +34,7 @@ class SingleConnStatistics:
 
         # If we want accurate capture time, we need to do it before we round times by interval accuracy
         capture_time_column_name = "Capture Time Gap"
+        self.calc_capture_delta_time(capture_time_column_name)
 
         # Round time by interval accuracy
         self.in_conn_df['date_time'] = self.in_conn_df['date_time'].map(
@@ -137,6 +103,24 @@ class SingleConnStatistics:
         self.conn_df = self.conn_df.fillna(0)
 
         return
+
+    def calc_capture_delta_time(self, column):
+        # calculate the packet arrival time difference
+        # since we want to maintain the data based on time intervals, we should expect some intervals to include
+        # a lot of packets, and others with only few of them.
+        # It is hard to process such information, so we will
+        # extract the maximal time gap between two sent packets for each interval.
+        time_gap_series = pd.to_datetime(self.in_conn_df['date_time']).diff()
+        time_gap_series = time_gap_series.convert_dtypes()
+        time_gap_series = time_gap_series.fillna(0)
+        time_gap_series = time_gap_series/1000000 #convert from nano to milli
+        time_gap_series = time_gap_series.astype('int64')
+        print('a')
+
+
+        # Join it to th conn df
+        time_gap_series.name = column
+        self.in_conn_df = self.in_conn_df.join(time_gap_series)
 
 
     def count_ts_val(self, conn_df, column):
@@ -211,32 +195,21 @@ class SingleConnStatistics:
         return passed_df, dropped_df, retransmit_df
 
 
-    @staticmethod
-    def build_conn_df(lines, interval_accuracy):
-        conn_list = []
-        # Take out all lines with length 0
-        conn_count = {}
-        for line in lines:
-            # Ignore if length is 0
-            if int(line.find('length 0')) > 0:  # ACK only, ignore
-                continue
-            if "date_time" in line:  # Header line
-                continue
-            print("++++++" + line)
-            #conn_index, time_str, length_str, ts_val, seq_num = parse_seq_line(line)
-            conn_index, time_str, length_str, ts_val, seq_num = line.split(",")
-            print("++++++" + time_str)
-            dtime = datetime.strptime(time_str[0:interval_accuracy - 6], "%H:%M:%S.%f") - datetime(1900, 1, 1)
-            conn_list.append([conn_index, dtime, int(length_str), int(ts_val), seq_num])
+class OnlineSingleConnStatistics(SingleConnStatistics):
+    def __init__(self, in_df = None, out_df=None, in_file=None, out_file=None, interval_accuracy=3, rtr_q_filename=None):
+        super().__init__(interval_accuracy, rtr_q_filename)
 
-        df = pd.DataFrame(conn_list, columns=['conn_index', 'date_time', 'length', 'ts_val', 'seq_num'])
-        # extract the connection index
-        our_conn_index = df.conn_index.mode()[0]
+        # Either in/out DF or in/out files should be filled. We trus the code and don't check
+        if in_file:
+            self.in_conn_df = pd.read_csv(in_file, sep=",")
+            self.out_conn_df = pd.read_csv(out_file, sep=",")
+        else:
+            self.in_conn_df = in_df
+            self.out_conn_df = out_df
 
-        # our_conn_index = max(conn_count, key=conn_count.get)
-        df = df.loc[df['conn_index'] == our_conn_index]
-
-        return df
+        self.in_conn_df = self.in_conn_df.sort_values(by=['date_time'])
+        self.out_conn_df = self.out_conn_df.sort_values(by=['date_time'])
+        self.build_df()
 
 
 if __name__ == '__main__':
