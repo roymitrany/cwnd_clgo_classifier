@@ -2,6 +2,7 @@
 
 import os
 import re
+import shutil
 import threading
 from pathlib import Path
 
@@ -148,9 +149,10 @@ def create_sim_name(cwnd_algo_dict):
     return name[0:-1]
 
 
-def rename_res_files():
-    res_root_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "online")
-    result_files = list(Path(res_root_dir).rglob("*_6450[0-9]_*"))
+def arrange_res_files():
+    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "17_background_flows")
+    curr_root_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "online")
+    result_files = list(Path(curr_root_dir).rglob("*_6450[0-9]_*"))
     count = 0
     for res_file in result_files:
         search_obj = re.search(r'[0-9]+_[0-9]+_(6450[0-9])_[0-9]+_52[0-9][0-9].csv', str(res_file))
@@ -161,6 +163,12 @@ def rename_res_files():
         file_new_name = 'single_connection_stat_%s_%d.csv' % (curr_algo, count)
         os.rename(res_file, os.path.join(os.path.dirname(res_file), file_new_name))
         count += 1
+
+    # Move the files to final destination
+    file_names = os.listdir(curr_root_dir)
+    for file_name in file_names:
+        # shutil.move(folderr, des_res_dir)
+        shutil.move(os.path.join(curr_root_dir, file_name), des_res_dir)
 
 
 if __name__ == '__main__':
@@ -193,10 +201,8 @@ if __name__ == '__main__':
         for host_delay in range(4500, 5000, 2000):
             # for srv_bw in range(10, 100, 20):
             # for queue_size in range(100, 1000, 100):
-            i = 1
             for algo in Algo:
-                algo_dict[algo.name] = i  # how many flows of each type
-                i += 1
+                algo_dict[algo.name] = randint(2, 4)  # how many flows of each type
             # algo_dict['bbr']=10
             total_delay = 2 * (host_delay + srv_delay)
             simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
@@ -210,5 +216,5 @@ if __name__ == '__main__':
                                         interval_accuracy=interval_accuracy, iteration=iteration)
             # iperf_start_after=500, background_noise=100)
             simulator.start_simulation()
-            rename_res_files()
+            arrange_res_files()
             clean_sim()
