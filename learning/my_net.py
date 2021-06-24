@@ -25,8 +25,10 @@ class my_net(Module):
             # an error because the labels must be 0 indexed. So, for example, if you have 20 classes, and the labels are 1th indexed, the 20th label would be 20, so cur_target < n_classes assert would fail. If it’s 0th indexed, the 20th label is 19, so cur_target < n_classes assert passes.
             # input features: 10 channels * number of rows * number of columns, output features: number of labels = 2.
         )
-
-        self.max_pool_size = math.floor(CHUNK_SIZE ** 0.2)
+        if CHUNK_SIZE == 20000:
+            self.max_pool_size = 4
+        else:
+            self.max_pool_size = math.floor(CHUNK_SIZE ** 0.2)
         self.conv2d_layer1 = Conv2d(1, NUM_OF_CONV_FILTERS, kernel_size=(3, NUM_OF_CLASSIFICATION_PARAMETERS), stride=1, padding=(1, 0)) # NUM_OF_CLASSIFICATION_PARAMETERS
         self.BN_layer1 = BatchNorm2d(NUM_OF_CONV_FILTERS)
         self.Relu_layer1 = ReLU(inplace=True)
@@ -87,6 +89,7 @@ class my_net(Module):
         # x = x.squeeze(2)
 
         x = self.conv1d_layer5(x)
+        """
         x = x.transpose(1, 2)
         x = x.transpose(0, 1)
         x, _ = self.gru(x)
@@ -110,7 +113,7 @@ class my_net(Module):
         x = x.transpose(0, 1)
         x = x.transpose(1, 2)
         x = self.BN_final(x)
-
+        """
         x = self.conv1d_final(x)
         x = x.squeeze(2)
         return x

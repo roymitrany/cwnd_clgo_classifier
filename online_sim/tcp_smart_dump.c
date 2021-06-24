@@ -140,7 +140,7 @@ int handle_egress(struct __sk_buff *skb)
     // then filter out.
     // TODO: make this condition more configurable. Maybe as parameter?
     uint16_t src_port = tcp->src_port;
-    if (src_port < 64501 || src_port > 64510){
+    if (src_port < 64501 || src_port > 64599){
         goto ACT_OK;
     }
 

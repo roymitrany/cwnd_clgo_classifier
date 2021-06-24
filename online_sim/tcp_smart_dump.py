@@ -36,7 +36,7 @@ srv_intf = sys.argv[3]
 clnt_intf_list = sys.argv[4:]
 inft_index_list = []
 ipr = IPRoute()
-interval_duration = 6
+interval_duration = 10
 
 num_of_samples = int(traffic_duration / interval_duration)
 server_intf_index = -1

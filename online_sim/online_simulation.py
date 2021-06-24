@@ -12,6 +12,7 @@ from signal import SIGINT
 from subprocess import Popen
 from time import sleep, time
 
+import numpy
 from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.log import setLogLevel
@@ -22,6 +23,11 @@ from mininet.node import OVSController
 from mininet.util import pmonitor
 
 from simulation.simulation_topology import SimulationTopology
+
+class AlgoStreams:
+    def __init__(self, measured_dict, unmeasured_dict):
+        self.measured_dict = measured_dict
+        self.unmeasured_dict = unmeasured_dict
 
 
 class Iperf3Simulator:
@@ -60,7 +66,11 @@ class Iperf3Simulator:
         srv_ip = srv.IP()
         popens = {}
         srv_procs = []
-        rtr = self.net.getNodeByName(self.simulation_topology.rtr)
+        rtr = self.net.getNodeByName(self.simulation_topology.rtr1)
+        self.net['r1'].cmd("ip route add 10.1.0.0/24 via 10.100.0.2 dev r1-r2")
+
+        for i in range(100):
+            self.net['r2'].cmd("ip route add 10.0." + str(i) +".0/24 via 10.100.0.1 dev r2-r1")
 
         # Generate background noise
         noise_gen = self.net.getNodeByName(self.simulation_topology.noise_gen)
@@ -69,7 +79,7 @@ class Iperf3Simulator:
             noise_gen.popen('python noise_generator.py %s %s' % (srv_ip, self.background_noise))
         client_counter = 0
         intf_name_str = ""
-        # CLI(self.net)
+        #CLI(self.net)
 
         for client in self.simulation_topology.host_list:
             # Modify TCP algorithms (because iperf3 does not support vegas in -C parameter):
@@ -86,24 +96,24 @@ class Iperf3Simulator:
             srv_cmd = 'iperf3 -s -p %d &' % test_port
             srv_procs.append(srv.popen(srv_cmd))
 
-            inbound_interface_name = "r-%s" % client
+            inbound_interface_name = "r1-%s" % client
             intf_name_str += inbound_interface_name
             intf_name_str += " "
             client_counter += 1
 
             # Disable TSO for the client
-            cmd = "ethtool -K %s-r tso off" % client
+            cmd = "ethtool -K %s-r1 tso off" % client
             self.net.getNodeByName(client).cmd(cmd)
 
         # Run the online_sim command with all the interfaces. Server interface should always be the first one!
         ebpf_cmd = os.path.join(Path(os.getcwd()).parent, "online_sim", "tcp_smart_dump.py")
         cmd = "%s %d %s %s %s&>debug_files/%s_rtr_ebpf_out.txt" % (
-            ebpf_cmd, simulation_duration, self.simulation_name, "r-srv", intf_name_str, time.time())
+            ebpf_cmd, simulation_duration, self.simulation_name, "r1-r2", intf_name_str, time.time())
         print(cmd)
         rtr_ebpf_proc = rtr.popen(cmd, shell=True)
 
         # Disable TSO for router
-        cmd = "ethtool -K r-srv tso off"
+        cmd = "ethtool -K r2-srv tso off"
         rtr.cmd(cmd)
 
         sleep(2)
@@ -112,7 +122,11 @@ class Iperf3Simulator:
         for client in self.simulation_topology.host_list:
             cwnd_algo = client[0:client.find("_")]
             start_after = randint(0, self.iperf_start_after) / 1000
-            client_port = 64500 + Algo[cwnd_algo].value  # Set client port according to algo. hint for csv file names
+            if client in self.simulation_topology.measured_host_list:
+                client_port = 64501 + list(measured_dict.keys()).index(cwnd_algo)  # Set client port according to algo. hint for csv file names
+            else:
+                client_port = 64499
+
             cmd = 'sleep %f && iperf3 -c %s -t %d -p %d --bind 10.0.%d.10 --cport %d -C ' \
                   '%s>debug_files/ipuff_debig_%s.txt' % (
                       start_after, srv_ip, self.seconds, 5201 + client_counter, client_counter, client_port, cwnd_algo,
@@ -150,7 +164,7 @@ def create_sim_name(cwnd_algo_dict):
 
 
 def arrange_res_files():
-    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "17_background_flows")
+    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "75_background_flows")
     curr_root_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "online")
     result_files = list(Path(curr_root_dir).rglob("*_6450[0-9]_*"))
     count = 0
@@ -159,7 +173,8 @@ def arrange_res_files():
         if not search_obj:
             continue
         port = int(search_obj.group(1))
-        curr_algo = Algo(port - 64500).name
+        port_offset = port-64501
+        curr_algo = list(measured_dict.keys())[port_offset]
         file_new_name = 'single_connection_stat_%s_%d.csv' % (curr_algo, count)
         os.rename(res_file, os.path.join(os.path.dirname(res_file), file_new_name))
         count += 1
@@ -176,11 +191,9 @@ if __name__ == '__main__':
     interval_accuracy = 3
 
     # Simulation's parameters initializing:
-    # Algo = Enum('Algo', 'vegas bic westwood reno bbr cubic')
-    Algo = Enum('Algo', 'reno bbr cubic')
-    # Algo = Enum('Algo', 'cubic')
-    algo_dict = {}
-    simulation_duration = 20  # 60 # 80 # 120  # seconds.
+    measured_dict = {}
+    unmeasured_dict = {}
+    simulation_duration = 70  # 60 # 80 # 120  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (
@@ -188,33 +201,40 @@ if __name__ == '__main__':
     # Tell mininet to print useful information:
     setLogLevel('info')
     # bw is in Mbps, delay in msec, queue size in packets:
-    host_bw = 100
-    srv_bw = 100
-    queue_size = 7500
-    # for host_bw in range(100, 140, 5):
 
-    background_noise = 100
-    host_delay = 25
-    srv_delay = 25
+    background_noise = 0
+    host_delay = 25 #2.5
+    srv_delay = 25 #2.5
     iteration = 0
-    for host_bw in range(10, 100, 100):
-        for host_delay in range(4500, 5000, 2000):
-            # for srv_bw in range(10, 100, 20):
-            # for queue_size in range(100, 1000, 100):
-            for algo in Algo:
-                algo_dict[algo.name] = randint(2, 4)  # how many flows of each type
-            # algo_dict['bbr']=10
-            total_delay = 2 * (host_delay + srv_delay)
-            simulation_topology = SimulationTopology(algo_dict, host_delay=host_delay, host_bw=host_bw,
-                                                     srv_bw=srv_bw,
-                                                     srv_delay=srv_delay, rtr_queue_size=queue_size)
-            simulation_name = create_sim_name(algo_dict)
-            iteration += 1
-            simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
-                                        iperf_start_after=2,
-                                        background_noise=background_noise,
-                                        interval_accuracy=interval_accuracy, iteration=iteration)
-            # iperf_start_after=500, background_noise=100)
-            simulator.start_simulation()
-            arrange_res_files()
-            clean_sim()
+
+    host_bw = 50
+    srv_bw = 50
+    queue_size = 500
+    for srv_bw in numpy.linspace(50, 100, 5):
+        for host_bw in numpy.linspace(srv_bw, srv_bw + 100, 5):
+            # for queue_size in numpy.linspace(100, 1000, 10):
+            for lcount in range(10):
+                # for srv_bw in range(10, 100, 20):
+                # for queue_size in range(100, 1000, 100):
+                measured_dict['reno'] = 1
+                measured_dict['bbr'] = 1
+                measured_dict['cubic'] = 1
+                unmeasured_dict['reno'] = 25
+                unmeasured_dict['bbr'] = 25
+                unmeasured_dict['cubic'] = 25
+                algo_streams = AlgoStreams(measured_dict, unmeasured_dict)
+                # algo_dict['bbr']=10
+                total_delay = 2 * (host_delay + srv_delay)
+                simulation_topology = SimulationTopology(algo_streams, host_delay=host_delay, host_bw=host_bw,
+                                                         srv_bw=srv_bw,
+                                                         srv_delay=srv_delay, rtr_queue_size=queue_size)
+                simulation_name = create_sim_name(measured_dict)
+                iteration += 1
+                simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
+                                            iperf_start_after=2,
+                                            background_noise=background_noise,
+                                            interval_accuracy=interval_accuracy, iteration=iteration)
+                # iperf_start_after=500, background_noise=100)
+                simulator.start_simulation()
+                arrange_res_files()
+                clean_sim()

@@ -1,7 +1,10 @@
 import abc
 import os
+import random
 import re
 import glob
+
+import numpy
 from dataclasses import dataclass
 import numpy as np
 from typing import Dict
@@ -92,7 +95,7 @@ class AbsoluteNormalization2(Normalizer):
 
 class ResultsManager:
 
-    def __init__(self, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters, chunk_size, start_after = 0, end_before = 0): #, dataframe_beginning=0, dataframe_end=60000):
+    def __init__(self, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters, chunk_size, is_diverse, diverse_training_folder = [], start_after = 0, end_before = 0): #, dataframe_beginning=0, dataframe_end=60000):
         """The init function does all the building of the collections, using all results sub folders under
         :param results_path: A String with full path to results location
         """
@@ -100,16 +103,39 @@ class ResultsManager:
         self.res_folder_dict = dict()
         # Create a dictionary that reflects the results file structure
         # create a list of subfolders under results dir
-        for dir_name in os.listdir(results_path):
-            res_dir = os.path.join(results_path, dir_name)
-            if not os.path.isdir(res_dir):
-                continue
-            csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
-            self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
+        if is_diverse:
+            for dir_name in diverse_training_folder:
+                sub_folder = os.path.join(os.path.join(absolute_path, cnn_train_and_test_files_directory), dir_name)
+                for sub_dir_name in os.listdir(sub_folder):
+                    res_dir = os.path.join(results_path, sub_folder, sub_dir_name)
+                    if not os.path.isdir(res_dir):
+                        continue
+                    csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
+                    self.res_folder_dict[sub_dir_name] = ResFolder(res_dir, csv_files_list)
+                """
+                #for i in range(50):
+                    random_subfolder = random.choice(sub_folder)
+                    res_dir = os.path.join(results_path, dir_name, random_subfolder)
+                    if not os.path.isdir(res_dir):
+                        continue
+                    csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
+                    self.res_folder_dict[random_subfolder] = ResFolder(res_dir, csv_files_list)
+                """
+        else:
+            for dir_name in os.listdir(results_path):
+                res_dir = os.path.join(results_path, dir_name)
+                if not os.path.isdir(res_dir):
+                    continue
+                csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
+                self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
 
         # Build dataframe array and train array
         train_list = list()
+        iteration = 0
         for (iter_name, res_folder) in self.res_folder_dict.items():
+            if chunk_size < 5000 and iteration > 4: # added for 1 second session duration- overfitting debugging.
+                break
+            iteration += 1
             for csv_file in res_folder.csv_files_list:
                 csv_filename = os.path.join(res_folder.res_path, csv_file)
                 with open(csv_filename) as f:
@@ -117,15 +143,33 @@ class ResultsManager:
                     stat_df = pd.read_csv(csv_filename, index_col=None, header=0)
                     if row_count - 1 < min_num_of_rows:
                         continue
+                    # remove samples taken before all flows have started sessions:
+                    #stat_df = stat_df[START_AFTER:]
                     # remove samples that were taken after the conventional measuring time:
                     stat_df = stat_df.take(stat_df.index[row_count - min_num_of_rows - 1:])
                     # keep only samples taken between the random beginning and end of all flows:
                     #stat_df = stat_df[start_after:min_num_of_rows-end_before]
+
                     if unused_parameters is not None:
                         stat_df = stat_df.drop(columns=unused_parameters)
                     # split dataframe to chunks:
                     number_of_chunks = stat_df.shape[0] / chunk_size + stat_df.shape[0] % chunk_size
                     for stat_df_chunk in np.array_split(stat_df, number_of_chunks):
+                        if not IS_DEEPCCI and NUM_OF_CLASSIFICATION_PARAMETERS != 3:
+                            try:
+                                # Taking care of CBIQ calculation irregulars:
+                                # stat_df_chunk['CBIQ']=stat_df_chunk.where(stat_df_chunk < 1, 0)
+                                stat_df_chunk['CBIQ'] = abs(stat_df_chunk['CBIQ'])
+                                # stat_df_chunk['CBIQ'] = 0
+                                # stat_df_chunk.loc[stat_df_chunk.CBIQ < 1, 'CBIQ'] = 0
+                                # stat_df_chunk['CBIQ']=stat_df_chunk['CBIQ'].where(stat_df_chunk['CBIQ'] < 1, 0)
+                                stat_df_chunk.loc[stat_df_chunk.CBIQ < 1, 'CBIQ'] = 0
+                                #stat_df_chunk.loc[stat_df_chunk.CBIQ == 2896.0, 'CBIQ'] = 0
+                                if "new_topology" in csv_filename:
+                                    stat_df_chunk['CBIQ'] = 0
+                            except:
+                                pass
+
                         if "single_connection_stat_bbr" in csv_file:
                             train_list.append(["bbr", 0])
                         elif "single_connection_stat_cubic" in csv_file:
