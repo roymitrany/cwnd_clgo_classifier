@@ -1,5 +1,7 @@
 #!/usr/bin/python3
-
+#import sys
+#print(sys.path)
+#sys.path.append('/home/another/PycharmProjects/cwnd_clgo_classifier')
 import os
 import re
 import shutil
@@ -210,6 +212,7 @@ if __name__ == '__main__':
     host_bw = 50
     srv_bw = 50
     queue_size = 500
+    #for iiii in range(1):
     for srv_bw in numpy.linspace(50, 100, 5):
         for host_bw in numpy.linspace(srv_bw, srv_bw + 100, 5):
             # for queue_size in numpy.linspace(100, 1000, 10):
@@ -219,9 +222,9 @@ if __name__ == '__main__':
                 measured_dict['reno'] = 1
                 measured_dict['bbr'] = 1
                 measured_dict['cubic'] = 1
-                unmeasured_dict['reno'] = 25
-                unmeasured_dict['bbr'] = 25
-                unmeasured_dict['cubic'] = 25
+                unmeasured_dict['reno'] = 10
+                unmeasured_dict['bbr'] = 10
+                unmeasured_dict['cubic'] = 10
                 algo_streams = AlgoStreams(measured_dict, unmeasured_dict)
                 # algo_dict['bbr']=10
                 total_delay = 2 * (host_delay + srv_delay)

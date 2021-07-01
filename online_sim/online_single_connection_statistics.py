@@ -1,5 +1,6 @@
-import re
-import sys
+#import sys
+#print(sys.path)
+#sys.path.append('/home/another/PycharmProjects/cwnd_clgo_classifier')
 from datetime import datetime
 
 import pandas as pd
@@ -19,7 +20,6 @@ def time_str_to_timedelta(time_str):
 def get_delta(curr_timedelta, base_timedelta):
     """Get Seconds from time."""
     return (curr_timedelta - base_timedelta).seconds + (curr_timedelta - base_timedelta).microseconds / 1000000
-
 
 
 
@@ -66,15 +66,14 @@ class SingleConnStatistics:
 
         # Calculate CBIQ
         in_temp_df = self.create_seq_df(self.in_conn_df, 'in_seq_num')
+        self.join_time_df(in_temp_df, 'date_time')
         out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
-        temp_df = in_temp_df.merge(out_temp_df, how='inner', on=['date_time'])
-        temp_df = temp_df.set_index('date_time')
-        temp_df['CBIQ'] = temp_df['in_seq_num'] - temp_df['out_seq_num']
-        temp_df = temp_df.drop(columns=['in_seq_num', 'out_seq_num'])
-        self.conn_df = self.conn_df.join(temp_df)
+        self.join_time_df(out_temp_df, 'date_time')
+        #temp_df = in_temp_df.merge(out_temp_df, how='inner', on=['date_time'])
+        #temp_df = temp_df.set_index('date_time')
+        self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
+        self.conn_df = self.conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
 
-        self.count_dropped_packets(in_dropped_df, 'Connection Num of Drops')
-        self.count_retransmit_packets(in_retransmit_df, 'Connection Num of Retransmits')
         self.count_ts_val(self.out_conn_df, "Send Time Gap")
         # ts_val_df = self.create_ts_val_df(in_conn_lines, self.interval_accuracy)
 
@@ -103,6 +102,12 @@ class SingleConnStatistics:
         self.conn_df = self.conn_df.fillna(0)
 
         return
+
+    def join_time_df(self, time_df, time_col_name):
+            time_df['Time'] = time_df[time_col_name].map(lambda time_str: time_str_to_timedelta(time_str))
+            time_df = time_df.set_index('Time')
+            self.conn_df = self.conn_df.join(time_df, lsuffix='_caller')
+            self.conn_df = self.conn_df.fillna(method='ffill')
 
     def calc_capture_delta_time(self, column):
         # calculate the packet arrival time difference
@@ -147,20 +152,6 @@ class SingleConnStatistics:
         self.conn_df = self.conn_df.join(bytes_per_timeslot_df)
         self.conn_df = self.conn_df.rename(columns={"length": column})
         self.conn_df[column] = self.conn_df[column].map(lambda num: num * 8 / 10 ** (6 - self.interval_accuracy))
-        values = {column: 0}
-        self.conn_df = self.conn_df.fillna(value=values)
-
-    def count_dropped_packets(self, dropped_df, column):
-        drop_count_df = pd.DataFrame(dropped_df['date_time'].value_counts())
-        self.conn_df = self.conn_df.join(drop_count_df)
-        self.conn_df = self.conn_df.rename(columns={"date_time": column})
-        values = {column: 0}
-        self.conn_df = self.conn_df.fillna(value=values)
-
-    def count_retransmit_packets(self, ret_df, column):
-        ret_count_df = pd.DataFrame(ret_df['date_time'].value_counts())
-        self.conn_df = self.conn_df.join(ret_count_df)
-        self.conn_df = self.conn_df.rename(columns={"date_time": column})
         values = {column: 0}
         self.conn_df = self.conn_df.fillna(value=values)
 
@@ -214,10 +205,10 @@ class OnlineSingleConnStatistics(SingleConnStatistics):
 
 if __name__ == '__main__':
     intv_accuracy = 3
-    abs_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online/6.20.2021@14-50-47_1_reno_2_bbr_3_cubic"
-    in_file = abs_path + "/1624189855_167772170_64501_167773706_5201_8.csv"
-    out_file = abs_path + "/1624189855_167772170_64501_167773706_5201_9.csv"
-    rtr_file = abs_path + "/1624189847_qdisc.csv"
+    abs_path = "/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/for_dev/6.28.2021@13-50-37_1_reno_1_bbr_1_cubic"
+    in_file = abs_path + "/1624877448_167772170_64501_167837706_5201_56.csv"
+    out_file = abs_path + "/1624877448_167772170_64501_167837706_5201_55.csv"
+    rtr_file = abs_path + "/1624877437_qdisc.csv"
     q_line_obj = OnlineSingleConnStatistics(in_file=in_file, out_file=out_file, interval_accuracy= intv_accuracy, rtr_q_filename=rtr_file)
     q_line_obj.conn_df.to_csv(abs_path + '/single_connection_stat_debug.csv')
     # q_line_obj = OfflineSingleConnStatistics(in_file, out_file, rtr_file, intv_accuracy)

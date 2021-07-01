@@ -7,8 +7,6 @@
 //#include <uapi/linux/tcp.h>
 #include <net/tcp.h>
 
-
-
 #define IP_ICMP 1
 #define IP_TCP  6
 
@@ -192,14 +190,9 @@ int handle_egress(struct __sk_buff *skb)
     } else {
         key.global_index = 1;
     }
-    //if (skb) {
+
     key.ifindex = skb->ifindex;
-    //} else {
-    //    key.ifindex = 1;
-    //}
-    //key.ifindex =2;
-    //key.global_index = 3;
-    
+
     //retrieve ip src/dest and port src/dest of current packet
     //and save it into struct Key
     segment_data.src_ip = ip->src;
