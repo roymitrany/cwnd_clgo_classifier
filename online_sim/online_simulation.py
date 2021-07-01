@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-#import sys
+import sys
 #print(sys.path)
-#sys.path.append('/home/another/PycharmProjects/cwnd_clgo_classifier')
+sys.path.append('/home/another/PycharmProjects/cwnd_clgo_classifier')
 import os
 import re
 import shutil
@@ -166,7 +166,7 @@ def create_sim_name(cwnd_algo_dict):
 
 
 def arrange_res_files():
-    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "75_background_flows")
+    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "30_background_flows")
     curr_root_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "online")
     result_files = list(Path(curr_root_dir).rglob("*_6450[0-9]_*"))
     count = 0

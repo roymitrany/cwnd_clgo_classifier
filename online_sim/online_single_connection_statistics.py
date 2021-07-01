@@ -1,6 +1,6 @@
-#import sys
+import sys
 #print(sys.path)
-#sys.path.append('/home/another/PycharmProjects/cwnd_clgo_classifier')
+sys.path.append('/home/another/PycharmProjects/cwnd_clgo_classifier')
 from datetime import datetime
 
 import pandas as pd
@@ -31,6 +31,9 @@ class SingleConnStatistics:
 
     def build_df(self):
         in_passed_df, in_dropped_df, in_retransmit_df = self.reduce_dropped_packets(self.in_conn_df)
+
+        self.in_conn_df = self.remove_retransmissions(self.in_conn_df)
+        self.out_conn_df = self.remove_retransmissions(self.out_conn_df)
 
         # If we want accurate capture time, we need to do it before we round times by interval accuracy
         capture_time_column_name = "Capture Time Gap"
@@ -103,11 +106,24 @@ class SingleConnStatistics:
 
         return
 
+    def remove_retransmissions(self, conn_df):
+        # Remove retransmissions
+        while True:
+            t_series = conn_df['seq_num'].diff()
+            if t_series.min() >=0:
+                break
+            conn_df = conn_df.join(t_series,rsuffix='_diff')
+            conn_df = conn_df.drop(conn_df[conn_df['seq_num_diff'] < 0].index)
+            conn_df = conn_df.drop(columns=['seq_num_diff'])
+        return conn_df
+
+
     def join_time_df(self, time_df, time_col_name):
             time_df['Time'] = time_df[time_col_name].map(lambda time_str: time_str_to_timedelta(time_str))
             time_df = time_df.set_index('Time')
             self.conn_df = self.conn_df.join(time_df, lsuffix='_caller')
             self.conn_df = self.conn_df.fillna(method='ffill')
+            self.conn_df = self.conn_df.drop(columns=['date_time'])
 
     def calc_capture_delta_time(self, column):
         # calculate the packet arrival time difference
@@ -205,10 +221,10 @@ class OnlineSingleConnStatistics(SingleConnStatistics):
 
 if __name__ == '__main__':
     intv_accuracy = 3
-    abs_path = "/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/for_dev/6.28.2021@13-50-37_1_reno_1_bbr_1_cubic"
-    in_file = abs_path + "/1624877448_167772170_64501_167837706_5201_56.csv"
-    out_file = abs_path + "/1624877448_167772170_64501_167837706_5201_55.csv"
-    rtr_file = abs_path + "/1624877437_qdisc.csv"
+    abs_path = "/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/for_dev/7.1.2021@11-18-1_1_reno_1_bbr_1_cubic"
+    in_file = abs_path + "/1625127492_167772426_64502_167837706_5202_2.csv"
+    out_file = abs_path + "/1625127492_167772426_64502_167837706_5202_25.csv"
+    rtr_file = abs_path + "/1625127481_qdisc.csv"
     q_line_obj = OnlineSingleConnStatistics(in_file=in_file, out_file=out_file, interval_accuracy= intv_accuracy, rtr_q_filename=rtr_file)
     q_line_obj.conn_df.to_csv(abs_path + '/single_connection_stat_debug.csv')
     # q_line_obj = OfflineSingleConnStatistics(in_file, out_file, rtr_file, intv_accuracy)
