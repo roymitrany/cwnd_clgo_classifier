@@ -447,11 +447,96 @@ def create_networks_comparison_graph(results_path, txt_filename, plot_name):
     ind = np.arange(len(f1))
     width = 0.3
     plt.bar(ind, f1, width)
-    plt.xticks(ind + width / 2, graph_legend_aligned)
+    plt.xticks(ind, graph_legend_aligned)
     axes = plt.gca()
     axes.set(xlabel='Parameter', ylabel='F1')
     axes.grid()
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+
+# Results18:
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/networks comparison/9499 chunk size/30 background flows/"
+create_online_classification_graph(result_path,"validation_accuracy","f1 for 30 Background Flows")
+"""
+def create_online_classification_graph(results_path, txt_filename, plot_name):
+    f1_list = []
+    graph_legend = ["CBIQ", "Throughput", "All Parameters", "Deepcci"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        f1_list.append(get_f1_result(res_dir, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    f1 = [x[0][1] for x in f1_list]
+
+    plt.figure(figsize=(10, 5))
+    ind = np.arange(len(f1))
+    width = 0.3
+    plt.bar(ind, f1, width)
+    plt.xticks(ind, graph_legend_aligned)
+
+    axes = plt.gca()
+    axes.set(xlabel='Parameter', ylabel='F1')
+    axes.grid()
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+
+# Results19:
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/networks comparison/9499 chunk size/"
+create_f1_vs_background_flows_for_online_classification_graph(result_path,"validation_accuracy","f1 vs number of background flows (10 seconds)")
+"""
+def create_f1_vs_background_flows_for_online_classification_graph(results_path, txt_filename, plot_name):
+    my_net_all_parameters_accuracy_list = []
+    my_net_all_parameters_scatter = []
+    graph_legend = ["0 Background Flows", "15 Background Flows", "30 Background Flows", "75 Background Flows"]
+    scatter_legend = ["0", "15", "30", "75"]
+    graph_legend_aligned = []
+    scatter_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir):
+            continue
+        if "points" in res_dir:
+            for scatter_type in scatter_legend:
+                if scatter_type in dir_name:
+                    scatter_legend_aligned.append(scatter_type)
+            if "added_points" in res_dir:
+                my_net_all_parameters_scatter.append(get_pre_trained_model_result(os.path.join(results_path, dir_name), txt_filename, plot_name, True))
+            else:
+                my_net_all_parameters_scatter.append(get_pre_trained_model_result(os.path.join(results_path, dir_name), txt_filename, plot_name, False))
+        else:
+            for graph_type in graph_legend:
+                if graph_type in dir_name:
+                    graph_legend_aligned.append(graph_type)
+            result_path = os.path.join(results_path, dir_name, res_dir)
+            my_net_all_parameters_accuracy_list.append(get_pre_trained_model_result(result_path, txt_filename, plot_name))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    for i in range(len(my_net_all_parameters_accuracy_list)):
+        my_net_all_parameters_accuracy = sorted(my_net_all_parameters_accuracy_list[i], key=lambda tup: tup[0])
+        x_axis = [x[0] for x in my_net_all_parameters_accuracy]
+        y_axis = [x[1] for x in my_net_all_parameters_accuracy]
+        plt.plot(x_axis, y_axis)
+    for i in range(len(my_net_all_parameters_scatter)):
+        my_net_all_parameters_accuracy = sorted(my_net_all_parameters_scatter[i], key=lambda tup: tup[0])
+        x_axis = [x[0] for x in my_net_all_parameters_accuracy]
+        y_axis = [x[1] for x in my_net_all_parameters_accuracy]
+        plt.scatter(x_axis, y_axis, color = "red")
+    axes = plt.gca()
+    axes.set(xlabel='number of flows', ylabel='F1')
+    axes.grid()
+    plt.legend(graph_legend_aligned)#, loc=(0.75,0.5))
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
 
 
 def get_f1_vs_session_duration(results_path, txt_filename, plot_name, single_session_duration):

@@ -166,7 +166,7 @@ def create_sim_name(cwnd_algo_dict):
 
 
 def arrange_res_files():
-    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "30_background_flows")
+    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "0_background_flows")
     curr_root_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "online")
     result_files = list(Path(curr_root_dir).rglob("*_6450[0-9]_*"))
     count = 0
@@ -189,6 +189,7 @@ def arrange_res_files():
 
 
 if __name__ == '__main__':
+    #sleep(60*60*10)
     # interval accuracy: a number between 0 to 3. For value n, the accuracy will be set to 1/10^n
     interval_accuracy = 3
 
@@ -222,9 +223,9 @@ if __name__ == '__main__':
                 measured_dict['reno'] = 1
                 measured_dict['bbr'] = 1
                 measured_dict['cubic'] = 1
-                unmeasured_dict['reno'] = 10
-                unmeasured_dict['bbr'] = 10
-                unmeasured_dict['cubic'] = 10
+                unmeasured_dict['reno'] = 0
+                unmeasured_dict['bbr'] = 0
+                unmeasured_dict['cubic'] = 0
                 algo_streams = AlgoStreams(measured_dict, unmeasured_dict)
                 # algo_dict['bbr']=10
                 total_delay = 2 * (host_delay + srv_delay)
