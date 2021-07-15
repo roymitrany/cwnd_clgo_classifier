@@ -115,7 +115,7 @@ def test_model(model, criterion, is_deepcci, is_batch):
     return numpy.mean(validation_loss), numpy.mean(validation_accuracy), numpy.mean(validation_accuracy_per_type, axis=0)
 
 if __name__ == '__main__':
-    sleep(60*60*3.5)
+    #sleep(60*60*3.5)
     if IS_DEEPCCI:
         model = deepcci_net().to(device)
         is_deepcci = "deepcci_net"

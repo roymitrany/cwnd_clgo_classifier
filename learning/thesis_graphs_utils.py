@@ -457,7 +457,7 @@ def create_networks_comparison_graph(results_path, txt_filename, plot_name):
 # Results18:
 """
 from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/networks comparison/9499 chunk size/30 background flows/"
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/networks comparison/9499 chunk size/background flows/30 background flows/"
 create_online_classification_graph(result_path,"validation_accuracy","f1 for 30 Background Flows")
 """
 def create_online_classification_graph(results_path, txt_filename, plot_name):
@@ -491,34 +491,23 @@ def create_online_classification_graph(results_path, txt_filename, plot_name):
 # Results19:
 """
 from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/networks comparison/9499 chunk size/"
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/networks comparison/9499 chunk size/parameters/"
 create_f1_vs_background_flows_for_online_classification_graph(result_path,"validation_accuracy","f1 vs number of background flows (10 seconds)")
 """
 def create_f1_vs_background_flows_for_online_classification_graph(results_path, txt_filename, plot_name):
     my_net_all_parameters_accuracy_list = []
     my_net_all_parameters_scatter = []
-    graph_legend = ["0 Background Flows", "15 Background Flows", "30 Background Flows", "75 Background Flows"]
-    scatter_legend = ["0", "15", "30", "75"]
+    graph_legend = ["Deepcci", "CBIQ", "Throughput"]#,"All Parameters"]
     graph_legend_aligned = []
-    scatter_legend_aligned = []
     for dir_name in os.listdir(results_path):
         res_dir = os.path.join(results_path, dir_name)
-        if not os.path.isdir(res_dir):
+        if not os.path.isdir(res_dir) or "old" in res_dir:
             continue
-        if "points" in res_dir:
-            for scatter_type in scatter_legend:
-                if scatter_type in dir_name:
-                    scatter_legend_aligned.append(scatter_type)
-            if "added_points" in res_dir:
-                my_net_all_parameters_scatter.append(get_pre_trained_model_result(os.path.join(results_path, dir_name), txt_filename, plot_name, True))
-            else:
-                my_net_all_parameters_scatter.append(get_pre_trained_model_result(os.path.join(results_path, dir_name), txt_filename, plot_name, False))
-        else:
-            for graph_type in graph_legend:
-                if graph_type in dir_name:
-                    graph_legend_aligned.append(graph_type)
-            result_path = os.path.join(results_path, dir_name, res_dir)
-            my_net_all_parameters_accuracy_list.append(get_pre_trained_model_result(result_path, txt_filename, plot_name))
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        result_path = os.path.join(results_path, dir_name, res_dir)
+        my_net_all_parameters_accuracy_list.append(get_f1_result_for_subfolders_from_online_accuracy(result_path, txt_filename))
     plt.cla()  # clear the current axes
     plt.clf()  # clear the current figure
     for i in range(len(my_net_all_parameters_accuracy_list)):
@@ -627,7 +616,6 @@ def get_f1_result_multiple_rtr(results_path, txt_filename):
     my_net_all_parameters_accuracy_list = []
     if not os.path.isdir(results_path):
         return
-    x_axis = re.findall(r'\d+', results_path)
     res_file = os.path.join(results_path, txt_filename)
     try:
         with open(res_file) as f:
@@ -693,5 +681,24 @@ def get_pre_trained_model_result(results_path, txt_filename, plot_name, is_scatt
                 my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[-1])))
             else:
                 my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[1])))
+    return my_net_all_parameters_accuracy_list
+
+
+def get_f1_result_for_subfolders_from_online_accuracy(results_path, txt_filename):
+    my_net_all_parameters_accuracy_list = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir):
+            continue
+        if "old" in res_dir or "model" in dir_name:
+            continue
+        x_axis = re.findall(r'\d+', res_dir)
+        res_file = os.path.join(res_dir, txt_filename)
+        try:
+            with open(res_file) as f:
+                accuracy = f.readlines()
+                my_net_all_parameters_accuracy_list.append((int(x_axis[1]), float(accuracy[-1])))
+        except:
+            continue
     return my_net_all_parameters_accuracy_list
 
