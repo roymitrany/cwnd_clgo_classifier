@@ -51,9 +51,8 @@ class SingleConnStatistics:
         out_start_time = self.out_conn_df['date_time'].iloc[0]
         out_end_time = self.out_conn_df['date_time'].iloc[-1]
         start_timedelta = min(in_start_time, out_start_time)
-        end_timedelta = max(in_end_time, out_end_time)
         millies = 10 ** (3 - self.interval_accuracy)
-        tdi = pd.timedelta_range(start_timedelta, end_timedelta, freq='%dL' % millies)
+        tdi = pd.timedelta_range(start_timedelta, periods=10000, freq='%dL' % millies)
         self.conn_df = tdi.to_frame(name="Time")
 
 
@@ -69,9 +68,9 @@ class SingleConnStatistics:
 
         # Calculate CBIQ
         in_temp_df = self.create_seq_df(self.in_conn_df, 'in_seq_num')
-        self.join_time_df(in_temp_df, 'date_time')
+        self.conn_df = self.join_time_df(in_temp_df, 'date_time')
         out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
-        self.join_time_df(out_temp_df, 'date_time')
+        self.conn_df = self.join_time_df(out_temp_df, 'date_time')
         #temp_df = in_temp_df.merge(out_temp_df, how='inner', on=['date_time'])
         #temp_df = temp_df.set_index('date_time')
         self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
@@ -90,10 +89,13 @@ class SingleConnStatistics:
             qdisc_df = pd.read_csv(self.rtr_q_filename, sep="\t", header=None)
             qdisc_df.columns = ['Time', 'Total Bytes in Queue', 'Num of Packets', 'Num of Drops']
             reference_start_time = qdisc_df['Time'][0]
+            qdisc_df = qdisc_df.drop_duplicates(subset=['Time'],keep='last')
             qdisc_df['Time'] = qdisc_df['Time'].map(lambda time_str: time_str_to_timedelta(time_str))
             qdisc_df = qdisc_df.set_index('Time')
             self.conn_df = self.conn_df.join(qdisc_df, lsuffix='_caller')
             self.conn_df = self.conn_df.fillna(method='ffill')
+        else:
+            reference_start_time=self.conn_df['Time'][0]
 
         # Convert the time string into time offset float
         #self.conn_df['timestamp'] = self.conn_df['Time'].map(lambda x: get_delta(x, self.conn_df['Time'][0]))
@@ -167,6 +169,7 @@ class SingleConnStatistics:
         bytes_per_timeslot_df = pd.DataFrame(conn_df.groupby('date_time')['length'].sum())
         self.conn_df = self.conn_df.join(bytes_per_timeslot_df)
         self.conn_df = self.conn_df.rename(columns={"length": column})
+        # Translate from Bytes per time tick to Mbps
         self.conn_df[column] = self.conn_df[column].map(lambda num: num * 8 / 10 ** (6 - self.interval_accuracy))
         values = {column: 0}
         self.conn_df = self.conn_df.fillna(value=values)
@@ -221,11 +224,11 @@ class OnlineSingleConnStatistics(SingleConnStatistics):
 
 if __name__ == '__main__':
     intv_accuracy = 3
-    abs_path = "/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/for_dev/7.1.2021@11-18-1_1_reno_1_bbr_1_cubic"
-    in_file = abs_path + "/1625127492_167772426_64502_167837706_5202_2.csv"
-    out_file = abs_path + "/1625127492_167772426_64502_167837706_5202_25.csv"
-    rtr_file = abs_path + "/1625127481_qdisc.csv"
-    q_line_obj = OnlineSingleConnStatistics(in_file=in_file, out_file=out_file, interval_accuracy= intv_accuracy, rtr_q_filename=rtr_file)
+    abs_path = "/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/for_dev/7.5.2021@18-2-52_1_reno_1_bbr_1_cubic"
+    in_file = abs_path + "/1625497382_167772426_64502_167837706_5202_2.csv"
+    out_file = abs_path + "/1625497382_167772426_64502_167837706_5202_7.csv"
+    rtr_file = abs_path + "/1625497372_qdisc.csv"
+    q_line_obj = OnlineSingleConnStatistics(in_file=in_file, out_file=out_file, interval_accuracy= intv_accuracy, rtr_q_filename=None)
     q_line_obj.conn_df.to_csv(abs_path + '/single_connection_stat_debug.csv')
     # q_line_obj = OfflineSingleConnStatistics(in_file, out_file, rtr_file, intv_accuracy)
     # q_line_obj.conn_df.to_csv(abs_path + "/single_connection_stat_2.csv")

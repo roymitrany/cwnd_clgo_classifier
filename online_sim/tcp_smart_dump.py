@@ -1,6 +1,7 @@
 #!/home/another/PycharmProjects/cwnd_clgo_classifier/venv/bin/python3
 # Copyright (c) PLUMgrid, Inc.
 # Licensed under the Apache License, Version 2.0 (the "License")
+import shutil
 from datetime import datetime
 import os
 from pathlib import Path
@@ -100,18 +101,23 @@ try:
             res_dir = os.path.join(res_root_dir, time_str + '_' + simulation_name)
             os.mkdir(res_dir, 0o777)
             # Gather statistics from the router:
-            q_disc_file = os.path.join(res_dir, "%d_qdisc.csv" % int(time.time()))
-            q_disc_cmd = os.path.join(Path(os.getcwd()).parent, "simulation", "tc_qdisc_implementation.py")
-            command_line = 'python3 %s %s %s %d' % (q_disc_cmd, sys.argv[3], q_disc_file, interval_accuracy)
-            args = shlex.split(command_line)
-            q_proc = subprocess.Popen(args)
+            #q_disc_file = os.path.join(res_dir, "%d_qdisc.csv" % int(time.time()))
+            #q_disc_cmd = os.path.join(Path(os.getcwd()).parent, "simulation", "tc_qdisc_implementation.py")
+            #command_line = 'python3 %s %s %s %d' % (q_disc_cmd, sys.argv[3], q_disc_file, interval_accuracy)
+            #args = shlex.split(command_line)
+            #q_proc = subprocess.Popen(args)
             start_capture_epoch_time = time.time()
             sniff_mode_table[0] = c_uint32(1)
             start_time_table[0] = c_uint64(0)  # reset start time
             time.sleep(interval_duration)
             sniff_mode_table[0] = c_uint32(0)
-            q_proc.send_signal(SIGINT)
+            #q_proc.send_signal(SIGINT)
             packets_count = pkt_count_table[0].value
+
+            # If nothing was captured, delete the new directory and continue
+            if packets_count==0:
+                shutil.rmtree(res_dir)
+                continue
             packet_out_count = pkt_out_count_table[0].value
             debug_val = debug_val_table[0].value
             debug_file.write('before dict iteration loop ==============' + str(time.time()) + "\n")
@@ -124,11 +130,6 @@ try:
                     continue
                 intf_index = key.ifindex
                 conn_index = "%s_%s_%s_%s" % (pkt.src_ip, pkt.src_port, pkt.dst_ip, pkt.dst_port)
-                # output_file.write('connection index is ' + conn_index + "\n")
-                # output_file.flush()
-                # print('connection index is ' + conn_index)
-                # print ('if index is %s' %ifindex)
-                # print ('packet length is %s' %pkt.length)
 
                 # TODO: replace this extremely inefficient code
                 if not conn_index in df_dict:
@@ -198,8 +199,8 @@ try:
                 # Create connection stat file out of df objects
                 debug_file.write('-----%screating single connection DF \n' % str(time.time()))
                 if ssrv_df is not None and clnt_df is not None:
-                    conn_stat_obj = OnlineSingleConnStatistics(in_df=clnt_df, out_df=ssrv_df, interval_accuracy=3,
-                                                               rtr_q_filename=q_disc_file)
+crt                    conn_stat_obj = OnlineSingleConnStatistics(in_df=clnt_df, out_df=ssrv_df, interval_accuracy=3)
+                                                               #rtr_q_filename=q_disc_file)
                     csv_filename = os.path.join(res_dir, "%d_%s.csv" % (int(time.time()), conn_index))
                     conn_stat_obj.conn_df.to_csv(csv_filename)
             # Kill the clsact, so no more packets will be counted

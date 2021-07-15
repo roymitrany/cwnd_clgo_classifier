@@ -69,17 +69,19 @@ if __name__ == '__main__':
                 num_of_bytes, num_of_packets, drops)
             debug_file.write("%s\t%s\t%s\t%s\n" % (time_str, num_of_bytes, num_of_packets, drops_str))
             results_file.write("%s\t%s\t%s\t%s\n" % (time_str, num_of_bytes, num_of_packets, drops_str))
-            if tick_interval_accuracy == 0:
-                time_to_sleep = 0.993
-            elif tick_interval_accuracy == 1:
-                time_to_sleep = 0.093
-            elif tick_interval_accuracy == 2:
-                time_to_sleep = 0.003
-            else:
-                time_to_sleep = 0.0001
-            time.sleep(time_to_sleep)
         else:
-            debug_file.write("------------------NO MATSHSHSHSH\n")
+            debug_file.write("------------------NO MATSHSHSHSH + out_str\n")
+
+        if tick_interval_accuracy == 0:
+            time_to_sleep = 0.993
+        elif tick_interval_accuracy == 1:
+            time_to_sleep = 0.093
+        elif tick_interval_accuracy == 2:
+            time_to_sleep = 0.003
+        else:
+            time_to_sleep = 0.0001
+        time.sleep(time_to_sleep)
+
     # SIGINT was called. Save all results in a file:
     tt = int(time.time())
     debug_file.write("%d-------saving to file %s\n" % (tt, results_filename))
