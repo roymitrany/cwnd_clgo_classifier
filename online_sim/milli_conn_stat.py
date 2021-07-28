@@ -1,6 +1,7 @@
 import glob
 import os
 import re
+import shutil
 import sys
 
 # print(sys.path)
@@ -90,7 +91,14 @@ class MilliConnStat:
         self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
         self.conn_df = self.conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
 
+        # Deepcci patch
+        in_deepcci_df = self.in_conn_df[['Time', 'deepcci']]
+        self.conn_df = pd.merge(self.conn_df, in_deepcci_df, on='Time', how='left')
+        self.conn_df[['deepcci']] = self.conn_df[['deepcci']].fillna(0)
+        # End patch
+
         self.conn_df.index.name = 'Time'
+
 
         # Convert the time string into time offset float
         self.conn_df['timestamp'] = self.conn_df['Time'].map(lambda x: get_delta(x, self.conn_df['Time'][0]))
@@ -98,15 +106,15 @@ class MilliConnStat:
         self.conn_df = self.conn_df.drop(columns=['Time'])
 
         # Reorder column to make the DF similar to original single connection stat
-        self.conn_df = self.conn_df[[time_gap_series.name, 'In Throughput', 'Out Throughput', 'CBIQ']]
+        self.conn_df = self.conn_df[[time_gap_series.name, 'In Throughput', 'Out Throughput', 'CBIQ', 'deepcci']]
         return
 
     def count_throughput(self, conn_df, column):
-        #bytes_per_timeslot_series = conn_df['seq_num'].diff()
-        #bytes_per_timeslot_series = bytes_per_timeslot_series.fillna(0)
-        #bytes_per_timeslot_series = bytes_per_timeslot_series.astype('int64')
+        # bytes_per_timeslot_series = conn_df['seq_num'].diff()
+        # bytes_per_timeslot_series = bytes_per_timeslot_series.fillna(0)
+        # bytes_per_timeslot_series = bytes_per_timeslot_series.astype('int64')
 
-        #bytes_per_timeslot_series.name = column
+        # bytes_per_timeslot_series.name = column
         temp_df = conn_df[['seq_num']]
         while True:
             bytes_per_timeslot_series = temp_df['seq_num'].diff()
@@ -115,7 +123,7 @@ class MilliConnStat:
             bytes_per_timeslot_series.name = column
             temp_df = temp_df.join(bytes_per_timeslot_series)
 
-            #temp_df[column] = conn_df['seq_num'].diff()
+            # temp_df[column] = conn_df['seq_num'].diff()
             temp_df1 = temp_df[(temp_df[[column]] >= 0).all(1)]
             if len(temp_df) == len(temp_df1):
                 break
@@ -127,8 +135,8 @@ class MilliConnStat:
         conn_df[column] = conn_df[column].map(lambda num: num * 8 / 10 ** (6 - self.interval_accuracy))
 
         # Join it to the conn df
-        #bytes_per_timeslot_series.name = column
-        #conn_df = conn_df.join(bytes_per_timeslot_series)
+        # bytes_per_timeslot_series.name = column
+        # conn_df = conn_df.join(bytes_per_timeslot_series)
         return conn_df
 
     def create_seq_df(self, conn_df, col_name):
@@ -141,10 +149,35 @@ class MilliConnStat:
         return temp_df
 
 
+def remove_retransmissions(conn_df):
+    # Remove retransmissions
+    while True:
+        t_series = conn_df['seq_num'].diff()
+        if t_series.min() >= 0:
+            break
+        conn_df = conn_df.join(t_series, rsuffix='_diff')
+        conn_df = conn_df.drop(conn_df[conn_df['seq_num_diff'] < 0].index)
+        conn_df = conn_df.drop(columns=['seq_num_diff'])
+    return conn_df
+
+
 def create_milli_sample_df(filename):
     df = pd.read_csv(filename, sep=",")
     df = df.sort_values(by=['date_time'])
+
+    # If there are less than 200 packets, traffic is too low, return with nothing
+    if len(df.index)<200:
+        return
+    df = remove_retransmissions(df)
     df['trunk'] = df['date_time'].str[:-3]
+
+    # Temporary patch: count deepcci
+    deepcci_df = pd.DataFrame(df.groupby('trunk')['length'].count())
+    deepcci_df = deepcci_df.rename(columns={"length": 'deepcci'})
+    deepcci_df.rename_axis('trunk')
+    df = pd.merge(df, deepcci_df, on='trunk', how='left')
+    # End of temp patch
+
     df = df.drop_duplicates(keep='first', subset=['trunk'])
     df = df.drop(columns=['trunk'])
     return df
@@ -152,14 +185,25 @@ def create_milli_sample_df(filename):
 
 if __name__ == '__main__':
     intv_accuracy = 3
-    algo_list = ['reno', 'bbr', 'cubic'] # Should be in line with measured_dict keys in online_simulation.py main function
-    #abs_path = "/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/for_dev/fast_data_tree1"
-    abs_path = '/tmp/fast_7_7'
+    algo_list = ['reno', 'bbr',
+                 'cubic']  # Should be in line with measured_dict keys in online_simulation.py main function
+    # abs_path = "/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/for_dev/fast_data_tree1"
+    abs_path = '/tmp/60_flows'
+    print("creating milli sample files under folder %s"%abs_path)
     folders_list = os.listdir(abs_path)
+    #folders_list = ['/tmp/60_flows/7.21.2021@9-55-8_1_reno_1_bbr_1_cubic']
     for folder in folders_list:
-        result_files = glob.glob(os.path.join(abs_path, folder,"*_6450[0-9]_*"))
+        result_files = glob.glob(os.path.join(abs_path, folder, "*_6450[0-9]_*"))
+        # If there are not enough csv files in the folder, this folder is not interesting and should be removed
         if len(result_files) < 4:
-            continue
+            print("not enough csv files in %s, deleting folder" % folder)
+            shutil.rmtree(os.path.join(abs_path, folder))
+
+        # if there are already milli_sample files in the folder, continue
+        result_files1 = glob.glob(os.path.join(abs_path, folder, "milli_sample*"))
+        '''if len(result_files1) > 0:
+            print("folder %s already analyzed" % folder)
+            continue'''
         # find the destination interface
         if_dict = {}
         for res_file in result_files:
@@ -193,16 +237,22 @@ if __name__ == '__main__':
             search_pattern = search_obj.group(1) + '_' + str(server_if)
             for res_file2 in result_files:
                 if search_pattern in res_file2:
+                    print("analyzing %s and %s" % (res_file, res_file2))
                     in_file = os.path.join(abs_path, folder, res_file)
                     out_file = os.path.join(abs_path, folder, res_file2)
                     in_df = create_milli_sample_df(in_file)
                     out_df = create_milli_sample_df(out_file)
 
+                    # If one of the DFs was not created, abort the procedure
+                    if in_df is None or out_df is None:
+                        break
+
                     search_obj = re.search(r'[0-9]+_[0-9]+_6450([0-9])_[0-9]+_52[0-9][0-9]', str(res_file))
                     if not search_obj:
                         break
-                    algo_id = int(search_obj.group(1))-1
+                    algo_id = int(search_obj.group(1)) - 1
                     algo_name = algo_list[algo_id]
-                    q_line_obj = MilliConnStat(in_df=in_df, out_df=out_df, interval_accuracy=intv_accuracy, rtr_q_filename=None)
-                    milli_csv_file_name = 'milli_sample_stat_%s_%d.csv' %(algo_name, monitored_if)
-                    q_line_obj.conn_df.to_csv(os.path.join(abs_path, folder,milli_csv_file_name))
+                    q_line_obj = MilliConnStat(in_df=in_df, out_df=out_df, interval_accuracy=intv_accuracy,
+                                               rtr_q_filename=None)
+                    milli_csv_file_name = 'milli_sample_stat_%s_%d.csv' % (algo_name, monitored_if)
+                    q_line_obj.conn_df.to_csv(os.path.join(abs_path, folder, milli_csv_file_name))
