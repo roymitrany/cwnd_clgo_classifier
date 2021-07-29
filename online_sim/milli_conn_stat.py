@@ -11,6 +11,8 @@ sys.path.append('/home/another/PycharmProjects/cwnd_clgo_classifier')
 import pandas as pd
 from datetime import datetime
 
+#patch
+cnt = 0
 
 def time_str_to_timedelta(time_str):
     my_time = datetime.strptime(time_str, "%H:%M:%S.%f")
@@ -23,7 +25,7 @@ def get_delta(curr_timedelta, base_timedelta):
     return (curr_timedelta - base_timedelta).seconds + (curr_timedelta - base_timedelta).microseconds / 1000000
 
 
-class MilliConnStat:
+class SampleConnStat:
     def __init__(self, in_df=None, out_df=None, interval_accuracy=3, rtr_q_filename=None):
         self.in_conn_df = in_df
         self.out_conn_df = out_df
@@ -58,7 +60,7 @@ class MilliConnStat:
         self.out_conn_df['date_time'] = self.out_conn_df['date_time'].map(
             lambda x: x[0:self.interval_accuracy - 6])
 
-        # Create a DF with all possible time ticks between min time to max time
+        # Create a DF with all possible time ticks, starting from min time for n periods
         in_start_time = self.in_conn_df['date_time'].iloc[0]
         out_start_time = self.out_conn_df['date_time'].iloc[0]
         start_timedelta = min(in_start_time, out_start_time)
@@ -84,8 +86,13 @@ class MilliConnStat:
 
         # Calculate CBIQ
         in_temp_df = self.create_seq_df(self.in_conn_df, 'in_seq_num')
+        global cnt
+        in_temp_df.to_csv(os.path.join(abs_path, folder, "in_seq_%d.csv"%cnt))
         self.conn_df = pd.merge(self.conn_df, in_temp_df, on='Time', how='left')
+        self.conn_df = self.conn_df.fillna(method='bfill')
         out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
+        out_temp_df.to_csv(os.path.join(abs_path, folder, "out_seq_%d.csv"%cnt))
+        cnt+=1
         self.conn_df = pd.merge(self.conn_df, out_temp_df, on='Time', how='left')
         self.conn_df = self.conn_df.fillna(method='ffill')
         self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
@@ -161,7 +168,8 @@ def remove_retransmissions(conn_df):
     return conn_df
 
 
-def create_milli_sample_df(filename):
+
+def create_sample_df(filename, method = 'random'):
     df = pd.read_csv(filename, sep=",")
     df = df.sort_values(by=['date_time'])
 
@@ -176,32 +184,38 @@ def create_milli_sample_df(filename):
     deepcci_df = deepcci_df.rename(columns={"length": 'deepcci'})
     deepcci_df.rename_axis('trunk')
     df = pd.merge(df, deepcci_df, on='trunk', how='left')
-    # End of temp patch
 
-    df = df.drop_duplicates(keep='first', subset=['trunk'])
+    if method == 'random':
+        # randomly drop 90% of the packets
+        df = df.drop(df.sample(frac=.9).index)
+    if method == 'milli':
+        df = df.drop_duplicates(keep='first', subset=['trunk'])
+
     df = df.drop(columns=['trunk'])
     return df
 
 
 if __name__ == '__main__':
+    method = "random"
     intv_accuracy = 3
     algo_list = ['reno', 'bbr',
                  'cubic']  # Should be in line with measured_dict keys in online_simulation.py main function
-    # abs_path = "/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/for_dev/fast_data_tree1"
-    abs_path = '/tmp/60_flows'
-    print("creating milli sample files under folder %s"%abs_path)
+    #abs_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online_classification/60_background_flows"
+    abs_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online_classification/0_background_flows'
+    print("creating %s sample files under folder %s"%(method, abs_path))
     folders_list = os.listdir(abs_path)
-    #folders_list = ['/tmp/60_flows/7.21.2021@9-55-8_1_reno_1_bbr_1_cubic']
+    #folders_list = ['7.21.2021@10-19-16_1_reno_1_bbr_1_cubic']
     for folder in folders_list:
+        # Look for all raw results in the folder
         result_files = glob.glob(os.path.join(abs_path, folder, "*_6450[0-9]_*"))
         # If there are not enough csv files in the folder, this folder is not interesting and should be removed
         if len(result_files) < 4:
             print("not enough csv files in %s, deleting folder" % folder)
             shutil.rmtree(os.path.join(abs_path, folder))
 
-        # if there are already milli_sample files in the folder, continue
-        result_files1 = glob.glob(os.path.join(abs_path, folder, "milli_sample*"))
-        '''if len(result_files1) > 0:
+        # if there are already sample files in the folder, continue
+        '''result_files1 = glob.glob(os.path.join(abs_path, folder, "%s_sample*"%method))
+        if len(result_files1) > 0:
             print("folder %s already analyzed" % folder)
             continue'''
         # find the destination interface
@@ -240,19 +254,22 @@ if __name__ == '__main__':
                     print("analyzing %s and %s" % (res_file, res_file2))
                     in_file = os.path.join(abs_path, folder, res_file)
                     out_file = os.path.join(abs_path, folder, res_file2)
-                    in_df = create_milli_sample_df(in_file)
-                    out_df = create_milli_sample_df(out_file)
+
+
+                    in_df = create_sample_df(in_file)
+                    out_df = create_sample_df(out_file)
 
                     # If one of the DFs was not created, abort the procedure
                     if in_df is None or out_df is None:
                         break
 
+                    # Determine the cwnd algo from the source port
                     search_obj = re.search(r'[0-9]+_[0-9]+_6450([0-9])_[0-9]+_52[0-9][0-9]', str(res_file))
                     if not search_obj:
                         break
                     algo_id = int(search_obj.group(1)) - 1
                     algo_name = algo_list[algo_id]
-                    q_line_obj = MilliConnStat(in_df=in_df, out_df=out_df, interval_accuracy=intv_accuracy,
-                                               rtr_q_filename=None)
-                    milli_csv_file_name = 'milli_sample_stat_%s_%d.csv' % (algo_name, monitored_if)
-                    q_line_obj.conn_df.to_csv(os.path.join(abs_path, folder, milli_csv_file_name))
+                    q_line_obj = SampleConnStat(in_df=in_df, out_df=out_df, interval_accuracy=intv_accuracy,
+                                                rtr_q_filename=None)
+                    sample_csv_file_name = '%s_sample_stat_%s_%d.csv' % (method, algo_name, monitored_if)
+                    q_line_obj.conn_df.to_csv(os.path.join(abs_path, folder, sample_csv_file_name))

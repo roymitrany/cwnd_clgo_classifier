@@ -122,12 +122,20 @@ class ResultsManager:
                     self.res_folder_dict[random_subfolder] = ResFolder(res_dir, csv_files_list)
                 """
         else:
-            for dir_name in os.listdir(results_path):
-                res_dir = os.path.join(results_path, dir_name)
-                if not os.path.isdir(res_dir):
-                    continue
-                csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
-                self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
+            if IS_SAMPLE_RATE == True:
+                for dir_name in os.listdir(results_path):
+                    res_dir = os.path.join(results_path, dir_name)
+                    if not os.path.isdir(res_dir):
+                        continue
+                    csv_files_list = glob.glob(os.path.join(res_dir, "milli*"))
+                    self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
+            else:
+                for dir_name in os.listdir(results_path):
+                    res_dir = os.path.join(results_path, dir_name)
+                    if not os.path.isdir(res_dir):
+                        continue
+                    csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
+                    self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
 
         # Build dataframe array and train array
         train_list = list()
@@ -179,11 +187,11 @@ class ResultsManager:
                             except:
                                 pass
 
-                        if "single_connection_stat_bbr" in csv_file:
+                        if "stat_bbr" in csv_file:
                             train_list.append(["bbr", 0])
-                        elif "single_connection_stat_cubic" in csv_file:
+                        elif "stat_cubic" in csv_file:
                             train_list.append(["cubic", 1])
-                        elif "single_connection_stat_reno" in csv_file:
+                        elif "stat_reno" in csv_file:
                             train_list.append(["reno", 2])
                             """
                         elif "single_connection_stat_vegas" in csv_file:
