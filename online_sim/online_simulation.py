@@ -104,14 +104,14 @@ class Iperf3Simulator:
             client_counter += 1
 
             # Disable TSO for the router towards client
-            """
+
             cmd = "ethtool -K r1-%s tso off" % client
             rtr.cmd(cmd)
             cmd = "ethtool -K r1-%s gro off" % client
             rtr.cmd(cmd)
             cmd = "ethtool -K r1-%s gso off" % client
             rtr.cmd(cmd)
-            """
+
 
             # Disable TSO for the client
             cmd = "ethtool -K %s-r1 tso off" % client
@@ -176,7 +176,7 @@ def create_sim_name(cwnd_algo_dict):
 
 
 def arrange_res_files():
-    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", 'online_classification', "tso_0_background_flows")
+    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", 'online_classification', "no_tso_0_background_flows")
     curr_root_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "online")
     result_files = list(Path(curr_root_dir).rglob("*_6450[0-9]_*"))
     count = 0

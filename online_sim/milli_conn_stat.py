@@ -6,6 +6,7 @@ import sys
 
 # print(sys.path)
 from pathlib import Path
+from time import sleep
 
 sys.path.append('/home/another/PycharmProjects/cwnd_clgo_classifier')
 import pandas as pd
@@ -196,12 +197,13 @@ def create_sample_df(filename, method = 'random'):
 
 
 if __name__ == '__main__':
-    method = "random"
+    #sleep(60*60*10)
+    method = "milli"
     intv_accuracy = 3
     algo_list = ['reno', 'bbr',
                  'cubic']  # Should be in line with measured_dict keys in online_simulation.py main function
     #abs_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online_classification/60_background_flows"
-    abs_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online_classification/0_background_flows'
+    abs_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online_classification/no_tso_0_background_flows'
     print("creating %s sample files under folder %s"%(method, abs_path))
     folders_list = os.listdir(abs_path)
     #folders_list = ['7.21.2021@10-19-16_1_reno_1_bbr_1_cubic']
