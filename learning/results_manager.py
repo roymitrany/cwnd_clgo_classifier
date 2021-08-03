@@ -127,7 +127,8 @@ class ResultsManager:
                     res_dir = os.path.join(results_path, dir_name)
                     if not os.path.isdir(res_dir):
                         continue
-                    csv_files_list = glob.glob(os.path.join(res_dir, "milli*"))
+                    #csv_files_list = glob.glob(os.path.join(res_dir, "milli*"))
+                    csv_files_list = glob.glob(os.path.join(res_dir, "random*"))
                     self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
             else:
                 for dir_name in os.listdir(results_path):

@@ -565,7 +565,7 @@ def create_f1_vs_background_flows_for_online_classification_with_sampling_graph(
 # Results21:
 """
 from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/sampling rate/9499 chunk size/parameters/"
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/sampling rate/9499 chunk size/every tenth packet- global sampling/parameters/"
 create_f1_vs_parameter_for_online_classification_with_sampling_graph(result_path,"validation_accuracy","f1 vs number of background flows")
 """
 def create_f1_vs_parameter_for_online_classification_with_sampling_graph(results_path, txt_filename, plot_name):
