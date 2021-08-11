@@ -7,6 +7,8 @@ import sys
 # print(sys.path)
 from pathlib import Path
 from time import sleep
+from abc import ABC, abstractmethod
+
 
 sys.path.append('/home/another/PycharmProjects/cwnd_clgo_classifier')
 import pandas as pd
@@ -26,13 +28,17 @@ def get_delta(curr_timedelta, base_timedelta):
     return (curr_timedelta - base_timedelta).seconds + (curr_timedelta - base_timedelta).microseconds / 1000000
 
 
-class SampleConnStat:
-    def __init__(self, in_df=None, out_df=None, interval_accuracy=3, rtr_q_filename=None):
-        self.in_conn_df = in_df
-        self.out_conn_df = out_df
+class SampleConnStat(ABC):
+    def __init__(self, in_file=None, out_file=None, interval_accuracy=3):
         self.conn_df = None
         self.interval_accuracy = interval_accuracy
-        self.rtr_q_filename = rtr_q_filename
+
+        self.in_conn_df = self.create_sample_df(in_file, None)
+        self.out_conn_df = self.create_sample_df(out_file, self.in_conn_df)
+
+        # If one of the DFs was not created, abort the procedure
+        if self.in_conn_df is None or self.out_conn_df is None:
+            raise ValueError("DF not created")
 
         self.build_df()
 
@@ -70,13 +76,13 @@ class SampleConnStat:
         self.conn_df = tdi.to_frame(name="Time")
 
         # count inbound throughput and attach it to main conn df
-        self.in_conn_df = self.count_throughput(self.in_conn_df, 'In Throughput')
+        self.in_conn_df = self.calculate_throughput(self.in_conn_df, 'In Throughput')
         self.in_conn_df['Time'] = self.in_conn_df['date_time'].map(lambda time_str: time_str_to_timedelta(time_str))
         temp_df = self.in_conn_df[['Time', 'In Throughput', time_gap_series.name]]
         self.conn_df = pd.merge(self.conn_df, temp_df, on='Time', how='left')
 
         # count outbound throughput and attach it to main conn df
-        self.out_conn_df = self.count_throughput(self.out_conn_df, 'Out Throughput')
+        self.out_conn_df = self.calculate_throughput(self.out_conn_df, 'Out Throughput')
         self.out_conn_df['Time'] = self.out_conn_df['date_time'].map(lambda time_str: time_str_to_timedelta(time_str))
         temp_df = self.out_conn_df[['Time', 'Out Throughput']]
         self.conn_df = pd.merge(self.conn_df, temp_df, on='Time', how='left')
@@ -90,7 +96,7 @@ class SampleConnStat:
         global cnt
         in_temp_df.to_csv(os.path.join(abs_path, folder, "in_seq_%d.csv"%cnt))
         self.conn_df = pd.merge(self.conn_df, in_temp_df, on='Time', how='left')
-        self.conn_df = self.conn_df.fillna(method='bfill')
+        self.conn_df = self.conn_df.fillna(method='ffill')
         out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
         out_temp_df.to_csv(os.path.join(abs_path, folder, "out_seq_%d.csv"%cnt))
         cnt+=1
@@ -117,7 +123,127 @@ class SampleConnStat:
         self.conn_df = self.conn_df[[time_gap_series.name, 'In Throughput', 'Out Throughput', 'CBIQ', 'deepcci']]
         return
 
-    def count_throughput(self, conn_df, column):
+    # Create a df with one sequence number for each timeslot. If a DF contains more than one
+    # Row for a timeslot, use the first one
+    def create_seq_df(self, conn_df, col_name):
+
+        seq_df = conn_df.drop_duplicates(subset=["date_time"], keep='first')
+        seq_df = seq_df[['date_time', 'seq_num']]
+        seq_df.columns = ['date_time', col_name]
+        seq_df['Time'] = seq_df['date_time'].map(lambda time_str: time_str_to_timedelta(time_str))
+        seq_df = seq_df.fillna(method='ffill')
+        seq_df = seq_df.drop(columns=['date_time'])
+        return seq_df
+
+    def create_sample_df(self, filename, ref_df=None):
+        df = pd.read_csv(filename, sep=",")
+        df = df.sort_values(by=['date_time'])
+
+        # If there are less than 200 packets, traffic is too low, return with nothing
+        if len(df.index) < 200:
+            return
+        df = remove_retransmissions(df)
+        df['trunk'] = df['date_time'].str[:-3]
+
+        # Temporary patch: count deepcci
+        deepcci_df = pd.DataFrame(df.groupby('trunk')['length'].count())
+        deepcci_df = deepcci_df.rename(columns={"length": 'deepcci'})
+        deepcci_df.rename_axis('trunk')
+        df = pd.merge(df, deepcci_df, on='trunk', how='left')
+
+        # Take out all the packets that are not part of the sample, according to sample method in subclass
+        df = self.reduce_packets(df, ref_df)
+        df = df.drop(columns=['trunk'])
+        return df
+
+    @abstractmethod
+    def calculate_throughput(self, conn_df, column):
+        pass
+
+    @abstractmethod
+    def reduce_packets(self, df, ref_df):
+        pass
+
+class RandomSampleConnStat(SampleConnStat):
+    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=.1):
+        self.prob = prob
+        self.method = 'random'
+        super(RandomSampleConnStat, self).__init__(in_file, out_file, interval_accuracy)
+
+    def calculate_throughput(self, conn_df, column):
+
+        # Count all the bytes that arrive at any msec
+        bytes_per_timeslot_df = pd.DataFrame(conn_df.groupby('date_time')["length"].sum())
+        bytes_per_timeslot_df = bytes_per_timeslot_df.rename(columns={"length": column})
+
+        # Merge with conn_df
+        temp_df = pd.merge(conn_df, bytes_per_timeslot_df, on='date_time', how='left')        # Translate from Bytes per time tick to Mbps
+        # Throughput calculation: from Bytes to bits, divided by accuracy (1000 for msec) and by probability
+        temp_df[column] = temp_df[column].map(lambda num: num * 8 / (10 ** (6 - self.interval_accuracy)*(self.prob)))
+        values = {column: 0}
+        temp_df = temp_df.fillna(value=values)
+
+        # The returned value should include at most one row per msec
+        temp_df = temp_df.drop_duplicates(subset=["date_time"],keep='first')
+        return temp_df
+
+    def reduce_packets(self, df, ref_df):
+        # Randomly drop 90% of the packets
+        df = df.drop(df.sample(frac=1-self.prob).index)
+        return df
+
+class SelectiveSampleConnStat(SampleConnStat):
+    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=.1):
+        self.prob = prob
+        self.method = 'selective'
+        super(SelectiveSampleConnStat, self).__init__(in_file, out_file, interval_accuracy)
+
+    def calculate_throughput(self, conn_df, column):
+
+        # Count all the bytes that arrive at any msec
+        bytes_per_timeslot_df = pd.DataFrame(conn_df.groupby('date_time')["length"].sum())
+        bytes_per_timeslot_df = bytes_per_timeslot_df.rename(columns={"length": column})
+
+        # Merge with conn_df
+        temp_df = pd.merge(conn_df, bytes_per_timeslot_df, on='date_time', how='left')        # Translate from Bytes per time tick to Mbps
+        # Throughput calculation: from Bytes to bits, divided by accuracy (1000 for msec) and by probability
+        temp_df[column] = temp_df[column].map(lambda num: num * 8 / (10 ** (6 - self.interval_accuracy)*(self.prob)))
+        values = {column: 0}
+        temp_df = temp_df.fillna(value=values)
+
+        # The returned value should include at most one row per msec
+        temp_df = temp_df.drop_duplicates(subset=["date_time"],keep='first')
+        return temp_df
+
+    def reduce_packets(self, df, ref_df):
+        df_list = []
+        if ref_df is None:
+            # Randomly drop 90% of the packets
+            ret_df = df.drop(df.sample(frac=1-self.prob).index)
+        else:
+            # for each line in the reference DF, add the closest line in our df
+            for i, row in ref_df.iterrows():
+                # Create a series of date_time that are bigger than the date_time in the reference
+                my_series = df[df.date_time>row['date_time']]['date_time']
+                # Take the smallest value from the series
+                my_val = my_series.min()
+                # Find the index of this value in the DF, and add it to the list of inices to keep
+                # (this command actually creates a one line df, and appends it to a list of one line DFs
+                df_list.append(df[df.date_time==my_val])
+            # Create a big DF og all the one line DFs
+            ret_df = pd.concat(df_list)
+            #df = df.drop(df.sample(frac=1-self.prob).index)
+        return ret_df
+
+
+
+class MilliSampleConnStat(SampleConnStat):
+    def __init__(self, in_file=None, out_file=None, interval_accuracy=3):
+        self.method = 'sample'
+
+        super(MilliSampleConnStat, self).__init__(in_file, out_file, interval_accuracy)
+
+    def calculate_throughput(self, conn_df, column):
         # bytes_per_timeslot_series = conn_df['seq_num'].diff()
         # bytes_per_timeslot_series = bytes_per_timeslot_series.fillna(0)
         # bytes_per_timeslot_series = bytes_per_timeslot_series.astype('int64')
@@ -131,10 +257,11 @@ class SampleConnStat:
             bytes_per_timeslot_series.name = column
             temp_df = temp_df.join(bytes_per_timeslot_series)
 
-            # temp_df[column] = conn_df['seq_num'].diff()
             temp_df1 = temp_df[(temp_df[[column]] >= 0).all(1)]
             if len(temp_df) == len(temp_df1):
-                break
+                break  # no more out of order sequences
+            # Get rid of all sequences with negative diff, that indicate out of order. Then repeat the loop
+            # to locate more ooo seq.
             temp_df = temp_df1.drop(columns=[column])
 
         conn_df = conn_df.join(temp_df[column])
@@ -147,14 +274,10 @@ class SampleConnStat:
         # conn_df = conn_df.join(bytes_per_timeslot_series)
         return conn_df
 
-    def create_seq_df(self, conn_df, col_name):
-        temp_df = conn_df.drop_duplicates(subset=["date_time"], keep='first')
-        temp_df = temp_df[['date_time', 'seq_num']]
-        temp_df.columns = ['date_time', col_name]
-        temp_df['Time'] = temp_df['date_time'].map(lambda time_str: time_str_to_timedelta(time_str))
-        temp_df = temp_df.fillna(method='ffill')
-        temp_df = temp_df.drop(columns=['date_time'])
-        return temp_df
+    def reduce_packets(self, df, ref_df):
+        # Keep only the first packet for each timeslot
+        df = df.drop_duplicates(keep='first', subset=['trunk'])
+        return df
 
 
 def remove_retransmissions(conn_df):
@@ -170,43 +293,17 @@ def remove_retransmissions(conn_df):
 
 
 
-def create_sample_df(filename, method = 'random'):
-    df = pd.read_csv(filename, sep=",")
-    df = df.sort_values(by=['date_time'])
-
-    # If there are less than 200 packets, traffic is too low, return with nothing
-    if len(df.index)<200:
-        return
-    df = remove_retransmissions(df)
-    df['trunk'] = df['date_time'].str[:-3]
-
-    # Temporary patch: count deepcci
-    deepcci_df = pd.DataFrame(df.groupby('trunk')['length'].count())
-    deepcci_df = deepcci_df.rename(columns={"length": 'deepcci'})
-    deepcci_df.rename_axis('trunk')
-    df = pd.merge(df, deepcci_df, on='trunk', how='left')
-
-    if method == 'random':
-        # randomly drop 90% of the packets
-        df = df.drop(df.sample(frac=.9).index)
-    if method == 'milli':
-        df = df.drop_duplicates(keep='first', subset=['trunk'])
-
-    df = df.drop(columns=['trunk'])
-    return df
 
 
 if __name__ == '__main__':
     #sleep(60*60*10)
-    method = "random"
     intv_accuracy = 3
     algo_list = ['reno', 'bbr',
                  'cubic']  # Should be in line with measured_dict keys in online_simulation.py main function
     #abs_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online_classification/60_background_flows"
-    abs_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online_classification/75_background_flows'
-    print("creating %s sample files under folder %s"%(method, abs_path))
-    folders_list = os.listdir(abs_path)
-    #folders_list = ['7.21.2021@10-19-16_1_reno_1_bbr_1_cubic']
+    abs_path = '/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/no_tso_0_75_bg_flows'
+    #folders_list = os.listdir(abs_path)
+    folders_list = ['8.10.2021@11-40-6_NumBG_25_LinkBW_100_Queue_100']
     for folder in folders_list:
         # Look for all raw results in the folder
         result_files = glob.glob(os.path.join(abs_path, folder, "*_6450[0-9]_*"))
@@ -257,13 +354,16 @@ if __name__ == '__main__':
                     in_file = os.path.join(abs_path, folder, res_file)
                     out_file = os.path.join(abs_path, folder, res_file2)
 
-
-                    in_df = create_sample_df(in_file)
-                    out_df = create_sample_df(out_file)
-
-                    # If one of the DFs was not created, abort the procedure
-                    if in_df is None or out_df is None:
-                        break
+                    # Create random and milli sample conn stats.
+                    # If creation of one of the fails, do not continue for this connection
+                    try:
+                        selective_scs = SelectiveSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
+                        random_scs = RandomSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
+                        milli_scs = MilliSampleConnStat(in_file=in_file, out_file=out_file,
+                                                     interval_accuracy=intv_accuracy)
+                        scs_list = [selective_scs, random_scs, milli_scs]
+                    except ValueError:
+                        break # break the inner loop, continue the outer loop to the next connection in the folder
 
                     # Determine the cwnd algo from the source port
                     search_obj = re.search(r'[0-9]+_[0-9]+_6450([0-9])_[0-9]+_52[0-9][0-9]', str(res_file))
@@ -271,7 +371,7 @@ if __name__ == '__main__':
                         break
                     algo_id = int(search_obj.group(1)) - 1
                     algo_name = algo_list[algo_id]
-                    q_line_obj = SampleConnStat(in_df=in_df, out_df=out_df, interval_accuracy=intv_accuracy,
-                                                rtr_q_filename=None)
-                    sample_csv_file_name = '%s_sample_stat_%s_%d.csv' % (method, algo_name, monitored_if)
-                    q_line_obj.conn_df.to_csv(os.path.join(abs_path, folder, sample_csv_file_name))
+
+                    for scs in scs_list:
+                        sample_csv_file_name = '%s_sample_stat_%s_%d.csv' % (scs.method, algo_name, monitored_if)
+                        scs.conn_df.to_csv(os.path.join(abs_path, folder, sample_csv_file_name))

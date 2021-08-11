@@ -3,7 +3,7 @@ Congestion control reavluation classification topology:
 
    reno_host_i-----+
         .    |
-        .    r ---- srv
+        .    r1 ---- r2 ---- srv
         .    |
    vegas_host_i----+
 
