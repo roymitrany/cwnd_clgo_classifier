@@ -104,18 +104,18 @@ class Iperf3Simulator:
             client_counter += 1
 
             # Disable TSO for the router towards client
-            cmd = "ethtool -K r1-%s tso off" % client
+
+            '''cmd = "ethtool -K r1-%s tso off" % client
             rtr.cmd(cmd)
             cmd = "ethtool -K r1-%s gro off" % client
             rtr.cmd(cmd)
             cmd = "ethtool -K r1-%s gso off" % client
-            rtr.cmd(cmd)
+            rtr.cmd(cmd)'''
 
-        # Disable TSO for router towards server
-        cmd = "ethtool -K r1-r2 tso off"
-        rtr.cmd(cmd)
 
-        #CLI(self.net)
+            # Disable TSO for the client
+            #cmd = "ethtool -K %s-r1 tso off" % client
+            #self.net.getNodeByName(client).cmd(cmd)
 
         # Run the online_sim command with all the interfaces. Server interface should always be the first one!
         ebpf_cmd = os.path.join(Path(os.getcwd()).parent, "online_sim", "tcp_smart_dump.py")
@@ -124,6 +124,9 @@ class Iperf3Simulator:
         print(cmd)
         rtr_ebpf_proc = rtr.popen(cmd, shell=True)
 
+        # Disable TSO for router
+        #cmd = "ethtool -K r1-r2 tso off"
+        #rtr.cmd(cmd)
 
         sleep(2)
         # Traffic generation loop:
@@ -154,7 +157,7 @@ class Iperf3Simulator:
         for process in srv_procs:
             process.send_signal(SIGINT)
 
-        # CLI(self.net)
+        #CLI(self.net)
         self.net.stop()
 
 
@@ -171,9 +174,13 @@ def create_sim_name(cwnd_algo_dict):
         name += "%d_%s_" % (val, key)
     return name[0:-1]
 
+def create_sim_name1(bg_num, srv_bw, queue_size):
+    name = 'NumBG_%d_LinkBW_%d_Queue_%d'%(bg_num, srv_bw, queue_size)
+    return name
+
 
 def arrange_res_files():
-    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "3_bg_flows")
+    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "no_tso_0_75_bg_flows")
     curr_root_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "online")
     result_files = list(Path(curr_root_dir).rglob("*_6450[0-9]_*"))
     count = 0
@@ -192,17 +199,20 @@ def arrange_res_files():
     file_names = os.listdir(curr_root_dir)
     for file_name in file_names:
         # shutil.move(folderr, des_res_dir)
+        print('saving %s in %s' %(file_name, des_res_dir))
         shutil.move(os.path.join(curr_root_dir, file_name), des_res_dir)
 
 
+
 if __name__ == '__main__':
+    #sleep(60*60*10)
     # interval accuracy: a number between 0 to 3. For value n, the accuracy will be set to 1/10^n
     interval_accuracy = 3
 
     # Simulation's parameters initializing:
     measured_dict = {}
     unmeasured_dict = {}
-    simulation_duration = 15  # 60 # 80 # 120  # seconds.
+    simulation_duration = 100  # 60 # 80 # 120  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (
@@ -212,43 +222,37 @@ if __name__ == '__main__':
     # bw is in Mbps, delay in msec, queue size in packets:
 
     background_noise = 0
-    host_delay = 2.5
-    srv_delay = 2.5
+    host_delay = 25 #2.5
+    srv_delay = 25 #2.5
     iteration = 0
 
-    host_bw = 200
-    srv_bw = 200
     queue_size = 500
-    for lcount in range(10):
-        for srv_bw in range(200,500,50):
-            for d in range (1,5):
-                #host_bw = 200
-                host_bw = srv_bw*3/d
-                for bg in range(5):
-        #for srv_bw in numpy.linspace(50, 100, 5):
-        #    for host_bw in numpy.linspace(srv_bw, srv_bw + 100, 5):
-            #for queue_size in numpy.linspace(100, 1000, 10):
-                # for queue_size in range(100, 1000, 100):
+    #for iiii in range(1):
+    for bg_num in [20,10,5,1,0]:
+        for srv_bw in range(100, 1100, 100):
+            for i in range(1,4):
+                host_bw = i*srv_bw
+                for queue_size in range(100, 1100, 100):
                     measured_dict['reno'] = 1
                     measured_dict['bbr'] = 1
                     measured_dict['cubic'] = 1
-                    unmeasured_dict['reno'] = bg
-                    unmeasured_dict['bbr'] = bg
-                    unmeasured_dict['cubic'] = bg
+                    unmeasured_dict['reno'] = bg_num
+                    unmeasured_dict['bbr'] = bg_num
+                    unmeasured_dict['cubic'] = bg_num
                     algo_streams = AlgoStreams(measured_dict, unmeasured_dict)
                     # algo_dict['bbr']=10
                     total_delay = 2 * (host_delay + srv_delay)
                     simulation_topology = SimulationTopology(algo_streams, host_delay=host_delay, host_bw=host_bw,
                                                              srv_bw=srv_bw,
                                                              srv_delay=srv_delay, rtr_queue_size=queue_size)
-                    simulation_name = create_sim_name(measured_dict)
+                    #simulation_name = create_sim_name(measured_dict)
+                    simulation_name = create_sim_name1(bg_num, srv_bw, queue_size)
                     iteration += 1
                     simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
-                                                iperf_start_after=2,
+                                                iperf_start_after=2000,
                                                 background_noise=background_noise,
                                                 interval_accuracy=interval_accuracy, iteration=iteration)
                     # iperf_start_after=500, background_noise=100)
                     simulator.start_simulation()
-                    sleep(2)
                     arrange_res_files()
                     clean_sim()

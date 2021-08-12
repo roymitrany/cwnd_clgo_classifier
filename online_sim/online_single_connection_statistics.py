@@ -68,9 +68,9 @@ class SingleConnStatistics:
 
         # Calculate CBIQ
         in_temp_df = self.create_seq_df(self.in_conn_df, 'in_seq_num')
-        self.conn_df = self.join_time_df(in_temp_df, 'date_time')
+        self.join_time_df(in_temp_df, 'date_time')
         out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
-        self.conn_df = self.join_time_df(out_temp_df, 'date_time')
+        self.join_time_df(out_temp_df, 'date_time')
         #temp_df = in_temp_df.merge(out_temp_df, how='inner', on=['date_time'])
         #temp_df = temp_df.set_index('date_time')
         self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
@@ -224,9 +224,9 @@ class OnlineSingleConnStatistics(SingleConnStatistics):
 
 if __name__ == '__main__':
     intv_accuracy = 3
-    abs_path = "/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/for_dev/7.5.2021@18-2-52_1_reno_1_bbr_1_cubic"
-    in_file = abs_path + "/1625497382_167772426_64502_167837706_5202_2.csv"
-    out_file = abs_path + "/1625497382_167772426_64502_167837706_5202_7.csv"
+    abs_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online_classification/tso_0_background_flows/7.29.2021@15-39-13_1_reno_1_bbr_1_cubic"
+    in_file = abs_path + "/1627562363_167772170_64501_167837706_5201_6.csv"
+    out_file = abs_path + "/1627562363_167772170_64501_167837706_5201_5.csv"
     rtr_file = abs_path + "/1625497372_qdisc.csv"
     q_line_obj = OnlineSingleConnStatistics(in_file=in_file, out_file=out_file, interval_accuracy= intv_accuracy, rtr_q_filename=None)
     q_line_obj.conn_df.to_csv(abs_path + '/single_connection_stat_debug.csv')

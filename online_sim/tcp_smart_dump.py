@@ -188,16 +188,18 @@ try:
                         clnt_df = df
 
                     #if "5201" in conn_index:
+
                     csv_filename = os.path.join(res_dir,
                                                     "%d_%s_%s.csv" % (int(time.time()), conn_index, intf_index))
                     df.to_csv(csv_filename)
                     #debug_file.write('------%s file   saved\n' % str(time.time()))
                     #debug_file.flush()
 
+
                 # Create connection stat file out of df objects
                 debug_file.write('-----%screating single connection DF \n' % str(time.time()))
                 if ssrv_df is not None and clnt_df is not None:
-crt                    conn_stat_obj = OnlineSingleConnStatistics(in_df=clnt_df, out_df=ssrv_df, interval_accuracy=3)
+                    conn_stat_obj = OnlineSingleConnStatistics(in_df=clnt_df, out_df=ssrv_df, interval_accuracy=3)
                                                                #rtr_q_filename=q_disc_file)
                     csv_filename = os.path.join(res_dir, "%d_%s.csv" % (int(time.time()), conn_index))
                     conn_stat_obj.conn_df.to_csv(csv_filename)
