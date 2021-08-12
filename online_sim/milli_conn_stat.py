@@ -40,6 +40,8 @@ class SampleConnStat(ABC):
         if self.in_conn_df is None or self.out_conn_df is None:
             raise ValueError("DF not created")
 
+        if self.method is None:
+            self.method = 'abstract'
         self.build_df()
 
     def build_df(self):
@@ -92,18 +94,7 @@ class SampleConnStat(ABC):
         self.conn_df = self.conn_df.fillna(value=values)
 
         # Calculate CBIQ
-        in_temp_df = self.create_seq_df(self.in_conn_df, 'in_seq_num')
-        global cnt
-        in_temp_df.to_csv(os.path.join(abs_path, folder, "in_seq_%d.csv"%cnt))
-        self.conn_df = pd.merge(self.conn_df, in_temp_df, on='Time', how='left')
-        self.conn_df = self.conn_df.fillna(method='ffill')
-        out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
-        out_temp_df.to_csv(os.path.join(abs_path, folder, "out_seq_%d.csv"%cnt))
-        cnt+=1
-        self.conn_df = pd.merge(self.conn_df, out_temp_df, on='Time', how='left')
-        self.conn_df = self.conn_df.fillna(method='ffill')
-        self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
-        self.conn_df = self.conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
+        self.calculate_cbiq()
 
         # Deepcci patch
         in_deepcci_df = self.in_conn_df[['Time', 'deepcci']]
@@ -123,15 +114,44 @@ class SampleConnStat(ABC):
         self.conn_df = self.conn_df[[time_gap_series.name, 'In Throughput', 'Out Throughput', 'CBIQ', 'deepcci']]
         return
 
+    def calculate_cbiq(self):
+        # Add in sequence column to conn DF, interpolate missing fields
+        in_temp_df = self.create_seq_df(self.in_conn_df, 'in_seq_num')
+        global cnt
+        #in_temp_df.to_csv(os.path.join(abs_path, folder, "in_seq_%d_%s.csv"%(cnt, self.method)))
+        #
+        self.conn_df = pd.merge(self.conn_df, in_temp_df, on='Time', how='left')
+        #self.conn_df = self.conn_df.fillna(method='ffill')
+        self.conn_df = self.conn_df.interpolate()
+
+        # Add out sequence column to conn DF, DO NOT interpolate missing fields
+        out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
+        #out_temp_df.to_csv(os.path.join(abs_path, folder, "out_seq_%d_%s.csv"%(cnt, self.method)))
+        cnt+=1
+        self.conn_df = pd.merge(self.conn_df, out_temp_df, on='Time', how='left')
+        #self.conn_df = self.conn_df.fillna(method='ffill')
+        self.conn_df = self.conn_df.interpolate()
+
+        # clacullate CBIQ. Since out seq is not filled, only timeticks that have out seq
+        # Will be calculated
+        self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
+        self.conn_df = self.conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
+        self.conn_df = self.conn_df.fillna(method='ffill')
+        #self.conn_df = self.conn_df.interpolate()
+
+        # Convert to integer (interpolation created float values)
+        self.conn_df['CBIQ'] = self.conn_df['CBIQ'].map(lambda x: int(x))
+
+
+
     # Create a df with one sequence number for each timeslot. If a DF contains more than one
-    # Row for a timeslot, use the first one
+    # Row for a timeslot, use the first one. Set timedelta as index
     def create_seq_df(self, conn_df, col_name):
 
         seq_df = conn_df.drop_duplicates(subset=["date_time"], keep='first')
         seq_df = seq_df[['date_time', 'seq_num']]
         seq_df.columns = ['date_time', col_name]
         seq_df['Time'] = seq_df['date_time'].map(lambda time_str: time_str_to_timedelta(time_str))
-        seq_df = seq_df.fillna(method='ffill')
         seq_df = seq_df.drop(columns=['date_time'])
         return seq_df
 
@@ -187,6 +207,7 @@ class RandomSampleConnStat(SampleConnStat):
         temp_df = temp_df.drop_duplicates(subset=["date_time"],keep='first')
         return temp_df
 
+
     def reduce_packets(self, df, ref_df):
         # Randomly drop 90% of the packets
         df = df.drop(df.sample(frac=1-self.prob).index)
@@ -196,6 +217,8 @@ class SelectiveSampleConnStat(SampleConnStat):
     def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=.1):
         self.prob = prob
         self.method = 'selective'
+        self.in_reduced_df = None
+        self.out_reduced_df = None
         super(SelectiveSampleConnStat, self).__init__(in_file, out_file, interval_accuracy)
 
     def calculate_throughput(self, conn_df, column):
@@ -215,6 +238,24 @@ class SelectiveSampleConnStat(SampleConnStat):
         temp_df = temp_df.drop_duplicates(subset=["date_time"],keep='first')
         return temp_df
 
+    # override superclass function
+    # use
+    def calculate_cbiq(self):
+        if self.in_reduced_df is not None and self.out_reduced_df is not None:
+            seq_df = self.in_reduced_df[['date_time', 'seq_num']].join(self.out_reduced_df[['seq_num']],rsuffix='_out', lsuffix = '_in')
+            seq_df['CBIQ'] = seq_df['seq_num_in']-seq_df['seq_num_out']
+            seq_df['trunk'] = seq_df['date_time'].str[:-3]
+            seq_df = seq_df.drop(columns=['seq_num_in', 'seq_num_out', 'date_time'])
+            seq_df['Time'] = seq_df['trunk'].map(lambda time_str: time_str_to_timedelta(time_str))
+            self.conn_df = self.conn_df.merge(seq_df, on='Time', how='left')
+            self.conn_df = self.conn_df.drop(columns=['trunk'])
+            self.conn_df = self.conn_df.fillna(method='ffill')
+            print('1')
+        else:
+            self.conn_df['CBIQ'] = 0
+            print('2')
+
+
     def reduce_packets(self, df, ref_df):
         df_list = []
         if ref_df is None:
@@ -232,6 +273,8 @@ class SelectiveSampleConnStat(SampleConnStat):
                 df_list.append(df[df.date_time==my_val])
             # Create a big DF og all the one line DFs
             ret_df = pd.concat(df_list)
+            self.in_reduced_df = ref_df.reset_index()
+            self.out_reduced_df = ret_df.reset_index()
             #df = df.drop(df.sample(frac=1-self.prob).index)
         return ret_df
 
@@ -239,7 +282,7 @@ class SelectiveSampleConnStat(SampleConnStat):
 
 class MilliSampleConnStat(SampleConnStat):
     def __init__(self, in_file=None, out_file=None, interval_accuracy=3):
-        self.method = 'sample'
+        self.method = 'milli'
 
         super(MilliSampleConnStat, self).__init__(in_file, out_file, interval_accuracy)
 
@@ -300,10 +343,10 @@ if __name__ == '__main__':
     intv_accuracy = 3
     algo_list = ['reno', 'bbr',
                  'cubic']  # Should be in line with measured_dict keys in online_simulation.py main function
-    #abs_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online_classification/60_background_flows"
+    #abs_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online_classification/60_background_flows    
     abs_path = '/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/no_tso_0_75_bg_flows'
     #folders_list = os.listdir(abs_path)
-    folders_list = ['8.10.2021@11-40-6_NumBG_25_LinkBW_100_Queue_100']
+    folders_list = ['8.11.2021@3-59-19_NumBG_10_LinkBW_300_Queue_600']
     for folder in folders_list:
         # Look for all raw results in the folder
         result_files = glob.glob(os.path.join(abs_path, folder, "*_6450[0-9]_*"))
@@ -357,11 +400,12 @@ if __name__ == '__main__':
                     # Create random and milli sample conn stats.
                     # If creation of one of the fails, do not continue for this connection
                     try:
-                        selective_scs = SelectiveSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
+                        #selective_scs = SelectiveSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
                         random_scs = RandomSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
-                        milli_scs = MilliSampleConnStat(in_file=in_file, out_file=out_file,
-                                                     interval_accuracy=intv_accuracy)
-                        scs_list = [selective_scs, random_scs, milli_scs]
+                        #milli_scs = MilliSampleConnStat(in_file=in_file, out_file=out_file,
+                        #                             interval_accuracy=intv_accuracy)
+                        #scs_list = [selective_scs, random_scs, milli_scs]
+                        scs_list = [random_scs]
                     except ValueError:
                         break # break the inner loop, continue the outer loop to the next connection in the folder
 
