@@ -119,16 +119,16 @@ class SampleConnStat(ABC):
         in_temp_df = self.create_seq_df(self.in_conn_df, 'in_seq_num')
         global cnt
         #in_temp_df.to_csv(os.path.join(abs_path, folder, "in_seq_%d_%s.csv"%(cnt, self.method)))
-        #
         self.conn_df = pd.merge(self.conn_df, in_temp_df, on='Time', how='left')
         #self.conn_df = self.conn_df.fillna(method='ffill')
-        self.conn_df = self.conn_df.interpolate()
+        # self.conn_df = self.conn_df.interpolate()
 
         # Add out sequence column to conn DF, DO NOT interpolate missing fields
         out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
         #out_temp_df.to_csv(os.path.join(abs_path, folder, "out_seq_%d_%s.csv"%(cnt, self.method)))
         cnt+=1
         self.conn_df = pd.merge(self.conn_df, out_temp_df, on='Time', how='left')
+        # self.conn_df = self.conn_df.interpolate()
         #self.conn_df = self.conn_df.fillna(method='ffill')
         self.conn_df = self.conn_df.interpolate()
 
@@ -136,10 +136,11 @@ class SampleConnStat(ABC):
         # Will be calculated
         self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
         self.conn_df = self.conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
-        self.conn_df = self.conn_df.fillna(method='ffill')
+        #self.conn_df = self.conn_df.fillna(method='ffill')
         #self.conn_df = self.conn_df.interpolate()
 
         # Convert to integer (interpolation created float values)
+        self.conn_df['CBIQ'] = self.conn_df['CBIQ'].fillna(0)
         self.conn_df['CBIQ'] = self.conn_df['CBIQ'].map(lambda x: int(x))
 
 
@@ -185,7 +186,7 @@ class SampleConnStat(ABC):
         pass
 
 class RandomSampleConnStat(SampleConnStat):
-    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=.1):
+    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=1):#.1):
         self.prob = prob
         self.method = 'random'
         super(RandomSampleConnStat, self).__init__(in_file, out_file, interval_accuracy)
@@ -210,7 +211,8 @@ class RandomSampleConnStat(SampleConnStat):
 
     def reduce_packets(self, df, ref_df):
         # Randomly drop 90% of the packets
-        df = df.drop(df.sample(frac=1-self.prob).index)
+        #df = df.drop(df.sample(frac=self.prob).index)# - self.prob).index)
+        df = df.sample(frac=self.prob)# - self.prob).index)
         return df
 
 class SelectiveSampleConnStat(SampleConnStat):
@@ -339,14 +341,12 @@ def remove_retransmissions(conn_df):
 
 
 if __name__ == '__main__':
-    #sleep(60*60*10)
     intv_accuracy = 3
     algo_list = ['reno', 'bbr',
                  'cubic']  # Should be in line with measured_dict keys in online_simulation.py main function
-    #abs_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online_classification/60_background_flows    
-    abs_path = '/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/no_tso_0_75_bg_flows'
-    #folders_list = os.listdir(abs_path)
-    folders_list = ['8.11.2021@3-59-19_NumBG_10_LinkBW_300_Queue_600']
+    abs_path = '/data_disk/tso_0_75_bg_flows'
+    folders_list = os.listdir(abs_path)
+    #folders_list = ['8.12.2021@14-18-35_NumBG_0_LinkBW_1000_Queue_900']
     for folder in folders_list:
         # Look for all raw results in the folder
         result_files = glob.glob(os.path.join(abs_path, folder, "*_6450[0-9]_*"))
@@ -400,11 +400,11 @@ if __name__ == '__main__':
                     # Create random and milli sample conn stats.
                     # If creation of one of the fails, do not continue for this connection
                     try:
-                        #selective_scs = SelectiveSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
+                        # selective_scs = SelectiveSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
                         random_scs = RandomSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
-                        #milli_scs = MilliSampleConnStat(in_file=in_file, out_file=out_file,
+                        # milli_scs = MilliSampleConnStat(in_file=in_file, out_file=out_file,
                         #                             interval_accuracy=intv_accuracy)
-                        #scs_list = [selective_scs, random_scs, milli_scs]
+                        # scs_list = [selective_scs, random_scs, milli_scs]
                         scs_list = [random_scs]
                     except ValueError:
                         break # break the inner loop, continue the outer loop to the next connection in the folder
@@ -416,6 +416,11 @@ if __name__ == '__main__':
                     algo_id = int(search_obj.group(1)) - 1
                     algo_name = algo_list[algo_id]
 
+                    out_dir = os.path.join("/data_disk/no_filter", folder)
+                    if not os.path.exists(out_dir):
+                        os.mkdir(out_dir)
                     for scs in scs_list:
                         sample_csv_file_name = '%s_sample_stat_%s_%d.csv' % (scs.method, algo_name, monitored_if)
-                        scs.conn_df.to_csv(os.path.join(abs_path, folder, sample_csv_file_name))
+                        csv_file_name = os.path.join(out_dir, sample_csv_file_name)
+                        with open(csv_file_name, 'w') as f:
+                            scs.conn_df.to_csv(f)

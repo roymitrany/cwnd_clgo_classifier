@@ -124,6 +124,9 @@ class ResultsManager:
         else:
             if IS_SAMPLE_RATE == True:
                 for dir_name in os.listdir(results_path):
+                    bg = "NumBG_" + str(BG_FLOW)
+                    if bg not in dir_name:
+                        continue
                     res_dir = os.path.join(results_path, dir_name)
                     if not os.path.isdir(res_dir):
                         continue
@@ -132,6 +135,9 @@ class ResultsManager:
                     self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
             else:
                 for dir_name in os.listdir(results_path):
+                    bg = "NumBG_" + str(BG_FLOW)
+                    if bg not in dir_name:
+                        continue
                     res_dir = os.path.join(results_path, dir_name)
                     if not os.path.isdir(res_dir):
                         continue
