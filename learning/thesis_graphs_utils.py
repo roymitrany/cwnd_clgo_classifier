@@ -783,3 +783,107 @@ def get_f1_result_for_sampling_rate(results_path, txt_filename):
     except:
         pass
     return my_net_all_parameters_accuracy_list
+
+# Online Filtering CBIQ debugging:
+
+def get_online_filtered_cbiq(results_path, txt_filename):
+    if not os.path.isdir(results_path):
+        return
+    from os import listdir
+    from os.path import isfile, join
+    dir_files = [f for f in listdir(results_path) if isfile(join(results_path, f))]
+    for file in dir_files:
+        if txt_filename in file:
+            res_file = os.path.join(results_path, file)
+            break
+    try:
+        df = pd.read_csv(res_file, index_col=None, header=0)
+        return df['CBIQ']
+    except:
+        pass
+
+"""
+from learning.thesis_graphs_utils import *
+result_path="/data_disk/cbiq_debugging"
+create_online_filtered_cbiq_graphs(result_path,"random_sample_stat_bbr")
+"""
+def create_online_filtered_cbiq_graphs(results_path, txt_filename):
+    cbiq_accuracy_lists = []
+    graph_legend = ["in_ffill_out_ffill", "in_ffill_out_ffill_after_cbiq_calculation", "in_ffill_out_interpolation_after_cbiq_calculation", "in_interpolation_out_interpolation", "in_interpolation_out_interpolation_after_cbiq_calculation"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        result_path = os.path.join(results_path, dir_name, res_dir)
+        cbiq_accuracy_lists.append(get_online_filtered_cbiq(result_path, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    timestamp = list(range(0, 10000, 1))
+    i = 1
+    for cbiq_accuracy_list in cbiq_accuracy_lists:
+        plt.subplot(1, 5, i)
+        plt.plot(timestamp, cbiq_accuracy_list)
+        i = i + 1
+    axes = plt.gca()
+    axes.set(xlabel='cbiq calculation', ylabel='F1')
+    axes.grid()
+    plt.legend(graph_legend_aligned)#, loc=(0.75,0.5))
+    plot_name = "online_filtered_cbiq_graphs"
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+
+
+# Results22:
+
+def get_f1_result_for_online_filtering(results_path, txt_filename):
+    accuracy_list = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir):
+            continue
+        if "old" in res_dir:
+            continue
+        x_axis = re.findall(r'\d+', res_dir)
+        res_file = os.path.join(res_dir, txt_filename)
+        try:
+            with open(res_file) as f:
+                accuracy = f.readlines()
+                accuracy_list.append((int(x_axis[-1]), float(accuracy[-1])))
+        except:
+            continue
+    return accuracy_list
+
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/sampling rate/10000 chunk size/online_filtering/random_filtering/in_and_out_interpolation/30 background flows"
+create_f1_vs_online_filtering(result_path,"validation_accuracy","f1 vs filter size")
+"""
+def create_f1_vs_online_filtering(results_path, txt_filename, plot_name):
+    accuracy_list = []
+    graph_legend = ["deepcci", "cbiq"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        result_path = os.path.join(results_path, dir_name, res_dir)
+        accuracy_list.append(get_f1_result_for_online_filtering(result_path, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    for i in range(len(accuracy_list)):
+        accuracy = sorted(accuracy_list[i], key=lambda tup: tup[0])
+        x_axis = [x[0] * 10 for x in accuracy]
+        y_axis = [x[1] for x in accuracy]
+        plt.plot(x_axis, y_axis)
+    axes = plt.gca()
+    axes.set(xlabel='filter [%]', ylabel='F1')
+    axes.grid()
+    plt.legend(graph_legend_aligned)#, loc=(0.75,0.5))
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)

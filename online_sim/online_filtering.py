@@ -121,7 +121,8 @@ class SampleConnStat(ABC):
         #in_temp_df.to_csv(os.path.join(abs_path, folder, "in_seq_%d_%s.csv"%(cnt, self.method)))
         self.conn_df = pd.merge(self.conn_df, in_temp_df, on='Time', how='left')
         #self.conn_df = self.conn_df.fillna(method='ffill')
-        # self.conn_df = self.conn_df.interpolate()
+        self.conn_df = self.conn_df.interpolate(limit_area="inside")
+        self.conn_df['in_seq_num'] = self.conn_df['in_seq_num'].fillna(0)
 
         # Add out sequence column to conn DF, DO NOT interpolate missing fields
         out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
@@ -130,7 +131,8 @@ class SampleConnStat(ABC):
         self.conn_df = pd.merge(self.conn_df, out_temp_df, on='Time', how='left')
         # self.conn_df = self.conn_df.interpolate()
         #self.conn_df = self.conn_df.fillna(method='ffill')
-        self.conn_df = self.conn_df.interpolate()
+        self.conn_df = self.conn_df.interpolate(limit_area="inside")
+        self.conn_df['out_seq_num'] = self.conn_df['out_seq_num'].fillna(0)
 
         # clacullate CBIQ. Since out seq is not filled, only timeticks that have out seq
         # Will be calculated
@@ -163,6 +165,7 @@ class SampleConnStat(ABC):
         # If there are less than 200 packets, traffic is too low, return with nothing
         if len(df.index) < 200:
             return
+        self.limit_timestamp = len(df.index)
         df = remove_retransmissions(df)
         df['trunk'] = df['date_time'].str[:-3]
 
@@ -186,7 +189,7 @@ class SampleConnStat(ABC):
         pass
 
 class RandomSampleConnStat(SampleConnStat):
-    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=1):#.1):
+    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=0.9):#.1):
         self.prob = prob
         self.method = 'random'
         super(RandomSampleConnStat, self).__init__(in_file, out_file, interval_accuracy)
@@ -211,8 +214,8 @@ class RandomSampleConnStat(SampleConnStat):
 
     def reduce_packets(self, df, ref_df):
         # Randomly drop 90% of the packets
-        #df = df.drop(df.sample(frac=self.prob).index)# - self.prob).index)
-        df = df.sample(frac=self.prob)# - self.prob).index)
+        df = df.drop(df.sample(frac=1 - self.prob).index)
+        #df = df.sample(frac=self.prob)# - self.prob).index)
         return df
 
 class SelectiveSampleConnStat(SampleConnStat):
@@ -402,10 +405,11 @@ if __name__ == '__main__':
                     try:
                         # selective_scs = SelectiveSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
                         random_scs = RandomSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
-                        # milli_scs = MilliSampleConnStat(in_file=in_file, out_file=out_file,
+                        #milli_scs = MilliSampleConnStat(in_file=in_file, out_file=out_file,
                         #                             interval_accuracy=intv_accuracy)
                         # scs_list = [selective_scs, random_scs, milli_scs]
                         scs_list = [random_scs]
+                        #scs_list = [milli_scs]
                     except ValueError:
                         break # break the inner loop, continue the outer loop to the next connection in the folder
 
@@ -416,7 +420,7 @@ if __name__ == '__main__':
                     algo_id = int(search_obj.group(1)) - 1
                     algo_name = algo_list[algo_id]
 
-                    out_dir = os.path.join("/data_disk/no_filter", folder)
+                    out_dir = os.path.join("/data_disk/random_interpolation_filter_0.9", folder)
                     if not os.path.exists(out_dir):
                         os.mkdir(out_dir)
                     for scs in scs_list:
