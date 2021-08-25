@@ -1,6 +1,7 @@
 import sys
-#print(sys.path)
-sys.path.append('/home/another/PycharmProjects/cwnd_clgo_classifier')
+sys.path.append('/home/roy/cwnd_clgo_classifier')
+#sys.path.append('/home/roy/cwnd_clgo_classifier/simulation')
+print(sys.path)
 from datetime import datetime
 
 import pandas as pd
@@ -8,7 +9,8 @@ import matplotlib.pyplot as plt
 
 from matplotlib import cycler, gridspec
 
-from simulation.tcpdump_statistics import TcpdumpStatistics
+import simulation.tcpdump_statistics
+#from simulation.tcpdump_statistics import TcpdumpStatistics
 
 
 def time_str_to_timedelta(time_str):
@@ -134,8 +136,8 @@ class SingleConnStatistics:
         # It is hard to process such information, so we will
         # extract the maximal time gap between two sent packets for each interval.
         time_gap_series = pd.to_datetime(self.in_conn_df['date_time']).diff()
-        time_gap_series = time_gap_series.convert_dtypes()
-        time_gap_series = time_gap_series.fillna(0)
+        time_gap_series = pd.to_numeric(time_gap_series)
+        time_gap_series = time_gap_series.clip(lower=0)
         time_gap_series = time_gap_series/1000000 #convert from nano to milli
         time_gap_series = time_gap_series.astype('int64')
         print('a')
@@ -224,11 +226,9 @@ class OnlineSingleConnStatistics(SingleConnStatistics):
 
 if __name__ == '__main__':
     intv_accuracy = 3
-    abs_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online_classification/tso_0_background_flows/7.29.2021@15-39-13_1_reno_1_bbr_1_cubic"
-    in_file = abs_path + "/1627562363_167772170_64501_167837706_5201_6.csv"
-    out_file = abs_path + "/1627562363_167772170_64501_167837706_5201_5.csv"
-    rtr_file = abs_path + "/1625497372_qdisc.csv"
+    abs_path = "/tmp/8.25.2021@10-51-48_aaa"
+    in_file = abs_path + "/1629877918_167772161_64502_167772417_5201_3.csv"
+    out_file = abs_path + "/1629877918_167772161_64502_167772417_5201_4.csv"
     q_line_obj = OnlineSingleConnStatistics(in_file=in_file, out_file=out_file, interval_accuracy= intv_accuracy, rtr_q_filename=None)
     q_line_obj.conn_df.to_csv(abs_path + '/single_connection_stat_debug.csv')
-    # q_line_obj = OfflineSingleConnStatistics(in_file, out_file, rtr_file, intv_accuracy)
-    # q_line_obj.conn_df.to_csv(abs_path + "/single_connection_stat_2.csv")
+

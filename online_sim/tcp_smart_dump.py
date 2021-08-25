@@ -1,4 +1,4 @@
-#!/home/another/PycharmProjects/cwnd_clgo_classifier/venv/bin/python3
+#!/usr/bin/python3
 # Copyright (c) PLUMgrid, Inc.
 # Licensed under the Apache License, Version 2.0 (the "License")
 import shutil
@@ -209,12 +209,12 @@ try:
 
             debug_file.write('------%sbefore clear arrays\n' % str(time.time()))
             debug_file.flush()
-            # pkt_array.items_delete_batch() !!! Not supported in ubuntu 18.04
-            pkt_array.clear()
+            pkt_array.items_delete_batch() #!!! Not supported in ubuntu 18.04
+            #pkt_array.clear()
             debug_file.write('------%s cleared pkt_ array \n' % str(time.time()))
             debug_file.flush()
-            # pkt_array_ext.items_delete_batch()!!! Not supported in ubuntu 18.04
-            pkt_array_ext.clear()
+            pkt_array_ext.items_delete_batch() #!!! Not supported in ubuntu 18.04
+            #pkt_array_ext.clear()
             debug_file.write('------%s cleared pkt_ array ext\n' % str(time.time()))
             debug_file.flush()
             pkt_count_table.clear()
