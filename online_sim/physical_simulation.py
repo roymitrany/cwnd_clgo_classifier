@@ -12,17 +12,17 @@ from signal import SIGINT
 from subprocess import Popen
 from time import sleep, time
 
-import numpy
-from mininet.cli import CLI
-from mininet.link import TCLink
-from mininet.log import setLogLevel
-from mininet.net import Mininet
 from datetime import datetime
 import time
 from mininet.node import OVSController
 from mininet.util import pmonitor
 
-from simulation.simulation_topology import SimulationTopology
+
+class PhysicalTopology:
+    def __init__(self, client_list, rtr, srv):
+        self.client_list = client_list
+        self.rtr = rtr
+        self.srv = srv
 
 
 class AlgoStreams:
@@ -44,34 +44,21 @@ class Iperf3Simulator:
         :param background_noise: Amount of packets per tick to send as background noise
         """
         self.file_captures = []
-        self.simulation_topology: SimulationTopology = simulation_topology
+        self.simulation_topology: PhysicalTopology = simulation_topology
         self.iperf_start_after: int = iperf_start_after
-        self.net = Mininet(simulation_topology, controller=OVSController, link=TCLink, autoSetMacs=True)
         self.seconds = seconds
         self.simulation_name = simulation_name
         self.port_algo_dict = {}
         self.background_noise = background_noise
         self.interval_accuracy = interval_accuracy
 
-    def SetCongestionControlAlgorithm(self, host, tcp_algo):
-        """
-        :param tcp_algo: a member of TcpAlgorithm enum e.g. TcpAlgorithm.westwood
-        """
-        cmd = 'echo %s > /proc/sys/net/ipv4/tcp_congestion_control' % tcp_algo
-        self.net.getNodeByName(host).cmd(cmd)
-
     def start_simulation(self):
-        self.net.start()
 
         srv = self.net.getNodeByName(self.simulation_topology.srv)
-        srv_ip = srv.IP()
+        srv_ip = self.simulation_topology.srv
         popens = {}
         srv_procs = []
-        rtr = self.net.getNodeByName(self.simulation_topology.rtr1)
-        self.net['r1'].cmd("ip route add 10.1.0.0/24 via 10.100.0.2 dev r1-r2")
-
-        for i in range(100):
-            self.net['r2'].cmd("ip route add 10.0." + str(i) + ".0/24 via 10.100.0.1 dev r2-r1")
+        rtr_ip = self.simulation_topology.rtr
 
         # Generate background noise
         noise_gen = self.net.getNodeByName(self.simulation_topology.noise_gen)
@@ -102,26 +89,13 @@ class Iperf3Simulator:
             intf_name_str += " "
             client_counter += 1
 
-            # Disable TSO for the router towards client
-            cmd = "ethtool -K r1-%s tso off" % client
-            rtr.cmd(cmd)
-            cmd = "ethtool -K r1-%s gro off" % client
-            rtr.cmd(cmd)
-            cmd = "ethtool -K r1-%s gso off" % client
-            rtr.cmd(cmd)
-
-        # Disable TSO for router towards server
-        cmd = "ethtool -K r1-r2 tso off"
-        rtr.cmd(cmd)
-
-        # CLI(self.net)
 
         # Run the online_sim command with all the interfaces. Server interface should always be the first one!
         ebpf_cmd = os.path.join(Path(os.getcwd()).parent, "online_sim", "tcp_smart_dump.py")
         cmd = "%s %d %s %s %s&>debug_files/%s_rtr_ebpf_out.txt" % (
             ebpf_cmd, simulation_duration, self.simulation_name, "r1-r2", intf_name_str, time.time())
         print(cmd)
-        rtr_ebpf_proc = rtr.popen(cmd, shell=True)
+        rtr_ebpf_proc = rtr_ip.popen(cmd, shell=True)
 
         sleep(2)
         # Traffic generation loop:
@@ -237,9 +211,7 @@ if __name__ == '__main__':
                     algo_streams = AlgoStreams(measured_dict, unmeasured_dict)
                     # algo_dict['bbr']=10
                     total_delay = 2 * (host_delay + srv_delay)
-                    simulation_topology = SimulationTopology(algo_streams, host_delay=host_delay, host_bw=host_bw,
-                                                             srv_bw=srv_bw,
-                                                             srv_delay=srv_delay, rtr_queue_size=queue_size)
+                    simulation_topology = PhysicalTopology(["132.68.60.181"], "132.68.60.182", "132.68.60.183")
                     simulation_name = create_sim_name(measured_dict)
                     iteration += 1
                     simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
