@@ -1,6 +1,7 @@
 import sys
-#print(sys.path)
-sys.path.append('/home/another/PycharmProjects/cwnd_clgo_classifier')
+sys.path.append('/home/roy/cwnd_clgo_classifier')
+#sys.path.append('/home/roy/cwnd_clgo_classifier/simulation')
+print(sys.path)
 from datetime import datetime
 
 import pandas as pd
@@ -8,7 +9,8 @@ import matplotlib.pyplot as plt
 
 from matplotlib import cycler, gridspec
 
-from simulation.tcpdump_statistics import TcpdumpStatistics
+import simulation.tcpdump_statistics
+#from simulation.tcpdump_statistics import TcpdumpStatistics
 
 
 def time_str_to_timedelta(time_str):
@@ -68,9 +70,9 @@ class SingleConnStatistics:
 
         # Calculate CBIQ
         in_temp_df = self.create_seq_df(self.in_conn_df, 'in_seq_num')
-        self.conn_df = self.join_time_df(in_temp_df, 'date_time')
+        self.join_time_df(in_temp_df, 'date_time')
         out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
-        self.conn_df = self.join_time_df(out_temp_df, 'date_time')
+        self.join_time_df(out_temp_df, 'date_time')
         #temp_df = in_temp_df.merge(out_temp_df, how='inner', on=['date_time'])
         #temp_df = temp_df.set_index('date_time')
         self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
@@ -134,8 +136,8 @@ class SingleConnStatistics:
         # It is hard to process such information, so we will
         # extract the maximal time gap between two sent packets for each interval.
         time_gap_series = pd.to_datetime(self.in_conn_df['date_time']).diff()
-        time_gap_series = time_gap_series.convert_dtypes()
-        time_gap_series = time_gap_series.fillna(0)
+        time_gap_series = pd.to_numeric(time_gap_series)
+        time_gap_series = time_gap_series.clip(lower=0)
         time_gap_series = time_gap_series/1000000 #convert from nano to milli
         time_gap_series = time_gap_series.astype('int64')
         print('a')
@@ -224,11 +226,9 @@ class OnlineSingleConnStatistics(SingleConnStatistics):
 
 if __name__ == '__main__':
     intv_accuracy = 3
-    abs_path = "/home/another/PycharmProjects/cwnd_clgo_classifier/classification_data/for_dev/7.5.2021@18-2-52_1_reno_1_bbr_1_cubic"
-    in_file = abs_path + "/1625497382_167772426_64502_167837706_5202_2.csv"
-    out_file = abs_path + "/1625497382_167772426_64502_167837706_5202_7.csv"
-    rtr_file = abs_path + "/1625497372_qdisc.csv"
+    abs_path = "/tmp/8.25.2021@10-51-48_aaa"
+    in_file = abs_path + "/1629877918_167772161_64502_167772417_5201_3.csv"
+    out_file = abs_path + "/1629877918_167772161_64502_167772417_5201_4.csv"
     q_line_obj = OnlineSingleConnStatistics(in_file=in_file, out_file=out_file, interval_accuracy= intv_accuracy, rtr_q_filename=None)
     q_line_obj.conn_df.to_csv(abs_path + '/single_connection_stat_debug.csv')
-    # q_line_obj = OfflineSingleConnStatistics(in_file, out_file, rtr_file, intv_accuracy)
-    # q_line_obj.conn_df.to_csv(abs_path + "/single_connection_stat_2.csv")
+

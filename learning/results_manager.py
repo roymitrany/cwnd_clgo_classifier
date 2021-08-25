@@ -122,22 +122,39 @@ class ResultsManager:
                     self.res_folder_dict[random_subfolder] = ResFolder(res_dir, csv_files_list)
                 """
         else:
-            for dir_name in os.listdir(results_path):
-                res_dir = os.path.join(results_path, dir_name)
-                if not os.path.isdir(res_dir):
-                    continue
-                csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
-                self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
+            if IS_SAMPLE_RATE == True:
+                for dir_name in os.listdir(results_path):
+                    res_dir = os.path.join(results_path, dir_name)
+                    if not os.path.isdir(res_dir):
+                        continue
+                    #csv_files_list = glob.glob(os.path.join(res_dir, "milli*"))
+                    csv_files_list = glob.glob(os.path.join(res_dir, "random*"))
+                    self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
+            else:
+                for dir_name in os.listdir(results_path):
+                    res_dir = os.path.join(results_path, dir_name)
+                    if not os.path.isdir(res_dir):
+                        continue
+                    csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
+                    self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
 
         # Build dataframe array and train array
         train_list = list()
         iteration = 0
+        if IS_SAMPLE:
+            keys = random.sample(range(len(self.res_folder_dict)),250)
+        else:
+            keys = range(len(self.res_folder_dict))
         for (iter_name, res_folder) in self.res_folder_dict.items():
+            iteration += 1
+            if not(iteration in keys):
+                continue
             if chunk_size < 5000 and iteration > 4: # added for 1 second session duration- overfitting debugging.
                 break
-            iteration += 1
             for csv_file in res_folder.csv_files_list:
                 csv_filename = os.path.join(res_folder.res_path, csv_file)
+                if not ("bbr" in csv_filename or "reno" in csv_filename or "cubic" in csv_filename):
+                    continue
                 with open(csv_filename) as f:
                     row_count = sum(1 for row in f)
                     stat_df = pd.read_csv(csv_filename, index_col=None, header=0)
@@ -153,7 +170,8 @@ class ResultsManager:
                     if unused_parameters is not None:
                         stat_df = stat_df.drop(columns=unused_parameters)
                     # split dataframe to chunks:
-                    number_of_chunks = stat_df.shape[0] / chunk_size + stat_df.shape[0] % chunk_size
+                    # number_of_chunks = stat_df.shape[0] / chunk_size + stat_df.shape[0] % chunk_size
+                    number_of_chunks = stat_df.shape[0] / chunk_size
                     for stat_df_chunk in np.array_split(stat_df, number_of_chunks):
                         if not IS_DEEPCCI and NUM_OF_CLASSIFICATION_PARAMETERS != 3:
                             try:
@@ -170,11 +188,11 @@ class ResultsManager:
                             except:
                                 pass
 
-                        if "single_connection_stat_bbr" in csv_file:
+                        if "stat_bbr" in csv_file:
                             train_list.append(["bbr", 0])
-                        elif "single_connection_stat_cubic" in csv_file:
+                        elif "stat_cubic" in csv_file:
                             train_list.append(["cubic", 1])
-                        elif "single_connection_stat_reno" in csv_file:
+                        elif "stat_reno" in csv_file:
                             train_list.append(["reno", 2])
                             """
                         elif "single_connection_stat_vegas" in csv_file:

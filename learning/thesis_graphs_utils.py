@@ -447,10 +447,151 @@ def create_networks_comparison_graph(results_path, txt_filename, plot_name):
     ind = np.arange(len(f1))
     width = 0.3
     plt.bar(ind, f1, width)
-    plt.xticks(ind + width / 2, graph_legend_aligned)
+    plt.xticks(ind, graph_legend_aligned)
     axes = plt.gca()
     axes.set(xlabel='Parameter', ylabel='F1')
     axes.grid()
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+
+# Results18:
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/networks comparison/9499 chunk size/background flows/30 background flows/"
+create_online_classification_graph(result_path,"validation_accuracy","f1 for 30 Background Flows")
+"""
+def create_online_classification_graph(results_path, txt_filename, plot_name):
+    f1_list = []
+    graph_legend = ["CBIQ", "Throughput", "All Parameters", "Deepcci"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        f1_list.append(get_f1_result(res_dir, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    f1 = [x[0][1] for x in f1_list]
+
+    plt.figure(figsize=(10, 5))
+    ind = np.arange(len(f1))
+    width = 0.3
+    plt.bar(ind, f1, width)
+    plt.xticks(ind, graph_legend_aligned)
+
+    axes = plt.gca()
+    axes.set(xlabel='Parameter', ylabel='F1')
+    axes.grid()
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+
+# Results19:
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/networks comparison/9499 chunk size/parameters/"
+create_f1_vs_background_flows_for_online_classification_graph(result_path,"validation_accuracy","f1 vs number of background flows (10 seconds)")
+"""
+def create_f1_vs_background_flows_for_online_classification_graph(results_path, txt_filename, plot_name):
+    my_net_all_parameters_accuracy_list = []
+    my_net_all_parameters_scatter = []
+    graph_legend = ["Deepcci", "CBIQ", "Throughput"]#,"All Parameters"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        result_path = os.path.join(results_path, dir_name, res_dir)
+        my_net_all_parameters_accuracy_list.append(get_f1_result_for_subfolders_from_online_accuracy(result_path, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    for i in range(len(my_net_all_parameters_accuracy_list)):
+        my_net_all_parameters_accuracy = sorted(my_net_all_parameters_accuracy_list[i], key=lambda tup: tup[0])
+        x_axis = [x[0] for x in my_net_all_parameters_accuracy]
+        y_axis = [x[1] for x in my_net_all_parameters_accuracy]
+        plt.plot(x_axis, y_axis)
+    for i in range(len(my_net_all_parameters_scatter)):
+        my_net_all_parameters_accuracy = sorted(my_net_all_parameters_scatter[i], key=lambda tup: tup[0])
+        x_axis = [x[0] for x in my_net_all_parameters_accuracy]
+        y_axis = [x[1] for x in my_net_all_parameters_accuracy]
+        plt.scatter(x_axis, y_axis, color = "red")
+    axes = plt.gca()
+    axes.set(xlabel='number of flows', ylabel='F1')
+    axes.grid()
+    plt.legend(graph_legend_aligned)#, loc=(0.75,0.5))
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+
+# Results20:
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/sampling rate/9499 chunk size/background flows/0 background flows"
+create_f1_vs_background_flows_for_online_classification_with_sampling_graph(result_path,"validation_accuracy","f1 vs number of background flows")
+"""
+def create_f1_vs_background_flows_for_online_classification_with_sampling_graph(results_path, txt_filename, plot_name):
+    f1_list = []
+    graph_legend = ["CBIQ", "Throughput", "All Parameters", "Deepcci"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        f1_list.append(get_f1_result_for_sampling_rate(res_dir, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    f1 = [x[0][1] for x in f1_list]
+
+    plt.figure(figsize=(10, 5))
+    ind = np.arange(len(f1))
+    width = 0.3
+    plt.bar(ind, f1, width)
+    plt.xticks(ind, graph_legend_aligned)
+
+    axes = plt.gca()
+    axes.set(xlabel='Parameter', ylabel='F1')
+    axes.grid()
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+
+
+# Results21:
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/sampling rate/9499 chunk size/every tenth packet- global sampling/parameters/"
+create_f1_vs_parameter_for_online_classification_with_sampling_graph(result_path,"validation_accuracy","f1 vs number of background flows")
+"""
+def create_f1_vs_parameter_for_online_classification_with_sampling_graph(results_path, txt_filename, plot_name):
+    my_net_all_parameters_accuracy_list = []
+    graph_legend = ["Deepcci", "CBIQ", "Throughput", "All Parameters"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        result_path = os.path.join(results_path, dir_name, res_dir)
+        my_net_all_parameters_accuracy_list.append(get_f1_result_for_subfolders_from_online_accuracy(result_path, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    for i in range(len(my_net_all_parameters_accuracy_list)):
+        my_net_all_parameters_accuracy = sorted(my_net_all_parameters_accuracy_list[i], key=lambda tup: tup[0])
+        x_axis = [x[0] for x in my_net_all_parameters_accuracy]
+        y_axis = [x[1] for x in my_net_all_parameters_accuracy]
+        plt.plot(x_axis, y_axis)
+    axes = plt.gca()
+    axes.set(xlabel='number of flows', ylabel='F1')
+    axes.grid()
+    plt.legend(graph_legend_aligned)#, loc=(0.75,0.5))
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
@@ -542,7 +683,6 @@ def get_f1_result_multiple_rtr(results_path, txt_filename):
     my_net_all_parameters_accuracy_list = []
     if not os.path.isdir(results_path):
         return
-    x_axis = re.findall(r'\d+', results_path)
     res_file = os.path.join(results_path, txt_filename)
     try:
         with open(res_file) as f:
@@ -610,3 +750,36 @@ def get_pre_trained_model_result(results_path, txt_filename, plot_name, is_scatt
                 my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[1])))
     return my_net_all_parameters_accuracy_list
 
+
+def get_f1_result_for_subfolders_from_online_accuracy(results_path, txt_filename):
+    my_net_all_parameters_accuracy_list = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir):
+            continue
+        if "old" in res_dir or "model" in dir_name:
+            continue
+        x_axis = re.findall(r'\d+', res_dir)
+        res_file = os.path.join(res_dir, txt_filename)
+        try:
+            with open(res_file) as f:
+                accuracy = f.readlines()
+                my_net_all_parameters_accuracy_list.append((int(x_axis[1]), float(accuracy[-1])))
+        except:
+            continue
+    return my_net_all_parameters_accuracy_list
+
+
+def get_f1_result_for_sampling_rate(results_path, txt_filename):
+    my_net_all_parameters_accuracy_list = []
+    if not os.path.isdir(results_path):
+        return
+    x_axis = re.findall(r'\d+', results_path)
+    res_file = os.path.join(results_path, txt_filename)
+    try:
+        with open(res_file) as f:
+            accuracy = f.readlines()
+            my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[-1])))
+    except:
+        pass
+    return my_net_all_parameters_accuracy_list
