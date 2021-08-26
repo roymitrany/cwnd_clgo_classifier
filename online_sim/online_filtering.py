@@ -121,8 +121,12 @@ class SampleConnStat(ABC):
         #in_temp_df.to_csv(os.path.join(abs_path, folder, "in_seq_%d_%s.csv"%(cnt, self.method)))
         self.conn_df = pd.merge(self.conn_df, in_temp_df, on='Time', how='left')
         #self.conn_df = self.conn_df.fillna(method='ffill')
+        """
+        # limit interpolation:
         self.conn_df = self.conn_df.interpolate(limit_area="inside")
         self.conn_df['in_seq_num'] = self.conn_df['in_seq_num'].fillna(0)
+        """
+        self.conn_df = self.conn_df.interpolate()
 
         # Add out sequence column to conn DF, DO NOT interpolate missing fields
         out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
@@ -131,8 +135,12 @@ class SampleConnStat(ABC):
         self.conn_df = pd.merge(self.conn_df, out_temp_df, on='Time', how='left')
         # self.conn_df = self.conn_df.interpolate()
         #self.conn_df = self.conn_df.fillna(method='ffill')
+        # limit interpolation:
+        """
         self.conn_df = self.conn_df.interpolate(limit_area="inside")
         self.conn_df['out_seq_num'] = self.conn_df['out_seq_num'].fillna(0)
+        """
+        self.conn_df = self.conn_df.interpolate()
 
         # clacullate CBIQ. Since out seq is not filled, only timeticks that have out seq
         # Will be calculated
@@ -189,7 +197,7 @@ class SampleConnStat(ABC):
         pass
 
 class RandomSampleConnStat(SampleConnStat):
-    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=0.9):#.1):
+    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=0.1):#.1):
         self.prob = prob
         self.method = 'random'
         super(RandomSampleConnStat, self).__init__(in_file, out_file, interval_accuracy)
@@ -420,7 +428,7 @@ if __name__ == '__main__':
                     algo_id = int(search_obj.group(1)) - 1
                     algo_name = algo_list[algo_id]
 
-                    out_dir = os.path.join("/data_disk/random_interpolation_filter_0.9", folder)
+                    out_dir = os.path.join("/data_disk/random_interpolation_filter_0.1_no_limit", folder)
                     if not os.path.exists(out_dir):
                         os.mkdir(out_dir)
                     for scs in scs_list:
