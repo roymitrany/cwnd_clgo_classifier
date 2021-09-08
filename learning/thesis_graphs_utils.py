@@ -857,6 +857,24 @@ def get_f1_result_for_online_filtering(results_path, txt_filename):
             continue
     return accuracy_list
 
+def get_accuracy_result_for_online_filtering(results_path, txt_filename):
+    accuracy_list = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir):
+            continue
+        if "old" in res_dir:
+            continue
+        x_axis = re.findall(r'\d+', res_dir)
+        res_file = os.path.join(res_dir, txt_filename)
+        try:
+            with open(res_file) as f:
+                accuracy = f.readlines()
+                accuracy_list.append((int(x_axis[-1]), float(accuracy[-1])))
+        except:
+            continue
+    return accuracy_list
+
 """
 from learning.thesis_graphs_utils import *
 result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/sampling rate/10000 chunk size/online_filtering/random_filtering/in_and_out_interpolation/30 background flows"
@@ -864,7 +882,7 @@ create_f1_vs_online_filtering(result_path,"validation_accuracy","f1 vs filter si
 """
 def create_f1_vs_online_filtering(results_path, txt_filename, plot_name):
     accuracy_list = []
-    graph_legend = ["deepcci", "cbiq"]
+    graph_legend = ["deepcci", "cbiq", "throughput"]
     graph_legend_aligned = []
     for dir_name in os.listdir(results_path):
         res_dir = os.path.join(results_path, dir_name)
@@ -879,7 +897,7 @@ def create_f1_vs_online_filtering(results_path, txt_filename, plot_name):
     plt.clf()  # clear the current figure
     for i in range(len(accuracy_list)):
         accuracy = sorted(accuracy_list[i], key=lambda tup: tup[0])
-        x_axis = [x[0] * 10 for x in accuracy]
+        x_axis = [x[0] for x in accuracy]
         y_axis = [x[1] for x in accuracy]
         plt.plot(x_axis, y_axis)
     axes = plt.gca()

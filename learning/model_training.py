@@ -117,7 +117,8 @@ def test_model(model, criterion, is_deepcci, is_batch):
 if __name__ == '__main__':
 # def main(bg_flow):
     #sleep(60*60*60*48 + 60*60*1.5)
-    #sleep(60*60*2.5)
+    #sleep(60*60*18 + 60*60*1.5)
+    #sleep(60*60*0.1)
     if IS_DEEPCCI:
         model = deepcci_net().to(device)
         is_deepcci = "deepcci_net"
@@ -174,7 +175,7 @@ if __name__ == '__main__':
     time_str = "_" + str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
         tn.minute) + "-" + str(tn.second)
     # directory = graphs_path + "10bbr_cubic_reno_tcp_background_noise, "+ is_deepcci + ", " + "chunk_" + str(CHUNK_SIZE) +", shuffle_" + str(IS_SHUFFLE) + ", batch_" + str(BATCH_SIZE)
-    directory = graphs_path + "_" + str(NUM_OF_CLASSIFICATION_PARAMETERS) + "_parameters_interpolation_filter_0.5_new"+is_deepcci
+    directory = graphs_path + "_" + str(NUM_OF_CLASSIFICATION_PARAMETERS) + "_parameters_interpolation_filter_0.4"+is_deepcci
     # directory = graphs_path + is_deepcci + "All" + str(CHUNK_SIZE) + "_shuffle_" + str(
     #     IS_SHUFFLE) + "_batch_" + str(BATCH_SIZE)
     if not os.path.exists(directory):

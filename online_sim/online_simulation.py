@@ -120,7 +120,8 @@ class Iperf3Simulator:
         # Run the online_sim command with all the interfaces. Server interface should always be the first one!
         ebpf_cmd = os.path.join(Path(os.getcwd()).parent, "online_sim", "tcp_smart_dump.py")
         cmd = "%s %d %s %s %s&>debug_files/%s_rtr_ebpf_out.txt" % (
-            ebpf_cmd, simulation_duration, self.simulation_name, "r1-r2", intf_name_str, time.time())
+            #ebpf_cmd, simulation_duration, self.simulation_name, "r1-r2", intf_name_str, time.time())
+            ebpf_cmd, simulation_duration, self.simulation_name, "r2-srv", "r1-r2", time.time())
         print(cmd)
         rtr_ebpf_proc = rtr.popen(cmd, shell=True)
 
@@ -180,8 +181,10 @@ def create_sim_name1(bg_num, srv_bw, queue_size):
 
 
 def arrange_res_files():
-    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "no_tso_0_75_bg_flows")
-    curr_root_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "online")
+    #des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "no_tso_0_75_bg_flows")
+    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "no_tso_0_75_bg_flows_60_seconds")
+    #des_res_dir = '/data_disk/new topology r2'
+    curr_root_dir ='/data_disk/online'
     result_files = list(Path(curr_root_dir).rglob("*_6450[0-9]_*"))
     count = 0
     for res_file in result_files:

@@ -227,7 +227,7 @@ class RandomSampleConnStat(SampleConnStat):
         return df
 
 class SelectiveSampleConnStat(SampleConnStat):
-    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=.1):
+    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=.9):
         self.prob = prob
         self.method = 'selective'
         self.in_reduced_df = None
@@ -352,10 +352,14 @@ def remove_retransmissions(conn_df):
 
 
 if __name__ == '__main__':
+    #sleep(60*60*10)
     intv_accuracy = 3
     algo_list = ['reno', 'bbr',
                  'cubic']  # Should be in line with measured_dict keys in online_simulation.py main function
     abs_path = '/data_disk/tso_0_75_bg_flows'
+    abs_path = '/data_disk/no_tso_0_75_bg_flows_60_seconds'
+    #abs_path = '/data_disk/physical_res'
+    #abs_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/no_tso_0_75_bg_flows_bw_max_100'
     folders_list = os.listdir(abs_path)
     #folders_list = ['8.12.2021@14-18-35_NumBG_0_LinkBW_1000_Queue_900']
     for folder in folders_list:
@@ -411,11 +415,12 @@ if __name__ == '__main__':
                     # Create random and milli sample conn stats.
                     # If creation of one of the fails, do not continue for this connection
                     try:
-                        # selective_scs = SelectiveSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
+                        #selective_scs = SelectiveSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
                         random_scs = RandomSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
                         #milli_scs = MilliSampleConnStat(in_file=in_file, out_file=out_file,
                         #                             interval_accuracy=intv_accuracy)
                         # scs_list = [selective_scs, random_scs, milli_scs]
+                        #scs_list = [selective_scs]
                         scs_list = [random_scs]
                         #scs_list = [milli_scs]
                     except ValueError:
@@ -428,7 +433,11 @@ if __name__ == '__main__':
                     algo_id = int(search_obj.group(1)) - 1
                     algo_name = algo_list[algo_id]
 
-                    out_dir = os.path.join("/data_disk/random_interpolation_filter_0.1_no_limit", folder)
+                    #out_dir = os.path.join("/data_disk/online filtering/random_interpolation_filter_0.1", folder)
+                    #out_dir = os.path.join("/data_disk/random_interpolation_filter_0.4", folder)
+                    #out_dir = os.path.join("/data_disk/with retransmission/random_interpolation_filter_0.9", folder)
+                    out_dir = os.path.join("/data_disk/online 60 seconds", folder)
+                    #out_dir = os.path.join("/data_disk/physical_res_random_interpolation_filter_0.1", folder)
                     if not os.path.exists(out_dir):
                         os.mkdir(out_dir)
                     for scs in scs_list:
