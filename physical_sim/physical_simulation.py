@@ -5,6 +5,7 @@ import re
 import shutil
 import threading
 from pathlib import Path
+from pssh.clients import ParallelSSHClient, SSHClient
 
 from enum import Enum
 from random import random, randint
@@ -16,13 +17,16 @@ from datetime import datetime
 import time
 from mininet.node import OVSController
 from mininet.util import pmonitor
+from sismaot import getCredentials
 
 
 class PhysicalTopology:
     def __init__(self, client_list, rtr, srv):
-        self.client_list = client_list
+        self.host_list = client_list
         self.rtr = rtr
         self.srv = srv
+        self.rtr_srv_ifName = 'eno2'
+        self.rtr_hosts_ifName = 'enp2s0'
 
 
 class AlgoStreams:
@@ -54,50 +58,38 @@ class Iperf3Simulator:
 
     def start_simulation(self):
 
-        srv = self.net.getNodeByName(self.simulation_topology.srv)
-        srv_ip = self.simulation_topology.srv
-        popens = {}
-        srv_procs = []
-        rtr_ip = self.simulation_topology.rtr
+        srv_mgmt_ip = self.simulation_topology.srv
+        rtr_mgmt_ip = self.simulation_topology.rtr
+        user, password = getCredentials()
 
-        # Generate background noise
-        noise_gen = self.net.getNodeByName(self.simulation_topology.noise_gen)
-
-        if self.background_noise > 0:
-            noise_gen.popen('python noise_generator.py %s %s' % (srv_ip, self.background_noise))
         client_counter = 0
-        intf_name_str = ""
-        # CLI(self.net)
 
-        for client in self.simulation_topology.host_list:
-            # Modify TCP algorithms (because iperf3 does not support vegas in -C parameter):
-            cwnd_algo = client[0:client.find("_")]
-            self.SetCongestionControlAlgorithm(client, cwnd_algo)
+
+        ssh_to_rtr = SSHClient(rtr_mgmt_ip, user=user, password=password)
+
+        for host in self.simulation_topology.host_list:
+
+            #cwnd_algo = host[0:host.find("_")]
 
             test_port = (5201 + client_counter)
 
             # Map test port to algo. This will serve us in results processing
-            self.port_algo_dict[test_port] = cwnd_algo
 
-            # In iperf3, each test should have its own server. We have to terminate them at the end,
-            # otherwise they are stuck in the system, so we keep the proc nums in a list.
-            srv_cmd = 'iperf3 -s -p %d &' % test_port
-            srv_procs.append(srv.popen(srv_cmd))
-
-            inbound_interface_name = "r1-%s" % client
-            intf_name_str += inbound_interface_name
-            intf_name_str += " "
-            client_counter += 1
+            #self.port_algo_dict[test_port] = cwnd_algo
 
 
         # Run the online_sim command with all the interfaces. Server interface should always be the first one!
-        ebpf_cmd = os.path.join(Path(os.getcwd()).parent, "online_sim", "tcp_smart_dump.py")
-        cmd = "%s %d %s %s %s&>debug_files/%s_rtr_ebpf_out.txt" % (
-            ebpf_cmd, simulation_duration, self.simulation_name, "r1-r2", intf_name_str, time.time())
-        print(cmd)
-        rtr_ebpf_proc = rtr_ip.popen(cmd, shell=True)
-
-        sleep(2)
+        cd_cmd = 'cd cwnd_clgo_classifier/online_sim'
+        self.simulation_name = 'bbb'
+        ebpf_cmd = 'sudo ./tcp_smart_dump.py'
+        rtr_cmd = "%s;%s %d %s %s %s&>debug_files/%s_rtr_ebpf_out.txt" % (
+            cd_cmd, ebpf_cmd, simulation_duration, self.simulation_name, self.simulation_topology.rtr_srv_ifName,
+            self.simulation_topology.rtr_hosts_ifName, time.time())
+        #rtr_cmd = "touch qqq_%s" % (time.time())
+        print(rtr_cmd)
+        curr_out = ssh_to_rtr.run_command(rtr_cmd)
+        sleep(15)
+        '''sleep(2)
         # Traffic generation loop:
         client_counter = 0
         for client in self.simulation_topology.host_list:
@@ -125,10 +117,7 @@ class Iperf3Simulator:
         rtr_ebpf_proc.send_signal(SIGINT)
         sleep(2)
         for process in srv_procs:
-            process.send_signal(SIGINT)
-
-        # CLI(self.net)
-        self.net.stop()
+            process.send_signal(SIGINT)'''
 
 
 def clean_sim():
@@ -169,6 +158,13 @@ def arrange_res_files():
 
 
 if __name__ == '__main__':
+
+    client_mgmt_addr_list = ['132.68.60.206', '132.68.60.131']
+    srv_mgmt_addr = '132.68.60.135'
+    rtr_mgmt_addr = '132.68.60.140'
+    iperf3_srv_addr_list = ['10.0.100.1', '10.0.101.1', '10.0.102.1', '10.0.103.1']
+    iperf3_client_addr_list = ['10.0.0.1', '10.0.1.1', '10.0.2.1', '10.0.3.1']
+
     # interval accuracy: a number between 0 to 3. For value n, the accuracy will be set to 1/10^n
     interval_accuracy = 3
 
@@ -181,8 +177,6 @@ if __name__ == '__main__':
     # queue_size = 800  # 2 * (
     # srv_bw * total_delay) / tcp_packet_size  # Rule of thumb: queue_size = (bw [Mbit/sec] * RTT [sec]) / size_of_packet.
     # Tell mininet to print useful information:
-    setLogLevel('info')
-    # bw is in Mbps, delay in msec, queue size in packets:
 
     background_noise = 0
     host_delay = 2.5
@@ -192,34 +186,25 @@ if __name__ == '__main__':
     host_bw = 200
     srv_bw = 200
     queue_size = 500
-    for lcount in range(10):
-        for srv_bw in range(200, 500, 50):
-            for d in range(1, 5):
-                # host_bw = 200
-                host_bw = srv_bw * 3 / d
-                for bg in range(5):
-                    # for srv_bw in numpy.linspace(50, 100, 5):
-                    #    for host_bw in numpy.linspace(srv_bw, srv_bw + 100, 5):
-                    # for queue_size in numpy.linspace(100, 1000, 10):
-                    # for queue_size in range(100, 1000, 100):
-                    measured_dict['reno'] = 1
-                    measured_dict['bbr'] = 1
-                    measured_dict['cubic'] = 1
-                    unmeasured_dict['reno'] = bg
-                    unmeasured_dict['bbr'] = bg
-                    unmeasured_dict['cubic'] = bg
-                    algo_streams = AlgoStreams(measured_dict, unmeasured_dict)
-                    # algo_dict['bbr']=10
-                    total_delay = 2 * (host_delay + srv_delay)
-                    simulation_topology = PhysicalTopology(["132.68.60.181"], "132.68.60.182", "132.68.60.183")
-                    simulation_name = create_sim_name(measured_dict)
-                    iteration += 1
-                    simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
-                                                iperf_start_after=2,
-                                                background_noise=background_noise,
-                                                interval_accuracy=interval_accuracy, iteration=iteration)
-                    # iperf_start_after=500, background_noise=100)
-                    simulator.start_simulation()
-                    sleep(2)
-                    arrange_res_files()
-                    clean_sim()
+    for lcount in range(1):
+        measured_dict['reno'] = 1
+        measured_dict['bbr'] = 1
+        measured_dict['cubic'] = 1
+        #unmeasured_dict['reno'] = bg
+        #unmeasured_dict['bbr'] = bg
+        #unmeasured_dict['cubic'] = bg
+        algo_streams = AlgoStreams(measured_dict, unmeasured_dict)
+        # algo_dict['bbr']=10
+        total_delay = 2 * (host_delay + srv_delay)
+        simulation_topology = PhysicalTopology(client_mgmt_addr_list, rtr_mgmt_addr, srv_mgmt_addr)
+        simulation_name = create_sim_name(measured_dict)
+        iteration += 1
+        simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
+                                    iperf_start_after=2,
+                                    background_noise=background_noise,
+                                    interval_accuracy=interval_accuracy, iteration=iteration)
+        # iperf_start_after=500, background_noise=100)
+        simulator.start_simulation()
+        sleep(2)
+        arrange_res_files()
+        clean_sim()
