@@ -33,7 +33,7 @@ class AlgoStreams:
 
 
 class Iperf3Simulator:
-    def __init__(self, simulation_topology, simulation_name, seconds=10, iperf_start_after=0,
+    def __init__(self, simulation_topology, simulation_name, seconds=60, iperf_start_after=0,
                  background_noise=0, interval_accuracy=1, iteration=0):
         """
         :param interval_accuracy:
@@ -183,7 +183,7 @@ def create_sim_name1(bg_num, srv_bw, queue_size):
 def arrange_res_files():
     #des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "no_tso_0_75_bg_flows")
     des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "no_tso_0_75_bg_flows_60_seconds")
-    #des_res_dir = '/data_disk/new topology r2'
+    des_res_dir = '/data_disk/no_tso_0_75_bg_flows_60_seconds'
     curr_root_dir ='/data_disk/online'
     result_files = list(Path(curr_root_dir).rglob("*_6450[0-9]_*"))
     count = 0
@@ -215,7 +215,7 @@ if __name__ == '__main__':
     # Simulation's parameters initializing:
     measured_dict = {}
     unmeasured_dict = {}
-    simulation_duration = 100  # 60 # 80 # 120  # seconds.
+    simulation_duration = 60#100  # 60 # 80 # 120  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (

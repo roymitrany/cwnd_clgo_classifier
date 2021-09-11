@@ -785,7 +785,6 @@ def get_f1_result_for_sampling_rate(results_path, txt_filename):
     return my_net_all_parameters_accuracy_list
 
 # Online Filtering CBIQ debugging:
-
 def get_online_filtered_cbiq(results_path, txt_filename):
     if not os.path.isdir(results_path):
         return
@@ -838,6 +837,37 @@ def create_online_filtered_cbiq_graphs(results_path, txt_filename):
 
 
 # Results22:
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/sampling rate/10000 chunk size/online_filtering/random_filtering/in_and_out_interpolation/30 background flows"
+create_f1_vs_online_filtering(result_path,"validation_accuracy","f1 vs filter size")
+"""
+def create_f1_vs_online_filtering(results_path, txt_filename, plot_name):
+    accuracy_list = []
+    graph_legend = ["deepcci", "cbiq", "throughput"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        result_path = os.path.join(results_path, dir_name, res_dir)
+        accuracy_list.append(get_f1_result_for_online_filtering(result_path, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    for i in range(len(accuracy_list)):
+        accuracy = sorted(accuracy_list[i], key=lambda tup: tup[0])
+        x_axis = [x[0] for x in accuracy]
+        y_axis = [x[1] for x in accuracy]
+        plt.plot(x_axis, y_axis)
+    axes = plt.gca()
+    axes.set(xlabel='filter [%]', ylabel='F1')
+    axes.grid()
+    plt.legend(graph_legend_aligned)#, loc=(0.75,0.5))
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
 
 def get_f1_result_for_online_filtering(results_path, txt_filename):
     accuracy_list = []
@@ -875,33 +905,54 @@ def get_accuracy_result_for_online_filtering(results_path, txt_filename):
             continue
     return accuracy_list
 
+# Results23:
 """
 from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/sampling rate/10000 chunk size/online_filtering/random_filtering/in_and_out_interpolation/30 background flows"
-create_f1_vs_online_filtering(result_path,"validation_accuracy","f1 vs filter size")
+# Path for original online classification:
+# result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/networks comparison/9499 chunk size/background flows/30 background flows/"
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online vs offline/0 background flows/"
+create_online_vs_offline_graph(result_path,"validation_accuracy","f1 for 0 Background Flows and 10 Seconds sessions")
 """
-def create_f1_vs_online_filtering(results_path, txt_filename, plot_name):
-    accuracy_list = []
-    graph_legend = ["deepcci", "cbiq", "throughput"]
+def create_online_vs_offline_graph(results_path, txt_filename, plot_name):
+    f1_list = []
+    graph_legend = ["CBIQ", "Throughput", "Deepcci"]
     graph_legend_aligned = []
     for dir_name in os.listdir(results_path):
         res_dir = os.path.join(results_path, dir_name)
-        if not os.path.isdir(res_dir) or "old" in res_dir:
+        if not os.path.isdir(res_dir) or "old" in res_dir in res_dir:
             continue
-        for graph_type in graph_legend:
-            if graph_type in dir_name:
-                graph_legend_aligned.append(graph_type)
-        result_path = os.path.join(results_path, dir_name, res_dir)
-        accuracy_list.append(get_f1_result_for_online_filtering(result_path, txt_filename))
+        f1 = []
+        for sub_dir in os.listdir(os.path.join(results_path, dir_name, res_dir)):
+            for graph_type in graph_legend:
+                if graph_type in sub_dir:
+                    graph_legend_aligned.append(graph_type)
+            result_path = os.path.join(results_path, dir_name, res_dir, sub_dir)
+            f1.append(get_f1_result(result_path, txt_filename))
+        f1_list.append(f1)
     plt.cla()  # clear the current axes
     plt.clf()  # clear the current figure
-    for i in range(len(accuracy_list)):
-        accuracy = sorted(accuracy_list[i], key=lambda tup: tup[0])
-        x_axis = [x[0] for x in accuracy]
-        y_axis = [x[1] for x in accuracy]
-        plt.plot(x_axis, y_axis)
+    offline = [x[0][1] for x in f1_list[0]]
+    online = [x[0][1] for x in f1_list[1]]
+
+    plt.figure(figsize=(10, 5))
+    ind = np.arange(len(offline))
+    width = 0.3
+    plt.bar(ind, offline, width)
+    plt.bar(ind + width, online, width)
+    plt.xticks(ind, graph_legend_aligned)
+
     axes = plt.gca()
-    axes.set(xlabel='filter [%]', ylabel='F1')
+    axes.set(xlabel='Parameter', ylabel='F1')
     axes.grid()
-    plt.legend(graph_legend_aligned)#, loc=(0.75,0.5))
+    plt.legend(("online", "offline"), loc="best")
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+if __name__ == '__main__':
+    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/sampling rate/10000 chunk size/online_filtering/random_filtering/in_and_out_interpolation/30 background flows"
+    create_f1_vs_online_filtering(result_path, "validation_accuracy", "f1 vs filter size")
+
+    """
+    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online vs offline/0 background flows/"
+    create_online_vs_offline_graph(result_path, "validation_accuracy",
+                                   "f1 for 0 Background Flows and 10 Seconds sessions")
+    """

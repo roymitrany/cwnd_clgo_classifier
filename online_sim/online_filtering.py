@@ -358,6 +358,7 @@ if __name__ == '__main__':
                  'cubic']  # Should be in line with measured_dict keys in online_simulation.py main function
     abs_path = '/data_disk/tso_0_75_bg_flows'
     abs_path = '/data_disk/no_tso_0_75_bg_flows_60_seconds'
+    abs_path = '/data_disk/physical data'
     #abs_path = '/data_disk/physical_res'
     #abs_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/no_tso_0_75_bg_flows_bw_max_100'
     folders_list = os.listdir(abs_path)
@@ -436,7 +437,8 @@ if __name__ == '__main__':
                     #out_dir = os.path.join("/data_disk/online filtering/random_interpolation_filter_0.1", folder)
                     #out_dir = os.path.join("/data_disk/random_interpolation_filter_0.4", folder)
                     #out_dir = os.path.join("/data_disk/with retransmission/random_interpolation_filter_0.9", folder)
-                    out_dir = os.path.join("/data_disk/online 60 seconds", folder)
+                    #out_dir = os.path.join("/data_disk/online 60 seconds", folder)
+                    out_dir = os.path.join("/data_disk/physical filter/0.9 filter", folder)
                     #out_dir = os.path.join("/data_disk/physical_res_random_interpolation_filter_0.1", folder)
                     if not os.path.exists(out_dir):
                         os.mkdir(out_dir)
