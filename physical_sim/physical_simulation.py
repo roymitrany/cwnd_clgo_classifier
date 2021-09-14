@@ -3,21 +3,13 @@
 import os
 import re
 import shutil
-import threading
 from pathlib import Path
-from pssh.clients import ParallelSSHClient, SSHClient
+from pssh.clients import SSHClient
 
-from enum import Enum
-from random import random, randint
-from signal import SIGINT
-from subprocess import Popen
 from time import sleep, time
 
-from datetime import datetime
 import time
-from mininet.node import OVSController
-from mininet.util import pmonitor
-from sismaot import getCredentials
+from physical_sim.sismaot import getCredentials
 
 
 class PhysicalTopology:
