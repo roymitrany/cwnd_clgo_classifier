@@ -910,7 +910,7 @@ def get_accuracy_result_for_online_filtering(results_path, txt_filename):
 from learning.thesis_graphs_utils import *
 # Path for original online classification:
 # result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/networks comparison/9499 chunk size/background flows/30 background flows/"
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online vs offline/0 background flows/"
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online vs offline- Results23/0 background flows/"
 create_online_vs_offline_graph(result_path,"validation_accuracy","f1 for 0 Background Flows and 10 Seconds sessions")
 """
 def create_online_vs_offline_graph(results_path, txt_filename, plot_name):
@@ -948,11 +948,11 @@ def create_online_vs_offline_graph(results_path, txt_filename, plot_name):
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 if __name__ == '__main__':
+    """
     result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/sampling rate/10000 chunk size/online_filtering/random_filtering/in_and_out_interpolation/30 background flows"
     create_f1_vs_online_filtering(result_path, "validation_accuracy", "f1 vs filter size")
-
     """
-    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online vs offline/0 background flows/"
+
+    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online vs offline- Results23/0 background flows/"
     create_online_vs_offline_graph(result_path, "validation_accuracy",
                                    "f1 for 0 Background Flows and 10 Seconds sessions")
-    """

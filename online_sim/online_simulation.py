@@ -215,7 +215,7 @@ if __name__ == '__main__':
     # Simulation's parameters initializing:
     measured_dict = {}
     unmeasured_dict = {}
-    simulation_duration = 60#100  # 60 # 80 # 120  # seconds.
+    simulation_duration = 20#100  # 60 # 80 # 120  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (
@@ -230,10 +230,12 @@ if __name__ == '__main__':
     iteration = 0
 
     queue_size = 500
-    #for iiii in range(1):
-    for bg_num in [20,10,5,1,0]:
-        for srv_bw in range(100, 1100, 100):
-            for i in range(1,4):
+    bg_num = 5
+    srv_bw= 100
+    for i in range(1,2):
+    #for bg_num in [20,10,5,1,0]:
+    #    for srv_bw in range(100, 1100, 100):
+    #        for i in range(1,4):
                 host_bw = i*srv_bw
                 for queue_size in range(100, 1100, 100):
                     measured_dict['reno'] = 1

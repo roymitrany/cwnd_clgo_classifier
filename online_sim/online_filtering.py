@@ -16,6 +16,13 @@ from datetime import datetime
 
 #patch
 cnt = 0
+raw_data_dir = sys.argv[1]
+dst_dir = sys.argv[2]
+folder = sys.argv[3]
+debug_file_name = os.path.join(raw_data_dir, folder, 'filter_debug.txt')
+debug_file = open(debug_file_name, 'w')
+print("starting tcp_smart_dump", file=debug_file)
+
 
 def time_str_to_timedelta(time_str):
     my_time = datetime.strptime(time_str, "%H:%M:%S.%f")
@@ -145,6 +152,7 @@ class SampleConnStat(ABC):
         # clacullate CBIQ. Since out seq is not filled, only timeticks that have out seq
         # Will be calculated
         self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
+
         self.conn_df = self.conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
         #self.conn_df = self.conn_df.fillna(method='ffill')
         #self.conn_df = self.conn_df.interpolate()
@@ -174,7 +182,7 @@ class SampleConnStat(ABC):
         if len(df.index) < 200:
             return
         self.limit_timestamp = len(df.index)
-        df = remove_retransmissions(df)
+        df = remove_retransmissions(df, filename)
         df['trunk'] = df['date_time'].str[:-3]
 
         # Temporary patch: count deepcci
@@ -263,10 +271,8 @@ class SelectiveSampleConnStat(SampleConnStat):
             self.conn_df = self.conn_df.merge(seq_df, on='Time', how='left')
             self.conn_df = self.conn_df.drop(columns=['trunk'])
             self.conn_df = self.conn_df.fillna(method='ffill')
-            print('1')
         else:
             self.conn_df['CBIQ'] = 0
-            print('2')
 
 
     def reduce_packets(self, df, ref_df):
@@ -336,15 +342,20 @@ class MilliSampleConnStat(SampleConnStat):
         return df
 
 
-def remove_retransmissions(conn_df):
+def remove_retransmissions(conn_df, filename):
     # Remove retransmissions
-    while True:
+    num_of_retrans = 0
+    for nn in range(1000):
         t_series = conn_df['seq_num'].diff()
+        t_series = t_series.fillna(0)
         if t_series.min() >= 0:
             break
+        num_of_retrans+=t_series.lt(0).sum()
         conn_df = conn_df.join(t_series, rsuffix='_diff')
         conn_df = conn_df.drop(conn_df[conn_df['seq_num_diff'] < 0].index)
+        conn_df = conn_df.drop(conn_df[conn_df['seq_num_diff'] > 250000].index)
         conn_df = conn_df.drop(columns=['seq_num_diff'])
+    print('number of retransmissions in %s: %d' % (os.path.split(filename)[-1], num_of_retrans), file=debug_file)
     return conn_df
 
 
@@ -355,95 +366,82 @@ if __name__ == '__main__':
     #sleep(60*60*10)
     intv_accuracy = 3
     algo_list = ['reno', 'bbr',
-                 'cubic']  # Should be in line with measured_dict keys in online_simulation.py main function
-    abs_path = '/data_disk/tso_0_75_bg_flows'
-    abs_path = '/data_disk/no_tso_0_75_bg_flows_60_seconds'
-    abs_path = '/data_disk/physical data'
-    #abs_path = '/data_disk/physical_res'
-    #abs_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/no_tso_0_75_bg_flows_bw_max_100'
-    folders_list = os.listdir(abs_path)
-    #folders_list = ['8.12.2021@14-18-35_NumBG_0_LinkBW_1000_Queue_900']
-    for folder in folders_list:
-        # Look for all raw results in the folder
-        result_files = glob.glob(os.path.join(abs_path, folder, "*_6450[0-9]_*"))
-        # If there are not enough csv files in the folder, this folder is not interesting and should be removed
-        if len(result_files) < 4:
-            print("not enough csv files in %s, deleting folder" % folder)
-            shutil.rmtree(os.path.join(abs_path, folder))
+                 'cubic', 'bbr', 'bbr', 'bbr', 'bbr']  # Should be in line with measured_dict keys in online_simulation.py main function
+    #for folder in folders_list:
+    # Look for all raw results in the folder
+    result_files = glob.glob(os.path.join(raw_data_dir, folder, "*_6450[0-9]_*"))
+    # If there are not enough csv files in the folder, this folder is not interesting and should be removed
+    if len(result_files) < 4:
+        print("not enough csv files in %s, deleting folder" % folder, file=debug_file)
+        shutil.rmtree(os.path.join(raw_data_dir, folder))
 
-        # if there are already sample files in the folder, continue
-        '''result_files1 = glob.glob(os.path.join(abs_path, folder, "%s_sample*"%method))
-        if len(result_files1) > 0:
-            print("folder %s already analyzed" % folder)
-            continue'''
-        # find the destination interface
-        if_dict = {}
-        for res_file in result_files:
-            search_obj = re.search(r'_(\d+).csv$', str(res_file))
-            if search_obj:
-                if_num = search_obj.group(1)
-                if if_num in if_dict.keys():
-                    if_dict[if_num] += 1
-                else:
-                    if_dict[if_num] = 1
-        # The first interface with more than one in the value is the server interface
-        server_if = 0
-        for key, val in if_dict.items():
-            if val > 1:
-                server_if = int(key)
+    # if there are already sample files in the folder, continue
+    '''result_files1 = glob.glob(os.path.join(abs_path, folder, "%s_sample*"%method))
+    if len(result_files1) > 0:
+        print("folder %s already analyzed" % folder, file=debug_file)
+        continue'''
+    # find the destination interface
+    if_dict = {}
+    for res_file in result_files:
+        search_obj = re.search(r'_(\d+).csv$', str(res_file))
+        if search_obj:
+            if_num = search_obj.group(1)
+            if if_num in if_dict.keys():
+                if_dict[if_num] += 1
+            else:
+                if_dict[if_num] = 1
+    # The first interface with more than one in the value is the server interface
+    server_if = 0
+    for key, val in if_dict.items():
+        if val > 1:
+            server_if = int(key)
+    # If no interface was spotted more than once, end the iteration
+    if server_if == 0:
+        sys.exit()
 
-        # If no interface was spotted more than once, end the iteration
-        if server_if == 0:
-            continue
+    # Find the client files, and make sure there is server file for it.
+    # If there is, run stat on them
+    for res_file in result_files:
+        search_obj = re.search(r'\d+_(\d+_64\d+_\d+_\d+)_(\d+).csv', str(res_file))
+        monitored_if = int(search_obj.group(2))
+        if search_obj:
+            if monitored_if == server_if:
+                continue
 
-        # Find the client files, and make sure there is server file for it.
-        # If there is, run stat on them
-        for res_file in result_files:
-            search_obj = re.search(r'\d+_(\d+_64\d+_\d+_\d+)_(\d+).csv', str(res_file))
-            monitored_if = int(search_obj.group(2))
-            if search_obj:
-                if monitored_if == server_if:
-                    continue
+        # Look for a matching server file
+        search_pattern = search_obj.group(1) + '_' + str(server_if)
+        for res_file2 in result_files:
+            if search_pattern in res_file2:
+                print("analyzing %s and %s" % (res_file, res_file2), file=debug_file)
+                in_file = os.path.join(raw_data_dir, folder, res_file)
+                out_file = os.path.join(raw_data_dir, folder, res_file2)
 
-            # Look for a matching server file
-            search_pattern = search_obj.group(1) + '_' + str(server_if)
-            for res_file2 in result_files:
-                if search_pattern in res_file2:
-                    print("analyzing %s and %s" % (res_file, res_file2))
-                    in_file = os.path.join(abs_path, folder, res_file)
-                    out_file = os.path.join(abs_path, folder, res_file2)
+                # Create random and milli sample conn stats.
+                # If creation of one of the fails, do not continue for this connection
+                try:
+                    #selective_scs = SelectiveSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
+                    random_scs = RandomSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
+                    #milli_scs = MilliSampleConnStat(in_file=in_file, out_file=out_file,
+                    #                             interval_accuracy=intv_accuracy)
+                    # scs_list = [selective_scs, random_scs, milli_scs]
+                    #scs_list = [selective_scs]
+                    scs_list = [random_scs]
+                    #scs_list = [milli_scs]
+                except ValueError:
+                    break # break the inner loop, continue the outer loop to the next connection in the folder
 
-                    # Create random and milli sample conn stats.
-                    # If creation of one of the fails, do not continue for this connection
-                    try:
-                        #selective_scs = SelectiveSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
-                        random_scs = RandomSampleConnStat(in_file=in_file, out_file=out_file, interval_accuracy=intv_accuracy)
-                        #milli_scs = MilliSampleConnStat(in_file=in_file, out_file=out_file,
-                        #                             interval_accuracy=intv_accuracy)
-                        # scs_list = [selective_scs, random_scs, milli_scs]
-                        #scs_list = [selective_scs]
-                        scs_list = [random_scs]
-                        #scs_list = [milli_scs]
-                    except ValueError:
-                        break # break the inner loop, continue the outer loop to the next connection in the folder
+                # Determine the cwnd algo from the source port
+                search_obj = re.search(r'[0-9]+_[0-9]+_6450([0-9])_[0-9]+_52[0-9][0-9]', str(res_file))
+                if not search_obj:
+                    break
+                algo_id = int(search_obj.group(1)) - 1
+                algo_name = algo_list[algo_id]
 
-                    # Determine the cwnd algo from the source port
-                    search_obj = re.search(r'[0-9]+_[0-9]+_6450([0-9])_[0-9]+_52[0-9][0-9]', str(res_file))
-                    if not search_obj:
-                        break
-                    algo_id = int(search_obj.group(1)) - 1
-                    algo_name = algo_list[algo_id]
-
-                    #out_dir = os.path.join("/data_disk/online filtering/random_interpolation_filter_0.1", folder)
-                    #out_dir = os.path.join("/data_disk/random_interpolation_filter_0.4", folder)
-                    #out_dir = os.path.join("/data_disk/with retransmission/random_interpolation_filter_0.9", folder)
-                    #out_dir = os.path.join("/data_disk/online 60 seconds", folder)
-                    out_dir = os.path.join("/data_disk/physical filter/0.9 filter", folder)
-                    #out_dir = os.path.join("/data_disk/physical_res_random_interpolation_filter_0.1", folder)
-                    if not os.path.exists(out_dir):
-                        os.mkdir(out_dir)
-                    for scs in scs_list:
-                        sample_csv_file_name = '%s_sample_stat_%s_%d.csv' % (scs.method, algo_name, monitored_if)
-                        csv_file_name = os.path.join(out_dir, sample_csv_file_name)
-                        with open(csv_file_name, 'w') as f:
-                            scs.conn_df.to_csv(f)
+                out_dir = os.path.join(dst_dir, folder)
+                if not os.path.exists(out_dir):
+                    os.mkdir(out_dir)
+                for scs in scs_list:
+                    sample_csv_file_name = '%s_sample_stat_%s_%d.csv' % (scs.method, algo_name, monitored_if)
+                    csv_file_name = os.path.join(out_dir, sample_csv_file_name)
+                    with open(csv_file_name, 'w') as f:
+                        scs.conn_df.to_csv(f)

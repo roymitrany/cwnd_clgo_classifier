@@ -61,7 +61,9 @@ try:
     ipr = IPRoute()
 
     # handle server facing interface first, read egress traffic only
+    debug_file.write("Looking for srv interface\n")
     server_intf_index = ipr.link_lookup(ifname=srv_intf)[0]
+    debug_file.write("srv interface found\n")
     inft_index_list.append(server_intf_index)
     print("server interface %s is: %d" % (srv_intf, server_intf_index), file=debug_file)
     ipr.tc("add", "clsact", server_intf_index)

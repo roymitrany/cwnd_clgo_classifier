@@ -118,18 +118,18 @@ if __name__ == '__main__':
 # def main(bg_flow):
     #sleep(60*60*60*48 + 60*60*1.5)
     #sleep(60*60*18 + 60*60*1.5)
-    #sleep(60*60*0.25)
+    #sleep(60*60*0.2)
     if IS_DEEPCCI:
         model = deepcci_net().to(device)
         is_deepcci = "deepcci_net"
-        unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'CBIQ', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+        #unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'CBIQ', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         # unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
         # online:
         #unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'CBIQ', 'Send Time Gap', 'In Goodput',
         #                     'Total Bytes in Queue', 'Num of Drops',
         #                     'Num of Packets']
         # online with sampling:
-        #unused_parameters = ['timestamp', 'CBIQ', 'In Throughput', 'Out Throughput', 'Capture Time Gap']
+        unused_parameters = ['timestamp', 'CBIQ', 'In Throughput', 'Out Throughput', 'Capture Time Gap']
     else:
         if IS_FULLY_CONNECTED:
             model = fully_connected_net().to(device)
@@ -142,16 +142,16 @@ if __name__ == '__main__':
             # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Connection Num of Drops', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
 
             #cbiq:
-            unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+            #unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
             # online:
             #unused_parameters = ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'Send Time Gap', 'In Goodput', 'Total Bytes in Queue', 'Num of Drops', 'Num of Packets']
             #unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Total Bytes in Queue', 'Num of Drops', 'Num of Packets']
             # online with sampling:
-            #unused_parameters = ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'deepcci']
+            unused_parameters = ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'deepcci']
 
 
             #throughput:
-            unused_parameters = ['CBIQ', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
+            #unused_parameters = ['CBIQ', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
             #unused_parameters = ['Out Throughput', 'CBIQ', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
             #unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
             # online:
@@ -175,7 +175,7 @@ if __name__ == '__main__':
     time_str = "_" + str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
         tn.minute) + "-" + str(tn.second)
     # directory = graphs_path + "10bbr_cubic_reno_tcp_background_noise, "+ is_deepcci + ", " + "chunk_" + str(CHUNK_SIZE) +", shuffle_" + str(IS_SHUFFLE) + ", batch_" + str(BATCH_SIZE)
-    directory = graphs_path + "_" + str(NUM_OF_CLASSIFICATION_PARAMETERS) + "_parameters_interpolation_filter_0"+is_deepcci
+    directory = graphs_path + "_" + str(NUM_OF_CLASSIFICATION_PARAMETERS) + "_parameters_results_manager_debug"+is_deepcci
     # directory = graphs_path + is_deepcci + "All" + str(CHUNK_SIZE) + "_shuffle_" + str(
     #     IS_SHUFFLE) + "_batch_" + str(BATCH_SIZE)
     if not os.path.exists(directory):
