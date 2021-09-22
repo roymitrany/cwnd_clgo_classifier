@@ -6,10 +6,10 @@ import asyncio
 
 MAX_PROCESSES = 14
 
-raw_data_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/sim19/raw_data'
-#raw_data_path = '/data_disk/physical data/diverse_bg/raw_data'
-dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/sim19/filtered_data'
-#dst_path = '/data_disk/physical data/diverse_bg/filtered_data_0.9_filter'
+#raw_data_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/asymetric traffic/raw_data'
+raw_data_path = '/data_disk/physical data/discrete_bg/raw_data'
+#dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/asymetric traffic/0.9 retransmission'
+dst_path = '/data_disk/physical data/discrete_bg/filtered_data_0_CBIQ_initialised_to_0'
 # abs_path = '/data_disk/physical_res'
 # abs_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/no_tso_0_75_bg_flows_bw_max_100'
 folders_list = os.listdir(raw_data_path)

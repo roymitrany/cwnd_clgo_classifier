@@ -118,7 +118,7 @@ if __name__ == '__main__':
 # def main(bg_flow):
     #sleep(60*60*60*48 + 60*60*1.5)
     #sleep(60*60*18 + 60*60*1.5)
-    #sleep(60*60*0.2)
+    #sleep(60*60*0.1)
     if IS_DEEPCCI:
         model = deepcci_net().to(device)
         is_deepcci = "deepcci_net"
@@ -149,6 +149,9 @@ if __name__ == '__main__':
             # online with sampling:
             unused_parameters = ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'deepcci']
 
+            #my_deepcci
+            #unused_parameters = ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'CBIQ']
+
 
             #throughput:
             #unused_parameters = ['CBIQ', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
@@ -175,7 +178,8 @@ if __name__ == '__main__':
     time_str = "_" + str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
         tn.minute) + "-" + str(tn.second)
     # directory = graphs_path + "10bbr_cubic_reno_tcp_background_noise, "+ is_deepcci + ", " + "chunk_" + str(CHUNK_SIZE) +", shuffle_" + str(IS_SHUFFLE) + ", batch_" + str(BATCH_SIZE)
-    directory = graphs_path + "_" + str(NUM_OF_CLASSIFICATION_PARAMETERS) + "_parameters_results_manager_debug"+is_deepcci
+    #directory = graphs_path + "_" + str(NUM_OF_CLASSIFICATION_PARAMETERS) + "_parameters_my_deepcci_"+is_deepcci
+    directory = graphs_path + "_" + str(NUM_OF_CLASSIFICATION_PARAMETERS) + "_parameters_"+is_deepcci
     # directory = graphs_path + is_deepcci + "All" + str(CHUNK_SIZE) + "_shuffle_" + str(
     #     IS_SHUFFLE) + "_batch_" + str(BATCH_SIZE)
     if not os.path.exists(directory):

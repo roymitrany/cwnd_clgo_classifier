@@ -59,7 +59,10 @@ class AbsoluteNormalization1(Normalizer):
         self.result_df_list.append(res)
 
     def normalize(self):
-        self.normalized_df_list = [(df / df.max()).fillna(0) for df in self.result_df_list]
+        if not IS_DEEPCCI and NUM_OF_CLASSIFICATION_PARAMETERS == 2:
+            self.normalized_df_list = self.result_df_list
+        else:
+            self.normalized_df_list = [(df / df.max()).fillna(0) for df in self.result_df_list]
 
 
 class AbsoluteNormalization2(Normalizer):
@@ -110,7 +113,11 @@ class ResultsManager:
                     res_dir = os.path.join(results_path, sub_folder, sub_dir_name)
                     if not os.path.isdir(res_dir):
                         continue
-                    csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
+                    #bg = "NumBG_" + str(BG_FLOW)
+                    #if bg not in res_dir:
+                    #    continue
+                    #csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
+                    csv_files_list = glob.glob(os.path.join(res_dir, "random*"))
                     self.res_folder_dict[sub_dir_name] = ResFolder(res_dir, csv_files_list)
                 """
                 #for i in range(50):
@@ -124,9 +131,9 @@ class ResultsManager:
         else:
             if IS_SAMPLE_RATE == True:
                 for dir_name in os.listdir(results_path):
-                    #bg = "NumBG_" + str(BG_FLOW)
-                    #if bg not in dir_name:
-                    #    continue
+                    bg = "NumBG_" + str(BG_FLOW)
+                    if bg not in dir_name:
+                        continue
                     res_dir = os.path.join(results_path, dir_name)
                     if not os.path.isdir(res_dir):
                         continue
@@ -149,15 +156,15 @@ class ResultsManager:
         train_list = list()
         iteration = 0
         if IS_SAMPLE:
-            keys = random.sample(range(len(self.res_folder_dict)),250)
+            keys = random.sample(range(len(self.res_folder_dict)), 50)
         else:
             keys = range(len(self.res_folder_dict))
         for (iter_name, res_folder) in self.res_folder_dict.items():
             iteration += 1
             if not(iteration in keys):
                 continue
-            if chunk_size < 5000 and iteration > 4: # added for 1 second session duration- overfitting debugging.
-                break
+            #if chunk_size < 5000 and iteration > 4: # added for 1 second session duration- overfitting debugging.
+            #    break
             for csv_file in res_folder.csv_files_list:
                 csv_filename = os.path.join(res_folder.res_path, csv_file)
                 if not ("bbr" in csv_filename or "reno" in csv_filename or "cubic" in csv_filename):
@@ -180,14 +187,15 @@ class ResultsManager:
                     # number_of_chunks = stat_df.shape[0] / chunk_size + stat_df.shape[0] % chunk_size
                     number_of_chunks = stat_df.shape[0] / chunk_size
                     for stat_df_chunk in np.array_split(stat_df, number_of_chunks):
+                        #stat_df_chunk = random.sample(np.array_split(stat_df, number_of_chunks), 1)[0]
                         """
                         if not IS_DEEPCCI and NUM_OF_CLASSIFICATION_PARAMETERS != 3:
                             try:
                                 # Taking care of CBIQ calculation irregulars:
                                 # stat_df_chunk['CBIQ']=stat_df_chunk.where(stat_df_chunk < 1, 0)
-                                stat_df_chunk['CBIQ'] = abs(stat_df_chunk['CBIQ'])
+                                #stat_df_chunk['CBIQ'] = abs(stat_df_chunk['CBIQ'])
                                 # stat_df_chunk['CBIQ'] = 0
-                                # stat_df_chunk.loc[stat_df_chunk.CBIQ < 1, 'CBIQ'] = 0
+                                stat_df_chunk.loc[stat_df_chunk.CBIQ < 1, 'CBIQ'] = 0
                                 # stat_df_chunk['CBIQ']=stat_df_chunk['CBIQ'].where(stat_df_chunk['CBIQ'] < 1, 0)
                                 stat_df_chunk.loc[stat_df_chunk.CBIQ < 1, 'CBIQ'] = 0
                                 #stat_df_chunk.loc[stat_df_chunk.CBIQ == 2896.0, 'CBIQ'] = 0
@@ -195,8 +203,7 @@ class ResultsManager:
                                     stat_df_chunk['CBIQ'] = 0
                             except:
                                 pass
-                        """
-
+                            """
                         if "stat_bbr" in csv_file:
                             train_list.append(["bbr", 0])
                         elif "stat_cubic" in csv_file:
@@ -214,8 +221,10 @@ class ResultsManager:
                         else:
                             continue
 
-                        self.normalizer.add_result(stat_df_chunk, iter_name)
-                        print("added %s to list" % iter_name)
+                    #for col in stat_df_chunk.columns:
+                    #    stat_df_chunk[col].values[:] = 0
+                    self.normalizer.add_result(stat_df_chunk, iter_name)
+                    print("added %s to list" % iter_name)
         self.train_df = pd.DataFrame(train_list, columns=["id", "label"])
 
         self.normalizer.normalize()

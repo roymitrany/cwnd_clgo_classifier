@@ -947,12 +947,127 @@ def create_online_vs_offline_graph(results_path, txt_filename, plot_name):
     plt.legend(("online", "offline"), loc="best")
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
+
+# Results24:
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification/discrete_bg/15 background flows"
+create_physical_f1_vs_online_filtering(result_path,"validation_accuracy","f1 vs filter size")
+"""
+def create_physical_f1_vs_online_filtering(results_path, txt_filename, plot_name):
+    accuracy_list = []
+    graph_legend = ["Deepcci", "CBIQ", "Throughput"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        result_path = os.path.join(results_path, dir_name, res_dir)
+        accuracy_list.append(get_f1_result_for_online_filtering(result_path, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    for i in range(len(accuracy_list)):
+        accuracy = sorted(accuracy_list[i], key=lambda tup: tup[0])
+        x_axis = [x[0] for x in accuracy]
+        y_axis = [x[1] for x in accuracy]
+        plt.plot(x_axis, y_axis)
+    axes = plt.gca()
+    axes.set(xlabel='filter [%]', ylabel='F1')
+    axes.grid()
+    plt.legend(graph_legend_aligned)#, loc=(0.75,0.5))
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+
+# Results25:
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification/discrete_bg/15 background flows/diverse seconds/session_sample/0 filter"
+create_physical_f1_vs_chunk_size(result_path,"validation_accuracy","f1 vs filter size")
+"""
+def create_physical_f1_vs_chunk_size(results_path, txt_filename, plot_name):
+    accuracy_list = []
+    graph_legend = ["Deepcci", "CBIQ"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        result_path = os.path.join(results_path, dir_name, res_dir)
+        accuracy_list.append(get_f1_result_for_online_filtering(result_path, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    for i in range(len(accuracy_list)):
+        accuracy = sorted(accuracy_list[i], key=lambda tup: tup[0])
+        x_axis = [x[0] for x in accuracy]
+        y_axis = [x[1] for x in accuracy]
+        plt.xlim(1.1 * max(x_axis), 0)
+        plt.plot(x_axis, y_axis)
+    axes = plt.gca()
+    axes.set(xlabel='session duration [ms]', ylabel='F1')
+    axes.grid()
+    plt.legend(graph_legend_aligned)#, loc=(0.75,0.5))
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+
+# Results24:
+"""
+from learning.thesis_graphs_utils import *
+result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification/discrete_bg/diverse background flows/1 seconds/0 filter"
+create_physical_f1_vs_background_flows(result_path,"validation_accuracy","f1 vs filter size")
+"""
+def create_physical_f1_vs_background_flows(results_path, txt_filename, plot_name):
+    accuracy_list = []
+    graph_legend = ["Deepcci", "CBIQ"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        result_path = os.path.join(results_path, dir_name, res_dir)
+        accuracy_list.append(get_f1_result_for_online_filtering(result_path, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    for i in range(len(accuracy_list)):
+        accuracy = sorted(accuracy_list[i], key=lambda tup: tup[0])
+        x_axis = [x[0] for x in accuracy]
+        y_axis = [x[1] for x in accuracy]
+        plt.plot(x_axis, y_axis)
+    axes = plt.gca()
+    axes.set(xlabel='filter [%]', ylabel='F1')
+    axes.grid()
+    plt.legend(graph_legend_aligned)#, loc=(0.75,0.5))
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 if __name__ == '__main__':
     """
     result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/sampling rate/10000 chunk size/online_filtering/random_filtering/in_and_out_interpolation/30 background flows"
     create_f1_vs_online_filtering(result_path, "validation_accuracy", "f1 vs filter size")
     """
 
+    """
     result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online vs offline- Results23/0 background flows/"
     create_online_vs_offline_graph(result_path, "validation_accuracy",
                                    "f1 for 0 Background Flows and 10 Seconds sessions")
+    """
+
+    """
+    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification/discrete_bg/15 background flows"
+    create_physical_f1_vs_online_filtering(result_path, "validation_accuracy", "f1 vs filter size")
+    """
+
+    """
+    # result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification/discrete_bg/15 background flows/diverse seconds/session_sample/0 filter"
+    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification/discrete_bg/15 background flows/diverse seconds/session_sample CBIQ initialised to 0/0 filter"
+    create_physical_f1_vs_chunk_size(result_path, "validation_accuracy", "f1 vs filter size")
+    """
+
+    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification/discrete_bg/diverse background flows/1 seconds/0 filter"
+    create_physical_f1_vs_background_flows(result_path, "validation_accuracy", "f1 vs filter size")

@@ -127,13 +127,13 @@ class SampleConnStat(ABC):
         global cnt
         #in_temp_df.to_csv(os.path.join(abs_path, folder, "in_seq_%d_%s.csv"%(cnt, self.method)))
         self.conn_df = pd.merge(self.conn_df, in_temp_df, on='Time', how='left')
-        #self.conn_df = self.conn_df.fillna(method='ffill')
+        self.conn_df = self.conn_df.fillna(method='ffill')
         """
         # limit interpolation:
         self.conn_df = self.conn_df.interpolate(limit_area="inside")
         self.conn_df['in_seq_num'] = self.conn_df['in_seq_num'].fillna(0)
         """
-        self.conn_df = self.conn_df.interpolate()
+        #self.conn_df = self.conn_df.interpolate()
 
         # Add out sequence column to conn DF, DO NOT interpolate missing fields
         out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
@@ -141,13 +141,13 @@ class SampleConnStat(ABC):
         cnt+=1
         self.conn_df = pd.merge(self.conn_df, out_temp_df, on='Time', how='left')
         # self.conn_df = self.conn_df.interpolate()
-        #self.conn_df = self.conn_df.fillna(method='ffill')
+        self.conn_df = self.conn_df.fillna(method='ffill')
         # limit interpolation:
         """
         self.conn_df = self.conn_df.interpolate(limit_area="inside")
         self.conn_df['out_seq_num'] = self.conn_df['out_seq_num'].fillna(0)
         """
-        self.conn_df = self.conn_df.interpolate()
+        #self.conn_df = self.conn_df.interpolate()
 
         # clacullate CBIQ. Since out seq is not filled, only timeticks that have out seq
         # Will be calculated
@@ -155,7 +155,7 @@ class SampleConnStat(ABC):
 
         self.conn_df = self.conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
         #self.conn_df = self.conn_df.fillna(method='ffill')
-        #self.conn_df = self.conn_df.interpolate()
+        self.conn_df = self.conn_df.interpolate()
 
         # Convert to integer (interpolation created float values)
         self.conn_df['CBIQ'] = self.conn_df['CBIQ'].fillna(0)
@@ -227,15 +227,37 @@ class RandomSampleConnStat(SampleConnStat):
         temp_df = temp_df.drop_duplicates(subset=["date_time"],keep='first')
         return temp_df
 
-
     def reduce_packets(self, df, ref_df):
         # Randomly drop 90% of the packets
         df = df.drop(df.sample(frac=1 - self.prob).index)
         #df = df.sample(frac=self.prob)# - self.prob).index)
         return df
 
+    def calculate_cbiq(self):
+        in_temp_df = self.create_seq_df(self.in_conn_df, 'in_seq_num')
+        self.conn_df = pd.merge(self.conn_df, in_temp_df, on='Time', how='left')
+        out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
+        self.conn_df = pd.merge(self.conn_df, out_temp_df, on='Time', how='left')
+        self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
+        self.conn_df = self.conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
+        # if self.conn_df['CBIQ'].first_valid_index() is None:
+        self.conn_df['CBIQ'] = 0 # self.conn_df['Out Throughput'][self.conn_df['Out Throughput']!=0].sum()
+        """
+        else:
+            self.conn_df = self.conn_df.fillna(method='ffill')
+            self.conn_df = self.conn_df.fillna(method='bfill')
+        """
+        #self.conn_df = self.conn_df.interpolate()
+        # Convert to integer (interpolation created float values)
+        in_thoruhgput_cumsum = self.conn_df['In Throughput'].cumsum()
+        out_thoruhgput_cumsum = self.conn_df['Out Throughput'].cumsum()
+        self.conn_df['CBIQ'] = self.conn_df['CBIQ'] + in_thoruhgput_cumsum - out_thoruhgput_cumsum
+        self.conn_df['CBIQ'] = self.conn_df['CBIQ'].fillna(0)
+        self.conn_df['CBIQ'] = self.conn_df['CBIQ'].map(lambda x: int(x))
+
+
 class SelectiveSampleConnStat(SampleConnStat):
-    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=.9):
+    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=0):#.9):
         self.prob = prob
         self.method = 'selective'
         self.in_reduced_df = None
@@ -251,7 +273,7 @@ class SelectiveSampleConnStat(SampleConnStat):
         # Merge with conn_df
         temp_df = pd.merge(conn_df, bytes_per_timeslot_df, on='date_time', how='left')        # Translate from Bytes per time tick to Mbps
         # Throughput calculation: from Bytes to bits, divided by accuracy (1000 for msec) and by probability
-        temp_df[column] = temp_df[column].map(lambda num: num * 8 / (10 ** (6 - self.interval_accuracy)*(self.prob)))
+        temp_df[column] = temp_df[column].map(lambda num: num * 8 / (10 ** (6 - self.interval_accuracy)*(1)))
         values = {column: 0}
         temp_df = temp_df.fillna(value=values)
 
