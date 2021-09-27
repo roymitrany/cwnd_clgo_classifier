@@ -186,40 +186,40 @@ class ResultsManager:
                     # split dataframe to chunks:
                     # number_of_chunks = stat_df.shape[0] / chunk_size + stat_df.shape[0] % chunk_size
                     number_of_chunks = stat_df.shape[0] / chunk_size
-                    for stat_df_chunk in np.array_split(stat_df, number_of_chunks):
-                        #stat_df_chunk = random.sample(np.array_split(stat_df, number_of_chunks), 1)[0]
+                    #for stat_df_chunk in np.array_split(stat_df, number_of_chunks):
+                    stat_df_chunk = random.sample(np.array_split(stat_df, number_of_chunks), 1)[0]
+                    """
+                    if not IS_DEEPCCI and NUM_OF_CLASSIFICATION_PARAMETERS != 3:
+                        try:
+                            # Taking care of CBIQ calculation irregulars:
+                            # stat_df_chunk['CBIQ']=stat_df_chunk.where(stat_df_chunk < 1, 0)
+                            #stat_df_chunk['CBIQ'] = abs(stat_df_chunk['CBIQ'])
+                            # stat_df_chunk['CBIQ'] = 0
+                            stat_df_chunk.loc[stat_df_chunk.CBIQ < 1, 'CBIQ'] = 0
+                            # stat_df_chunk['CBIQ']=stat_df_chunk['CBIQ'].where(stat_df_chunk['CBIQ'] < 1, 0)
+                            stat_df_chunk.loc[stat_df_chunk.CBIQ < 1, 'CBIQ'] = 0
+                            #stat_df_chunk.loc[stat_df_chunk.CBIQ == 2896.0, 'CBIQ'] = 0
+                            if "new_topology" in csv_filename:
+                                stat_df_chunk['CBIQ'] = 0
+                        except:
+                            pass
                         """
-                        if not IS_DEEPCCI and NUM_OF_CLASSIFICATION_PARAMETERS != 3:
-                            try:
-                                # Taking care of CBIQ calculation irregulars:
-                                # stat_df_chunk['CBIQ']=stat_df_chunk.where(stat_df_chunk < 1, 0)
-                                #stat_df_chunk['CBIQ'] = abs(stat_df_chunk['CBIQ'])
-                                # stat_df_chunk['CBIQ'] = 0
-                                stat_df_chunk.loc[stat_df_chunk.CBIQ < 1, 'CBIQ'] = 0
-                                # stat_df_chunk['CBIQ']=stat_df_chunk['CBIQ'].where(stat_df_chunk['CBIQ'] < 1, 0)
-                                stat_df_chunk.loc[stat_df_chunk.CBIQ < 1, 'CBIQ'] = 0
-                                #stat_df_chunk.loc[stat_df_chunk.CBIQ == 2896.0, 'CBIQ'] = 0
-                                if "new_topology" in csv_filename:
-                                    stat_df_chunk['CBIQ'] = 0
-                            except:
-                                pass
-                            """
-                        if "stat_bbr" in csv_file:
-                            train_list.append(["bbr", 0])
-                        elif "stat_cubic" in csv_file:
-                            train_list.append(["cubic", 1])
-                        elif "stat_reno" in csv_file:
-                            train_list.append(["reno", 2])
-                            """
-                        elif "single_connection_stat_vegas" in csv_file:
-                            train_list.append(["vegas", 3])
-                        elif "single_connection_stat_bic" in csv_file:
-                            train_list.append(["bic", 4])
-                        elif "single_connection_stat_westwood" in csv_file:
-                            train_list.append(["westwood", 5])
-                            """
-                        else:
-                            continue
+                    if "stat_bbr" in csv_file:
+                        train_list.append(["bbr", 0])
+                    elif "stat_cubic" in csv_file:
+                        train_list.append(["cubic", 1])
+                    elif "stat_reno" in csv_file:
+                        train_list.append(["reno", 2])
+                        """
+                    elif "single_connection_stat_vegas" in csv_file:
+                        train_list.append(["vegas", 3])
+                    elif "single_connection_stat_bic" in csv_file:
+                        train_list.append(["bic", 4])
+                    elif "single_connection_stat_westwood" in csv_file:
+                        train_list.append(["westwood", 5])
+                        """
+                    else:
+                        continue
 
                     #for col in stat_df_chunk.columns:
                     #    stat_df_chunk[col].values[:] = 0

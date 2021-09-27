@@ -150,7 +150,7 @@ if __name__ == '__main__':
             unused_parameters = ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'deepcci']
 
             #my_deepcci
-            #unused_parameters = ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'CBIQ']
+            unused_parameters = ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'CBIQ']
 
 
             #throughput:

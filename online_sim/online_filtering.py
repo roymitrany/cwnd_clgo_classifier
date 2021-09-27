@@ -205,7 +205,7 @@ class SampleConnStat(ABC):
         pass
 
 class RandomSampleConnStat(SampleConnStat):
-    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=0.1):#.1):
+    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=0.75):#.1):
         self.prob = prob
         self.method = 'random'
         super(RandomSampleConnStat, self).__init__(in_file, out_file, interval_accuracy)
