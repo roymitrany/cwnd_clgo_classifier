@@ -15,12 +15,13 @@ sim_name = sys.argv[1]
 #max_num_of_bg_flows = 40
 num_of_bg_flow_list = [5,10,20,25]
 iperf_duration = 100
-min_q_size, max_q_size, q_size_step = 2000, 15001, 500
+min_q_size, max_q_size, q_size_step = 2000, 15001, 1000
 #list of algo permutations the number represents the location in algo_list.
 # The location in the tuple determine for which sender the algo refers to.
 # Example: (1,1,2) determines that senders 0 and 1 will user bbr algo, and sender 2 will use cubic algo.
 # Altogether we have 9 permutation with 1 or 2 cwnd algos.
-l_of_t = [(0,0,0),(1,1,1),(2,2,2), (0,0,1),(0,0,2), (1,1,2), (1,1,0), (2,2,0), (2,2,1)]
+#l_of_t = [(0,1,2)]
+l_of_t = [(0,1,2),(0,0,0),(1,1,1),(2,2,2), (0,0,1),(0,0,2), (1,1,2), (1,1,0), (2,2,0), (2,2,1)]
 measured_flows_duration = len(num_of_bg_flow_list)*(iperf_duration+10)*int((max_q_size-min_q_size)/q_size_step)*len(l_of_t)
 
 client01 = SSHClient()

@@ -38,8 +38,8 @@ struct OptChars {
   unsigned char p[40];
 };
 
-BPF_HASH(pkt_array, struct Key, struct SegmentData,200000);
-BPF_HASH(pkt_array_ext, struct Key, struct SegmentDataExt,200000);
+BPF_HASH(pkt_array, struct Key, struct SegmentData,2000000);
+BPF_HASH(pkt_array_ext, struct Key, struct SegmentDataExt,2000000);
 BPF_ARRAY(pkt_out_count, uint32_t, 1);
 BPF_ARRAY(pkt_count, uint32_t, 1);
 BPF_ARRAY(debug_val, long, 1);
