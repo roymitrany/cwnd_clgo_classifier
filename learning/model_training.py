@@ -114,8 +114,8 @@ def test_model(model, criterion, is_deepcci, is_batch):
     validation_loss, validation_accuracy, validation_accuracy_per_type = validate(validation_loader, model, criterion, is_deepcci)
     return numpy.mean(validation_loss), numpy.mean(validation_accuracy), numpy.mean(validation_accuracy_per_type, axis=0)
 
-if __name__ == '__main__':
-# def main(bg_flow):
+#if __name__ == '__main__':
+def main(training_file_path, bg_flow):
     #sleep(60*60*60*48 + 60*60*1.5)
     #sleep(60*60*18 + 60*60*1.5)
     #sleep(60*60*0.1)
@@ -149,8 +149,12 @@ if __name__ == '__main__':
             # online with sampling:
             unused_parameters = ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'deepcci']
 
-            #my_deepcci
-            unused_parameters = ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'CBIQ']
+            #my_deepcci:
+            #unused_parameters = ['timestamp', 'Capture Time Gap', 'In Throughput', 'Out Throughput', 'CBIQ']
+
+
+            #capture arrival time:
+            #unused_parameters = ['timestamp', 'deepcci', 'In Throughput', 'Out Throughput', 'CBIQ']
 
 
             #throughput:

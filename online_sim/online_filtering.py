@@ -205,7 +205,7 @@ class SampleConnStat(ABC):
         pass
 
 class RandomSampleConnStat(SampleConnStat):
-    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=0.75):#.1):
+    def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=0):#.1):
         self.prob = prob
         self.method = 'random'
         super(RandomSampleConnStat, self).__init__(in_file, out_file, interval_accuracy)
@@ -219,7 +219,7 @@ class RandomSampleConnStat(SampleConnStat):
         # Merge with conn_df
         temp_df = pd.merge(conn_df, bytes_per_timeslot_df, on='date_time', how='left')        # Translate from Bytes per time tick to Mbps
         # Throughput calculation: from Bytes to bits, divided by accuracy (1000 for msec) and by probability
-        temp_df[column] = temp_df[column].map(lambda num: num * 8 / (10 ** (6 - self.interval_accuracy)*(self.prob)))
+        temp_df[column] = temp_df[column].map(lambda num: num * 8 / (10 ** (6 - self.interval_accuracy)*(1)))
         values = {column: 0}
         temp_df = temp_df.fillna(value=values)
 
@@ -229,7 +229,7 @@ class RandomSampleConnStat(SampleConnStat):
 
     def reduce_packets(self, df, ref_df):
         # Randomly drop 90% of the packets
-        df = df.drop(df.sample(frac=1 - self.prob).index)
+        #df = df.drop(df.sample(frac=1 - self.prob).index)
         #df = df.sample(frac=self.prob)# - self.prob).index)
         return df
 
@@ -387,8 +387,8 @@ def remove_retransmissions(conn_df, filename):
 if __name__ == '__main__':
     #sleep(60*60*10)
     intv_accuracy = 3
-    algo_list = ['reno', 'bbr',
-                 'cubic', 'bbr', 'bbr', 'bbr', 'bbr']  # Should be in line with measured_dict keys in online_simulation.py main function
+    algo_list = ['reno', 'bbr', 'cubic', 'vegas', 'htcp', 'bic',
+                  'unknown']  # Should be in line with algo_list keys in rtr_sim.py main function
     #for folder in folders_list:
     # Look for all raw results in the folder
     result_files = glob.glob(os.path.join(raw_data_dir, folder, "*_6450[0-9]_*"))
@@ -413,14 +413,23 @@ if __name__ == '__main__':
             else:
                 if_dict[if_num] = 1
     # The first interface with more than one in the value is the server interface
-    server_if = 0
+    '''server_if = 0
     for key, val in if_dict.items():
         if val > 1:
             server_if = int(key)
     # If no interface was spotted more than once, end the iteration
     if server_if == 0:
+        sys.exit()'''
+    ### Ugly PATCH!!! relevant only for physical deployment!!!
+    # for  router 1, out if is 5
+    # for router 2, out of is 4
+    if '5' in if_dict.keys():
+        server_if = 5
+    elif '4' in if_dict.keys():
+        server_if = 4
+    else:
+        print ('no server interface found')
         sys.exit()
-
     # Find the client files, and make sure there is server file for it.
     # If there is, run stat on them
     for res_file in result_files:
@@ -465,5 +474,9 @@ if __name__ == '__main__':
                 for scs in scs_list:
                     sample_csv_file_name = '%s_sample_stat_%s_%d.csv' % (scs.method, algo_name, monitored_if)
                     csv_file_name = os.path.join(out_dir, sample_csv_file_name)
-                    with open(csv_file_name, 'w') as f:
-                        scs.conn_df.to_csv(f)
+                    if not os.path.exists(csv_file_name):
+                        with open(csv_file_name, 'w') as f:
+                            scs.conn_df.to_csv(f)
+                        print ("saving %s" % os.path.basename(csv_file_name))
+                    else:
+                        print("%s already exists. Skipping" % os.path.basename(csv_file_name))
