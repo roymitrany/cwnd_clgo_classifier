@@ -4,15 +4,17 @@ import subprocess
 import sys
 import asyncio
 
-MAX_PROCESSES = 14
+MAX_PROCESSES = 2 # 14
 
 #raw_data_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/asymetric traffic/raw_data'
 #raw_data_path = '/data_disk/physical data/raw_data'
 #raw_data_path = '/remote_disk/raw_data/physical/60 seconds/0_bg_flows'#/discrete_data'
 #raw_data_path = '/remote_disk/raw_data/physical/6 congestion controls/10_sec_6_algos/rtr01'
 #raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/10 seconds/discrete_bg/sim14'
-raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/60 seconds'
-#raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/60 seconds bottlneck 0 background flows'
+raw_data_path = '/remote_disk/raw_data/physical/6 congestion controls/60_sec_6_algos/rtr02'
+#raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/60 seconds'
+#raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/60 seconds'
+#raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/60 seconds no bottlneck 0 background flows'
 #raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/60 seconds no bottlneck 0 background flows'
 #raw_data_path = '/remote_disk/raw_data/physical/6 congestion controls/10_sec_6_algos/rtr02'
 #raw_data_path = '/remote_disk/raw_data/new_topo/10_sec_6_algos/rtr01'
@@ -23,7 +25,9 @@ raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/60 seconds
 #dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/new_topo/10_sec_6_algos/rtr01'
 #dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/3CC/0BG/no bottleneck'
 #dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/6CC/no bottleneck'
-dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/3CC/diverseBG/bottleneck'
+#dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/3CC/diverseBG/bottleneck'
+#dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/10 seconds/0 filter/3CC/bottleneck'
+dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/6CC/no bottleneck'
 # abs_path = '/data_disk/physical_res'
 # abs_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/no_tso_0_75_bg_flows_bw_max_100'
 folders_list = os.listdir(raw_data_path)

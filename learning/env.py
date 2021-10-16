@@ -74,7 +74,8 @@ model_path = os.path.join(absolute_path, r'graphs/thesis_prime/classification of
 #model_path = os.path.join(absolute_path, r'graphs/Thesis/new_topology/multiple_rtr/test_only/20seconds/all_parameters/rtr2_rtr1/state_dict.pt')
 
 # consts definitions
-NUM_OF_CLASSIFICATION_PARAMETERS = 2 # timestemp & CBIQ
+NUM_OF_CLASSIFICATION_PARAMETERS = 6
+# NUM_OF_CLASSIFICATION_PARAMETERS = 2 # timestemp & CBIQ
 #NUM_OF_CLASSIFICATION_PARAMETERS = 1 # capture arrival time
 #NUM_OF_CLASSIFICATION_PARAMETERS = 3 # timestemp & throughput
 #NUM_OF_CLASSIFICATION_PARAMETERS = 5
@@ -83,7 +84,6 @@ NUM_OF_HIDDEN_LAYERS = 100
 CHUNK_SIZE = 30000#9499#10000#9499 # 9499
 DEEPCCI_NUM_OF_TIME_SAMPLES = int(CHUNK_SIZE / 1000) # 10
 NUM_OF_CONGESTION_CONTROL_LABELING = 3 # Reno, Cubic, & BBR
-NUM_OF_CONV_FILTERS = 50
 NUM_OF_EPOCHS = 100
 NUM_OF_BATCHES = 10
 BATCH_SIZE = 32
@@ -107,7 +107,7 @@ graphs_path = os.path.join(absolute_path, r'graphs/thesis_prime/physical_classif
 #graphs_path = os.path.join(absolute_path, r'graphs/thesis_prime/physical_classification/discrete_bg/15 background flows/1 seconds/full session vs sample/0 filter interpolation after calculation/session sample/', str(BG_FLOW) + "_bg_flows_")
 # BG_FLOWS = [0, 1, 5, 10, 20, 25]
 IS_SHUFFLE = False
-IS_DEEPCCI = True
+IS_DEEPCCI = False
 IS_FULLY_CONNECTED = False
 IS_BATCH = True
 IS_TEST_ONLY = False
@@ -116,7 +116,7 @@ IS_SAMPLE = False
 IS_SAMPLE_RATE = True
 
 # GPU
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """
 if __name__ == '__main__':

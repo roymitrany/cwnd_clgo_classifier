@@ -1,13 +1,16 @@
 from learning.utils import *
 import math
 
+NUM_OF_CONV_FILTERS = 50
+NUM_OF_HIDDEN_LAYERS = 100
+
 class fully_connected_net(Module):
-    def __init__(self):
+    def __init__(self, num_of_classification_parameters, chunk_size, num_of_congestion_controls):
         super(fully_connected_net, self).__init__()
         # D_in is input dimension;
         # H is hidden dimension; D_out is output dimension.
-        self.D_in, self.H, self.D_out = CHUNK_SIZE, NUM_OF_HIDDEN_LAYERS, NUM_OF_CONGESTION_CONTROL_LABELING
-        self.conv2d_layer = Conv2d(1, NUM_OF_CONV_FILTERS, kernel_size=(3, NUM_OF_CLASSIFICATION_PARAMETERS), stride=1, padding=(1, 0))
+        self.D_in, self.H, self.D_out = chunk_size, NUM_OF_HIDDEN_LAYERS, num_of_congestion_controls
+        self.conv2d_layer = Conv2d(1, NUM_OF_CONV_FILTERS, kernel_size=(3, num_of_classification_parameters), stride=1, padding=(1, 0))
         self.linear_layers = Sequential(
             Linear(self.D_in, self.H),
             ReLU(),

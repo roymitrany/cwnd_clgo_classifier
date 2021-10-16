@@ -3,12 +3,13 @@ import torch.nn as nn
 import math
 
 class deepcci_net(Module):
-    def __init__(self):
+    def __init__(self, chunk_size, deepcci_num_of_time_samples):
         super(deepcci_net, self).__init__()
+        self.deepcci_num_of_time_samples = deepcci_num_of_time_samples
         self.channels = 64
         self.num_layers = 100
         self.hidden_size = 64
-        self.max_pool_size = math.floor((CHUNK_SIZE / DEEPCCI_NUM_OF_TIME_SAMPLES) ** 0.2) # 4 * (CHUNK_SIZE / 60000)
+        self.max_pool_size = math.floor((chunk_size / deepcci_num_of_time_samples) ** 0.2) # 4 * (CHUNK_SIZE / 60000)
         # 1
         self.conv1d_layer1_1 = nn.Conv1d(self.channels, self.channels, kernel_size=3, padding=1)
         self.BN_layer1_1 = nn.BatchNorm1d(self.channels)
@@ -165,11 +166,11 @@ class deepcci_net(Module):
         x = x.transpose(1, 2)
         x = self.BN_layer_3(x)
 
-        last_maxpool_layer = nn.MaxPool1d(kernel_size=math.floor(x.shape[2] / DEEPCCI_NUM_OF_TIME_SAMPLES), stride=math.floor(x.shape[2] / DEEPCCI_NUM_OF_TIME_SAMPLES), ceil_mode=False)
+        last_maxpool_layer = nn.MaxPool1d(kernel_size=math.floor(x.shape[2] / self.deepcci_num_of_time_samples), stride=math.floor(x.shape[2] / self.deepcci_num_of_time_samples), ceil_mode=False)
         x = last_maxpool_layer(x)
         x = self.last_conv1d_layer(x)
         x = self.last_BN_layer(x)
 
-        x_variant = x[:, 0:3, 0:DEEPCCI_NUM_OF_TIME_SAMPLES]
+        x_variant = x[:, 0:3, 0:self.deepcci_num_of_time_samples]
 
         return x_variant

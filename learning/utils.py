@@ -11,7 +11,7 @@ from torch.autograd import Variable
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 # import project functions
-from learning.env import *
+#from learning.env import *
 from learning.results_manager import *
 """
 # consts definitions
@@ -24,40 +24,43 @@ NUM_OF_HIDDEN_LAYERS = 100
 BATCH_SIZE = 32
 TRAINING_VALIDATION_RATIO = 0.3
 """
-from learning.env import *
+#from learning.env import *
 from numpy import loadtxt
 
+TRAINING_VALIDATION_RATIO = 0.3
+BATCH_SIZE = 32
+IS_SHUFFLE = False
 
-def reshape_deepcci_data(input_data, validation_data, input_labeling, validation_labeling):
-    reshape_vector = numpy.ones(DEEPCCI_NUM_OF_TIME_SAMPLES)
+def reshape_deepcci_data(input_data, validation_data, input_labeling, validation_labeling, chunk_size, deepcci_num_of_time_samples):
+    reshape_vector = numpy.ones(deepcci_num_of_time_samples)
     labeling_size = len(input_labeling)
     input_labeling = numpy.kron(input_labeling, reshape_vector)
-    input_labeling = input_labeling.reshape(labeling_size, DEEPCCI_NUM_OF_TIME_SAMPLES)
+    input_labeling = input_labeling.reshape(labeling_size, deepcci_num_of_time_samples)
     validation_size = len(validation_data)
     validation_labeling = numpy.kron(validation_labeling, reshape_vector)
-    validation_labeling = validation_labeling.reshape(validation_size, DEEPCCI_NUM_OF_TIME_SAMPLES)
+    validation_labeling = validation_labeling.reshape(validation_size, deepcci_num_of_time_samples)
     # converting training dataframes into torch format
     input_data = torch.from_numpy(input_data)
     #input_data = input_data.permute(0, 2, 1)
-    input_data = input_data.reshape(len(input_data), 1, CHUNK_SIZE)
+    input_data = input_data.reshape(len(input_data), 1, chunk_size)
     # converting the target into torch format
     input_labeling = torch.from_numpy(input_labeling)
     # converting validation dataframes into torch format
     validation_data = torch.from_numpy(validation_data)
     #validation_data = validation_data.permute(0, 2, 1)
-    validation_data = validation_data.reshape(len(validation_data), 1, CHUNK_SIZE)
+    validation_data = validation_data.reshape(len(validation_data), 1, chunk_size)
     # converting the target into torch format
     validation_labeling = torch.from_numpy(validation_labeling)
     return input_data, validation_data, input_labeling, validation_labeling
 
-def reshape_my_data(input_data, validation_data, input_labeling, validation_labeling):
+def reshape_my_data(input_data, validation_data, input_labeling, validation_labeling, chunk_size, num_of_classification_parameters):
     # converting training dataframes into torch format
-    input_data = input_data.reshape(len(input_data), 1, CHUNK_SIZE, NUM_OF_CLASSIFICATION_PARAMETERS)
+    input_data = input_data.reshape(len(input_data), 1, chunk_size, num_of_classification_parameters)
     input_data = torch.from_numpy(input_data)  # convert to tensor
     # converting the target into torch format
     input_labeling = torch.from_numpy(input_labeling)
     # converting validation dataframes into torch format
-    validation_data = validation_data.reshape(len(validation_data), 1, CHUNK_SIZE, NUM_OF_CLASSIFICATION_PARAMETERS)
+    validation_data = validation_data.reshape(len(validation_data), 1, chunk_size, num_of_classification_parameters)
     validation_data = torch.from_numpy(validation_data)
     # converting the target into torch format
     validation_labeling = torch.from_numpy(validation_labeling)
@@ -71,8 +74,8 @@ def create_dataloader(data, labeling, is_batch):
         dataloader = torch_utils.data.DataLoader(dataset, batch_size=len(data))
     return dataloader
 
-def create_data(training_files_path, normalization_type, unused_parameters, is_deepcci, is_batch, diverse_training_folder):
-    result_manager = ResultsManager(training_files_path, normalization_type, NUM_OF_TIME_SAMPLES, unused_parameters, chunk_size=CHUNK_SIZE, start_after=START_AFTER, end_before=END_BEFORE, is_diverse = IS_DIVERSE, diverse_training_folder=diverse_training_folder)
+def create_data(training_files_path, normalization_type, unused_parameters, is_deepcci, is_batch, diverse_training_folder, is_sample_rate, bg_flows, is_sample, num_of_time_samples, chunk_size, is_diverse, num_of_classification_parameters, deepcci_num_of_time_samples):
+    result_manager = ResultsManager(training_files_path, normalization_type, num_of_time_samples, unused_parameters, chunk_size=chunk_size, is_diverse = is_diverse, diverse_training_folder=diverse_training_folder, is_sample_rate=is_sample_rate, bg_flows=bg_flows, is_sample=is_sample, is_deepcci=is_deepcci, num_of_classification_parameters=num_of_classification_parameters)
     training_labeling = result_manager.get_train_df()
     input_dataframe = result_manager.get_normalized_df_list()
     # converting the list to numpy array after pre- processing
@@ -83,9 +86,9 @@ def create_data(training_files_path, normalization_type, unused_parameters, is_d
     # creating validation set
     input_data, validation_data, input_labeling, validation_labeling = train_test_split(input_data, input_labeling, test_size=TRAINING_VALIDATION_RATIO)
     if is_deepcci:
-        input_data, validation_data, input_labeling, validation_labeling = reshape_deepcci_data(input_data, validation_data, input_labeling, validation_labeling)
+        input_data, validation_data, input_labeling, validation_labeling = reshape_deepcci_data(input_data, validation_data, input_labeling, validation_labeling, chunk_size, deepcci_num_of_time_samples)
     else:
-        input_data, validation_data, input_labeling, validation_labeling = reshape_my_data(input_data, validation_data, input_labeling, validation_labeling)
+        input_data, validation_data, input_labeling, validation_labeling = reshape_my_data(input_data, validation_data, input_labeling, validation_labeling, chunk_size, num_of_classification_parameters)
     # creating dataloaders:
     train_loader = create_dataloader(input_data, input_labeling, is_batch)
     val_loader = create_dataloader(validation_data, validation_labeling, is_batch)

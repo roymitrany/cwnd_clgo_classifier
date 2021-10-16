@@ -81,7 +81,7 @@ class SampleConnStat(ABC):
         out_start_time = self.out_conn_df['date_time'].iloc[0]
         start_timedelta = min(in_start_time, out_start_time)
         millies = 10 ** (3 - self.interval_accuracy)
-        tdi = pd.timedelta_range(start_timedelta, periods=10000, freq='%dL' % millies)
+        tdi = pd.timedelta_range(start_timedelta, periods=60000, freq='%dL' % millies)
         self.conn_df = tdi.to_frame(name="Time")
 
         # count inbound throughput and attach it to main conn df

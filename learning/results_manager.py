@@ -10,7 +10,7 @@ import numpy as np
 from typing import Dict
 
 import pandas as pd
-from learning.env import *
+#from learning.env import *
 
 @dataclass
 class ResFolder:
@@ -58,8 +58,8 @@ class AbsoluteNormalization1(Normalizer):
     def add_result(self, res, iter_name):
         self.result_df_list.append(res)
 
-    def normalize(self):
-        if not IS_DEEPCCI and NUM_OF_CLASSIFICATION_PARAMETERS == 2:
+    def normalize(self, is_deepcci, num_of_classification_parameters):
+        if not is_deepcci and num_of_classification_parameters == 2:
             self.normalized_df_list = self.result_df_list
         else:
             self.normalized_df_list = [(df / df.max()).fillna(0) for df in self.result_df_list]
@@ -98,10 +98,12 @@ class AbsoluteNormalization2(Normalizer):
 
 class ResultsManager:
 
-    def __init__(self, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters, chunk_size, is_diverse, diverse_training_folder = [], start_after = 0, end_before = 0): #, dataframe_beginning=0, dataframe_end=60000):
+    #def __init__(self, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters, chunk_size, is_diverse, diverse_training_folder = [], start_after = 0, end_before = 0): #, dataframe_beginning=0, dataframe_end=60000):
+    def __init__(self, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters, chunk_size, is_diverse, is_sample_rate, bg_flows, is_sample, is_deepcci, num_of_classification_parameters, diverse_training_folder = []):
         """The init function does all the building of the collections, using all results sub folders under
         :param results_path: A String with full path to results location
         """
+        self.is_deepcci = is_deepcci
         self.normalizer = normilizer
         self.res_folder_dict = dict()
         # Create a dictionary that reflects the results file structure
@@ -129,9 +131,9 @@ class ResultsManager:
                     self.res_folder_dict[random_subfolder] = ResFolder(res_dir, csv_files_list)
                 """
         else:
-            if IS_SAMPLE_RATE == True:
+            if is_sample_rate == True:
                 for dir_name in os.listdir(results_path):
-                    bg = "NumBG_" + str(BG_FLOW)
+                    bg = "NumBG_" + str(bg_flows)
                     if bg not in dir_name:
                         continue
                     res_dir = os.path.join(results_path, dir_name)
@@ -143,7 +145,7 @@ class ResultsManager:
                     self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
             else:
                 for dir_name in os.listdir(results_path):
-                    bg = "NumBG_" + str(BG_FLOW)
+                    bg = "NumBG_" + str(bg_flows)
                     if bg not in dir_name:
                         continue
                     res_dir = os.path.join(results_path, dir_name)
@@ -155,7 +157,7 @@ class ResultsManager:
         # Build dataframe array and train array
         train_list = list()
         iteration = 0
-        if IS_SAMPLE:
+        if is_sample:
             keys = random.sample(range(len(self.res_folder_dict)), 50)
         else:
             keys = range(len(self.res_folder_dict))
@@ -227,7 +229,7 @@ class ResultsManager:
                     print("added %s to list" % iter_name)
         self.train_df = pd.DataFrame(train_list, columns=["id", "label"])
 
-        self.normalizer.normalize()
+        self.normalizer.normalize(self.is_deepcci, num_of_classification_parameters)
 
     def get_train_df(self):
         return self.train_df
