@@ -74,8 +74,8 @@ def create_dataloader(data, labeling, is_batch):
         dataloader = torch_utils.data.DataLoader(dataset, batch_size=len(data))
     return dataloader
 
-def create_data(training_files_path, normalization_type, unused_parameters, is_deepcci, is_batch, diverse_training_folder, is_sample_rate, bg_flows, is_sample, num_of_time_samples, chunk_size, is_diverse, num_of_classification_parameters, deepcci_num_of_time_samples):
-    result_manager = ResultsManager(training_files_path, normalization_type, num_of_time_samples, unused_parameters, chunk_size=chunk_size, is_diverse = is_diverse, diverse_training_folder=diverse_training_folder, is_sample_rate=is_sample_rate, bg_flows=bg_flows, is_sample=is_sample, is_deepcci=is_deepcci, num_of_classification_parameters=num_of_classification_parameters)
+def create_data(training_files_path, results_path, normalization_type, unused_parameters, is_deepcci, is_batch, diverse_training_folder, is_sample_rate, bg_flows, is_sample, num_of_time_samples, chunk_size, is_diverse, num_of_classification_parameters, deepcci_num_of_time_samples):
+    result_manager = ResultsManager(training_files_path, results_path, normalization_type, num_of_time_samples, unused_parameters, chunk_size=chunk_size, is_diverse = is_diverse, diverse_training_folder=diverse_training_folder, is_sample_rate=is_sample_rate, bg_flows=bg_flows, is_sample=is_sample, is_deepcci=is_deepcci, num_of_classification_parameters=num_of_classification_parameters)
     training_labeling = result_manager.get_train_df()
     input_dataframe = result_manager.get_normalized_df_list()
     # converting the list to numpy array after pre- processing

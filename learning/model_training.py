@@ -96,9 +96,9 @@ def validate(validation_loader, model, criterion, is_deepcci, device):
     print('validation is done')
     return validation_loss, validation_accuracy, validation_accuracy_per_type
 
-def run(model, criterion, optimizer, scheduler, unused_parameters, is_deepcci, is_batch, plot_file_name, is_sample_rate, training_files_path, bg_flows, is_sample, diverse_training_folder, num_of_time_samples, chunk_size, is_diverse, num_of_classification_parameters, device, deepcci_num_of_time_samples):
+def run(model, criterion, optimizer, scheduler, unused_parameters, is_deepcci, results_path, is_batch, plot_file_name, is_sample_rate, training_files_path, bg_flows, is_sample, diverse_training_folder, num_of_time_samples, chunk_size, is_diverse, num_of_classification_parameters, device, deepcci_num_of_time_samples):
     normalization_type = AbsoluteNormalization1()
-    training_loader, validation_loader = create_data(training_files_path=training_files_path, normalization_type=normalization_type, unused_parameters=unused_parameters, is_deepcci=is_deepcci, is_batch=is_batch,
+    training_loader, validation_loader = create_data(training_files_path=training_files_path, results_path=results_path, normalization_type=normalization_type, unused_parameters=unused_parameters, is_deepcci=is_deepcci, is_batch=is_batch,
                                                      diverse_training_folder=diverse_training_folder, is_sample_rate=is_sample_rate, bg_flows=bg_flows, is_sample=is_sample, num_of_time_samples=num_of_time_samples, chunk_size=chunk_size, is_diverse=is_diverse, num_of_classification_parameters=num_of_classification_parameters, deepcci_num_of_time_samples=deepcci_num_of_time_samples)
     training_loss, training_accuracy, validation_loss, validation_accuracy = ([None] * NUM_OF_EPOCHS for i in range(4))
     training_accuracy_per_type, validation_accuracy_per_type = ([None] * NUM_OF_EPOCHS for i in range(2))
@@ -122,11 +122,22 @@ def test_model(model, criterion, is_deepcci, is_batch):
     return numpy.mean(validation_loss), numpy.mean(validation_accuracy), numpy.mean(validation_accuracy_per_type, axis=0)
 
 #if __name__ == '__main__':
-def main(training_file_path, bg_flows, is_sample_rate, is_sample, is_deepcci, is_fully_connected_net, num_of_classification_parameters,
-         chunk_size, num_of_congestion_controls, num_of_time_samples, DEVICE, graphs_path, is_test_only, model_path, diverse_training_folder, is_diverse, deepcci_num_of_time_samples):
+def main(training_file_path, unused_parameters, bg_flows, is_sample_rate, is_sample, is_deepcci, is_fully_connected_net, num_of_classification_parameters,
+         chunk_size, num_of_congestion_controls, num_of_time_samples, DEVICE, results_path, is_test_only, model_path, diverse_training_folder, is_diverse, deepcci_num_of_time_samples):
     #sleep(60*60*60*48 + 60*60*1.5)
     #sleep(60*60*18 + 60*60*1.5)
     #sleep(60*60*0.1)
+    if is_deepcci:
+        model = deepcci_net(chunk_size, deepcci_num_of_time_samples).to(DEVICE)
+        net = "deepcci_net"
+    else:
+        if is_fully_connected_net:
+            model = fully_connected_net(num_of_classification_parameters, chunk_size, num_of_congestion_controls).to(DEVICE)
+            net = "fully_connected_net"
+        else:
+            model = my_net(num_of_classification_parameters, chunk_size, num_of_congestion_controls, num_of_time_samples).to(DEVICE)
+            net = "my_net"
+    """
     if is_deepcci:
         model = deepcci_net(chunk_size, deepcci_num_of_time_samples).to(DEVICE)
         net = "deepcci_net"
@@ -186,15 +197,17 @@ def main(training_file_path, bg_flows, is_sample_rate, is_sample, is_deepcci, is
             #1parameter at a time:
             #unused_parameters = ['CBIQ', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
             #unused_parameters=[]
+    """
     tn = datetime.now()
     time_str = "_" + str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
         tn.minute) + "-" + str(tn.second)
     # directory = graphs_path + "10bbr_cubic_reno_tcp_background_noise, "+ is_deepcci + ", " + "chunk_" + str(CHUNK_SIZE) +", shuffle_" + str(IS_SHUFFLE) + ", batch_" + str(BATCH_SIZE)
     #directory = graphs_path + "_" + str(NUM_OF_CLASSIFICATION_PARAMETERS) + "_parameters_my_deepcci_"+is_deepcci
-    directory = graphs_path + "_" + str(num_of_classification_parameters) + "_parameters_"+net
+    #directory = results_path + "_" + str(num_of_classification_parameters) + "_parameters_"+net
+    directory = results_path
     # directory = graphs_path + is_deepcci + "All" + str(CHUNK_SIZE) + "_shuffle_" + str(
     #     IS_SHUFFLE) + "_batch_" + str(BATCH_SIZE)
-    if not os.path.exists(directory):
+    if not os.path.exists(results_path):
         os.makedirs(directory)
     plot_file_name = directory + "/statistics.csv"
     criterion = CrossEntropyLoss().to(DEVICE)
@@ -209,7 +222,7 @@ def main(training_file_path, bg_flows, is_sample_rate, is_sample, is_deepcci, is
         model.apply(init_weights)
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.9)
-        training_loss, training_accuracy, training_accuracy_per_type, validation_loss, validation_accuracy, validation_accuracy_per_type = run(model, criterion, optimizer, scheduler, unused_parameters, is_deepcci, IS_BATCH, plot_file_name, is_sample_rate, training_file_path, bg_flows, is_sample,diverse_training_folder, num_of_time_samples, chunk_size, is_diverse, num_of_classification_parameters, DEVICE, deepcci_num_of_time_samples)
+        training_loss, training_accuracy, training_accuracy_per_type, validation_loss, validation_accuracy, validation_accuracy_per_type = run(model, criterion, optimizer, scheduler, unused_parameters, is_deepcci, results_path, IS_BATCH, plot_file_name, is_sample_rate, training_file_path, bg_flows, is_sample,diverse_training_folder, num_of_time_samples, chunk_size, is_diverse, num_of_classification_parameters, DEVICE, deepcci_num_of_time_samples)
         print('done')
         # saving the trained model
         torch.save(model, directory + '/model.pt')

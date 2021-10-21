@@ -99,7 +99,7 @@ class AbsoluteNormalization2(Normalizer):
 class ResultsManager:
 
     #def __init__(self, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters, chunk_size, is_diverse, diverse_training_folder = [], start_after = 0, end_before = 0): #, dataframe_beginning=0, dataframe_end=60000):
-    def __init__(self, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters, chunk_size, is_diverse, is_sample_rate, bg_flows, is_sample, is_deepcci, num_of_classification_parameters, diverse_training_folder = []):
+    def __init__(self, training_files_path, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters, chunk_size, is_diverse, is_sample_rate, bg_flows, is_sample, is_deepcci, num_of_classification_parameters, diverse_training_folder = []):
         """The init function does all the building of the collections, using all results sub folders under
         :param results_path: A String with full path to results location
         """
@@ -132,11 +132,11 @@ class ResultsManager:
                 """
         else:
             if is_sample_rate == True:
-                for dir_name in os.listdir(results_path):
+                for dir_name in os.listdir(training_files_path):
                     bg = "NumBG_" + str(bg_flows)
                     if bg not in dir_name:
                         continue
-                    res_dir = os.path.join(results_path, dir_name)
+                    res_dir = os.path.join(training_files_path, dir_name)
                     if not os.path.isdir(res_dir):
                         continue
                     #csv_files_list = glob.glob(os.path.join(res_dir, "milli*"))
@@ -144,11 +144,11 @@ class ResultsManager:
                     #csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
                     self.res_folder_dict[dir_name] = ResFolder(res_dir, csv_files_list)
             else:
-                for dir_name in os.listdir(results_path):
+                for dir_name in os.listdir(training_files_path):
                     bg = "NumBG_" + str(bg_flows)
                     if bg not in dir_name:
                         continue
-                    res_dir = os.path.join(results_path, dir_name)
+                    res_dir = os.path.join(training_files_path, dir_name)
                     if not os.path.isdir(res_dir):
                         continue
                     csv_files_list = glob.glob(os.path.join(res_dir, "single_connection_stat*"))
