@@ -113,7 +113,7 @@ def run(model, criterion, optimizer, scheduler, unused_parameters, is_deepcci, r
     f_graph.close()
     return training_loss, training_accuracy, training_accuracy_per_type, validation_loss, validation_accuracy, validation_accuracy_per_type
 
-def test_model(model, criterion, is_deepcci, is_batch):
+def test_model(model, criterion, is_deepcci, training_files_path, unused_parameters, is_batch, diverse_training_folder):
     normalization_type = AbsoluteNormalization1()
     _, validation_loader = create_data(training_files_path=training_files_path, normalization_type=normalization_type, unused_parameters=unused_parameters, is_deepcci=is_deepcci, is_batch=is_batch, diverse_training_folder=diverse_training_folder)
     validation_loss, validation_accuracy = ([None] * NUM_OF_EPOCHS for i in range(2))
@@ -121,115 +121,56 @@ def test_model(model, criterion, is_deepcci, is_batch):
     validation_loss, validation_accuracy, validation_accuracy_per_type = validate(validation_loader, model, criterion, is_deepcci)
     return numpy.mean(validation_loss), numpy.mean(validation_accuracy), numpy.mean(validation_accuracy_per_type, axis=0)
 
-#if __name__ == '__main__':
-def main(training_file_path, unused_parameters, bg_flows, is_sample_rate, is_sample, is_deepcci, is_fully_connected_net, num_of_classification_parameters,
-         chunk_size, num_of_congestion_controls, num_of_time_samples, DEVICE, results_path, is_test_only, model_path, diverse_training_folder, is_diverse, deepcci_num_of_time_samples):
-    #sleep(60*60*60*48 + 60*60*1.5)
-    #sleep(60*60*18 + 60*60*1.5)
-    #sleep(60*60*0.1)
-    if is_deepcci:
-        model = deepcci_net(chunk_size, deepcci_num_of_time_samples).to(DEVICE)
+#def _main(training_file_path, unused_parameters, bg_flows, is_sample_rate, is_sample, is_deepcci, is_fully_connected_net, num_of_classification_parameters,
+def _main(sim_params, model_params, DEVICE):
+    if model_params.is_deepcci:
+        model = deepcci_net(model_params.chunk_size, model_params.deepcci_num_of_time_samples).to(DEVICE)
         net = "deepcci_net"
     else:
-        if is_fully_connected_net:
-            model = fully_connected_net(num_of_classification_parameters, chunk_size, num_of_congestion_controls).to(DEVICE)
+        if model_params.is_fully_connected_net:
+            model = fully_connected_net(model_params.num_of_classification_parameters, model_params.chunk_size, model_params.num_of_congestion_controls).to(DEVICE)
             net = "fully_connected_net"
         else:
-            model = my_net(num_of_classification_parameters, chunk_size, num_of_congestion_controls, num_of_time_samples).to(DEVICE)
+            model = my_net(model_params.num_of_classification_parameters, model_params.chunk_size, model_params.num_of_congestion_controls, model_params.num_of_time_samples).to(DEVICE)
             net = "my_net"
-    """
-    if is_deepcci:
-        model = deepcci_net(chunk_size, deepcci_num_of_time_samples).to(DEVICE)
-        net = "deepcci_net"
-        #unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'CBIQ', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-        # unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-        # online:
-        #unused_parameters = ['timestamp', 'In Throughput', 'Out Throughput', 'CBIQ', 'Send Time Gap', 'In Goodput',
-        #                     'Total Bytes in Queue', 'Num of Drops',
-        #                     'Num of Packets']
-        # online with sampling:
-        unused_parameters = ['timestamp', 'CBIQ', 'In Throughput', 'Out Throughput', 'Capture Time Gap']
-    else:
-        if is_fully_connected_net:
-            model = fully_connected_net(num_of_classification_parameters, chunk_size, num_of_congestion_controls).to(DEVICE)
-            net = "fully_connected_net"
-            unused_parameters = ['Connection Num of Drops', 'Connection Num of Retransmits', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-        else:
-            model = my_net(num_of_classification_parameters, chunk_size, num_of_congestion_controls, num_of_time_samples).to(DEVICE)
-            net = "my_net"
-            # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-            # unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Connection Num of Drops', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-
-            #cbiq:
-            #unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-            # online:
-            #unused_parameters = ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'Send Time Gap', 'In Goodput', 'Total Bytes in Queue', 'Num of Drops', 'Num of Packets']
-            #unused_parameters = ['In Throughput', 'Out Throughput', 'Send Time Gap', 'Total Bytes in Queue', 'Num of Drops', 'Num of Packets']
-            # online with sampling:
-            unused_parameters = ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'deepcci']
-
-            #my_deepcci:
-            #unused_parameters = ['timestamp', 'Capture Time Gap', 'In Throughput', 'Out Throughput', 'CBIQ']
-
-
-            #capture arrival time:
-            #unused_parameters = ['timestamp', 'deepcci', 'In Throughput', 'Out Throughput', 'CBIQ']
-
-
-            #throughput:
-            #unused_parameters = ['CBIQ', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-            #unused_parameters = ['Out Throughput', 'CBIQ', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-            #unused_parameters = ['In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-            # online:
-            #unused_parameters = ['Capture Time Gap', 'CBIQ', 'Send Time Gap', 'In Goodput', 'Total Bytes in Queue', 'Num of Drops', 'Num of Packets']
-            # online with sampling:
-            #unused_parameters = ['CBIQ', 'Capture Time Gap', 'deepcci']
-
-            #5parameters:
-            #unused_parameters = ['Connection Num of Drops', 'Connection Num of Retransmits', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-            #online:
-            #unused_parameters = ['Send Time Gap', 'In Goodput', 'Num of Drops', 'Total Bytes in Queue', 'Num of Drops', 'Num of Packets']
-            #unused_parameters = None
-            # online with sampling:
-            #unused_parameters = ['Capture Time Gap', 'deepcci']
-            #unused_parameters = ['deepcci']
-
-            #1parameter at a time:
-            #unused_parameters = ['CBIQ', 'In Throughput', 'Out Throughput', 'Connection Num of Drops', 'Connection Num of Retransmits', 'Send Time Gap', 'Num of Drops', 'Num of Packets', 'Total Bytes in Queue']
-            #unused_parameters=[]
-    """
-    tn = datetime.now()
-    time_str = "_" + str(tn.month) + "." + str(tn.day) + "." + str(tn.year) + "@" + str(tn.hour) + "-" + str(
-        tn.minute) + "-" + str(tn.second)
-    # directory = graphs_path + "10bbr_cubic_reno_tcp_background_noise, "+ is_deepcci + ", " + "chunk_" + str(CHUNK_SIZE) +", shuffle_" + str(IS_SHUFFLE) + ", batch_" + str(BATCH_SIZE)
-    #directory = graphs_path + "_" + str(NUM_OF_CLASSIFICATION_PARAMETERS) + "_parameters_my_deepcci_"+is_deepcci
-    #directory = results_path + "_" + str(num_of_classification_parameters) + "_parameters_"+net
-    directory = results_path
-    # directory = graphs_path + is_deepcci + "All" + str(CHUNK_SIZE) + "_shuffle_" + str(
-    #     IS_SHUFFLE) + "_batch_" + str(BATCH_SIZE)
-    if not os.path.exists(results_path):
-        os.makedirs(directory)
-    plot_file_name = directory + "/statistics.csv"
+    if not os.path.exists(sim_params.results_path):
+        os.makedirs(sim_params.results_path)
+    plot_file_name = sim_params.results_path + "/statistics.csv"
     criterion = CrossEntropyLoss().to(DEVICE)
-    if is_test_only:
-        plot_file_name = directory + "/validation.png"
-        model.load_state_dict(torch.load(model_path), strict=False)
-        validation_loss, validation_accuracy, validation_accuracy_per_type = test_model(model, criterion, is_deepcci, IS_BATCH)
-        with open(plot_file_name.replace('.png', ('_' + "f1")), 'w') as f:
-            for item in [validation_loss, validation_accuracy, validation_accuracy_per_type]:
-                f.write("%s\n" % item)
+    return model, net, plot_file_name, criterion
+
+def main_train_and_validate(sim_params, model_params, DEVICE):
+    model, net, plot_file_name, criterion = _main(sim_params, model_params, DEVICE)
+    # sleep(sleep_duration)
+    if sim_params.csv_filename == "random":
+        is_sample_rate = True
     else:
-        model.apply(init_weights)
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.9)
-        training_loss, training_accuracy, training_accuracy_per_type, validation_loss, validation_accuracy, validation_accuracy_per_type = run(model, criterion, optimizer, scheduler, unused_parameters, is_deepcci, results_path, IS_BATCH, plot_file_name, is_sample_rate, training_file_path, bg_flows, is_sample,diverse_training_folder, num_of_time_samples, chunk_size, is_diverse, num_of_classification_parameters, DEVICE, deepcci_num_of_time_samples)
-        print('done')
-        # saving the trained model
-        torch.save(model, directory + '/model.pt')
-        torch.save(model.state_dict(), directory + '/state_dict.pt')
-        plot_file_name = directory + "/training.png"
-        training_graph = Graph_Creator(training_loss, training_accuracy, training_accuracy_per_type, NUM_OF_EPOCHS, IS_BATCH, plot_file_name=plot_file_name, plot_fig_name="training statistics")
-        training_graph.create_graphs()
-        plot_file_name = directory + "/validation.png"
-        validation_graph = Graph_Creator(validation_loss, validation_accuracy, validation_accuracy_per_type, NUM_OF_EPOCHS, IS_BATCH, plot_file_name=plot_file_name, plot_fig_name="validation statistics")
-        validation_graph.create_graphs()
+        is_sample_rate = False
+    model.apply(init_weights)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.9)
+    training_loss, training_accuracy, training_accuracy_per_type, validation_loss, validation_accuracy, validation_accuracy_per_type = run(
+        model, criterion, optimizer, scheduler, model_params.unused_parameters, model_params.is_deepcci, sim_params.results_path, IS_BATCH, plot_file_name,
+        is_sample_rate, sim_params.training_file_path, model_params.bg_flows, sim_params.is_data_sample, sim_params.diverse_training_folder, model_params.num_of_time_samples,
+        model_params.chunk_size, sim_params.is_diverse_data, model_params.num_of_classification_parameters, DEVICE, model_params.deepcci_num_of_time_samples)
+    print('done')
+    # saving the trained model
+    torch.save(model, sim_params.results_path + '/model.pt')
+    torch.save(model.state_dict(), sim_params.results_path + '/state_dict.pt')
+    plot_file_name = sim_params.results_path + "/training.png"
+    training_graph = Graph_Creator(training_loss, training_accuracy, training_accuracy_per_type, NUM_OF_EPOCHS,
+                                   model_params.is_batch, plot_file_name=plot_file_name, plot_fig_name="training statistics")
+    training_graph.create_graphs()
+    plot_file_name = sim_params.results_path + "/validation.png"
+    validation_graph = Graph_Creator(validation_loss, validation_accuracy, validation_accuracy_per_type, NUM_OF_EPOCHS,
+                                     model_params.is_batch, plot_file_name=plot_file_name, plot_fig_name="validation statistics")
+    validation_graph.create_graphs()
+
+def main_validate(sim_params, model_params, DEVICE):
+    model, net, plot_file_name, criterion = _main(sim_params, model_params, DEVICE)
+    plot_file_name = sim_params.results_path + "/validation.png"
+    model.load_state_dict(torch.load(sim_params.model_path), strict=False)
+    validation_loss, validation_accuracy, validation_accuracy_per_type = test_model(model, criterion, model_params.is_deepcci, model_params.training_files_path, model_params.unused_parameters, model_params.is_batch, model_params.diverse_training_folder)
+    with open(plot_file_name.replace('.png', ('_' + "f1")), 'w') as f:
+        for item in [validation_loss, validation_accuracy, validation_accuracy_per_type]:
+            f.write("%s\n" % item)
