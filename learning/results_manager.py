@@ -1,16 +1,10 @@
 import abc
 import os
 import random
-import re
 import glob
-
-import numpy
 from dataclasses import dataclass
 import numpy as np
-from typing import Dict
-
 import pandas as pd
-#from learning.env import *
 
 @dataclass
 class ResFolder:
@@ -19,7 +13,6 @@ class ResFolder:
 
 
 class Normalizer(abc.ABC):
-
     def __init__(self):
         self.normalized_df_list = []
 
@@ -33,7 +26,6 @@ class Normalizer(abc.ABC):
 
 
 class StatisticalNormalization(Normalizer):
-
     def __init__(self):
         super().__init__()
         self.result_df_list = []
@@ -42,15 +34,10 @@ class StatisticalNormalization(Normalizer):
         self.result_df_list.append(res)
 
     def normalize(self):
-        # concat_df_list = pd.concat([df for df in self.result_df_list], axis=0)
-        # mean_df = concat_df_list.mean()
-        # std_df = concat_df_list.std()
-        # self.normalized_df_list = [((df - mean_df) / np.sqrt(std_df)).fillna(0) for df in self.result_df_list]
         self.normalized_df_list = [((df - df.mean()) / np.sqrt(df.std())).fillna(0) for df in self.result_df_list]
 
 
 class AbsoluteNormalization1(Normalizer):
-
     def __init__(self):
         super().__init__()
         self.result_df_list = []
@@ -66,7 +53,6 @@ class AbsoluteNormalization1(Normalizer):
 
 
 class AbsoluteNormalization2(Normalizer):
-
     def __init__(self):
         super().__init__()
         self.result_df_dict = {}
@@ -78,7 +64,6 @@ class AbsoluteNormalization2(Normalizer):
         self.result_df_dict[iter_name].append(res)
 
     def normalize(self):
-
         # Loop on each simulation iteration, and normalize results according to the iteration
         for iter_name, single_exec_df_list in self.result_df_dict.items():
 
@@ -88,16 +73,13 @@ class AbsoluteNormalization2(Normalizer):
             sum_df = single_exec_df_list[0]
             for df in single_exec_df_list[1:]:
                 sum_df = sum_df + df
-
             for df in single_exec_df_list:
                 normalized_df = df / sum_df
                 self.normalized_df_list.append(normalized_df.fillna(0))
-
             print("Finished normalizing %s" % iter_name)
 
 
 class ResultsManager:
-
     #def __init__(self, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters, chunk_size, is_diverse, diverse_training_folder = [], start_after = 0, end_before = 0): #, dataframe_beginning=0, dataframe_end=60000):
     def __init__(self, training_files_path, results_path, normilizer: Normalizer, min_num_of_rows, unused_parameters, chunk_size, is_diverse, is_sample_rate, bg_flows, is_sample, is_deepcci, num_of_classification_parameters, diverse_training_folder = []):
         """The init function does all the building of the collections, using all results sub folders under

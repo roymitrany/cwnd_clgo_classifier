@@ -1,31 +1,10 @@
-import os
 import torch
 import torch.utils as torch_utils
-import numpy
-import re
 import statistics
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
-from torch.nn import Linear, ReLU, CrossEntropyLoss, Sequential, Conv2d, MaxPool2d, Module, BatchNorm2d
-from torch.autograd import Variable
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-# import project functions
-#from learning.env import *
 from learning.results_manager import *
-"""
-# consts definitions
-NUM_OF_CLASSIFICATION_PARAMETERS = 2 # timestemp & CBIQ
-NUM_OF_TIME_SAMPLES = 60000
-DEEPCCI_NUM_OF_TIME_SAMPLES = 60
-NUM_OF_CONGESTION_CONTROL_LABELING = 3 # Reno, Cubic, & BBR
-NUM_OF_CONV_FILTERS = 50
-NUM_OF_HIDDEN_LAYERS = 100
-BATCH_SIZE = 32
-TRAINING_VALIDATION_RATIO = 0.3
-"""
-#from learning.env import *
-from numpy import loadtxt
 
 TRAINING_VALIDATION_RATIO = 0.3
 BATCH_SIZE = 32
@@ -74,7 +53,9 @@ def create_dataloader(data, labeling, is_batch):
         dataloader = torch_utils.data.DataLoader(dataset, batch_size=len(data))
     return dataloader
 
-def create_data(training_files_path, results_path, normalization_type, unused_parameters, is_deepcci, is_batch, diverse_training_folder, is_sample_rate, bg_flows, is_sample, num_of_time_samples, chunk_size, is_diverse, num_of_classification_parameters, deepcci_num_of_time_samples):
+def create_data(training_files_path, results_path, normalization_type, unused_parameters, is_deepcci, is_batch,
+                diverse_training_folder, is_sample_rate, bg_flows, is_sample, num_of_time_samples, chunk_size,
+                is_diverse, num_of_classification_parameters, deepcci_num_of_time_samples):
     result_manager = ResultsManager(training_files_path, results_path, normalization_type, num_of_time_samples, unused_parameters, chunk_size=chunk_size, is_diverse = is_diverse, diverse_training_folder=diverse_training_folder, is_sample_rate=is_sample_rate, bg_flows=bg_flows, is_sample=is_sample, is_deepcci=is_deepcci, num_of_classification_parameters=num_of_classification_parameters)
     training_labeling = result_manager.get_train_df()
     input_dataframe = result_manager.get_normalized_df_list()
@@ -710,18 +691,3 @@ class Graph_Creator:
         # plt.show()
         plt.close(fig)
 
-
-    """
-    def create_loss_plot(self, loss):
-        loss = [l[-1] for l in loss]
-        loss_df = pd.DataFrame(loss)#.transpose()
-        loss_df.plot(kind='line', ax=self.loss_ax, title='loss')
-        self.write_to_file("loss", loss)
-        
-    def create_accuracy_plot(self, accuracy):
-        # accuracy = accuracy.squeeze()
-        accuracy = [a[-1] for a in accuracy]
-        accuracy_df = pd.DataFrame(accuracy)#.transpose()
-        accuracy_df.plot(kind='line', ax=self.accuracy_ax, title='accuracy')
-        self.write_to_file("accuracy", accuracy)
-    """

@@ -1,5 +1,6 @@
 from learning.utils import *
 import math
+from torch.nn import Linear, ReLU, Sequential, Conv2d, MaxPool2d, Module, BatchNorm2d
 
 NUM_OF_CONV_FILTERS = 50
 NUM_OF_HIDDEN_LAYERS = 100
