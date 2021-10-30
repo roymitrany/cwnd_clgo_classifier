@@ -1,8 +1,7 @@
-from learning.utils import *
 import torch.nn as nn
 import math
 
-class deepcci_net(Module):
+class deepcci_net(nn.Module):
     def __init__(self, chunk_size, deepcci_num_of_time_samples):
         super(deepcci_net, self).__init__()
         self.deepcci_num_of_time_samples = deepcci_num_of_time_samples
