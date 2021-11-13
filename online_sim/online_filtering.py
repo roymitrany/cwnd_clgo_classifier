@@ -138,15 +138,15 @@ class ConnStat:
 
 
     def calculate_cbiq(self):
-        conn_df = self.conn_df
-        in_seq = self.create_seq_df(conn_df, 'in_seq_num')
-        in_conn_df = pd.merge(conn_df, in_seq, on='Time', how='left')
-        in_conn_df = in_conn_df.fillna(method='ffill')
+        in_conn_df = self.remove_retransmissions(self.in_conn_df)
+        in_seq = self.create_seq_df(in_conn_df, 'in_seq_num')
+        conn_df = pd.merge(self.conn_df, in_seq, on='Time', how='left')
+        conn_df = conn_df.fillna(method='ffill')
         # Add out sequence column to conn DF, DO NOT interpolate missing fields
-        out_seq = self.create_seq_df(conn_df, 'out_seq_num')
-        conn_df = pd.merge(conn_df, out_seq, on='Time', how='left')
-        conn_df = self.conn_df.fillna(method='ffill')
-        conn_df = self.remove_retransmissions(conn_df)
+        out_conn_df = self.remove_retransmissions(self.out_conn_df)
+        out_temp_df = self.create_seq_df(out_conn_df, 'out_seq_num')
+        conn_df = pd.merge(conn_df, out_temp_df, on='Time', how='left')
+        conn_df = conn_df.fillna(method='ffill')
         # clacullate CBIQ. Since out seq is not filled, only timeticks that have out seq
         # Will be calculated
         conn_df['CBIQ'] = conn_df['in_seq_num'] - conn_df['out_seq_num']
@@ -160,7 +160,7 @@ class ConnStat:
         # Remove retransmissions
         num_of_retrans = 0
         for nn in range(1000):
-            t_series = self.conn_df['seq_num'].diff()
+            t_series = conn_df['seq_num'].diff()
             t_series = t_series.fillna(0)
             if t_series.min() >= 0:
                 break
