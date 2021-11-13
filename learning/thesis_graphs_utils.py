@@ -1204,6 +1204,44 @@ def create_physical_f1_vs_physical_filtering(results_path, txt_filename, plot_na
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
+def get_bottleneck_result(results_path, txt_filename):
+    my_net_all_parameters_accuracy_list = []
+    if not os.path.isdir(results_path):
+        return
+    x_axis = re.findall(r'\d+', results_path)
+    res_file = os.path.join(results_path, "10000", txt_filename)
+    try:
+        with open(res_file) as f:
+            accuracy = f.readlines()
+            my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[-1])))
+    except:
+        pass
+    return my_net_all_parameters_accuracy_list
+
+def create_bottleneck_comparison_graph(results_path, txt_filename, plot_name):
+    f1_list = []
+    graph_legend = ["All Parameters", "Capture Arrival Time", "CBIQ", "Deepcci", "Throughput", "In Throughput", "Out Throughput"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        f1_list.append(get_bottleneck_result(res_dir, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    plt.figure(figsize=(10, 5))
+    f1 = [x[0][1] for x in f1_list]
+    ind = np.arange(len(f1))
+    width = 0.3
+    plt.bar(ind, f1, width)
+    plt.xticks(ind, graph_legend_aligned)
+    axes = plt.gca()
+    axes.set(xlabel='Parameter', ylabel='F1')
+    axes.grid()
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 if __name__ == '__main__':
     """
@@ -1258,3 +1296,7 @@ if __name__ == '__main__':
     result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification- Results26-29/discrete_bg/diverse filter/15 background flows/1 seconds"
     create_physical_f1_vs_physical_filtering(result_path,"validation_accuracy","f1 vs filter size")
     """
+
+    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/bottleneck/75 background flows/0 filter/my_net"
+    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/no bottleneck/75 background flows/0 filter/my_net"
+    create_bottleneck_comparison_graph(result_path, "validation_accuracy","f1 for each parameter")
