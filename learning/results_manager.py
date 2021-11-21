@@ -92,7 +92,7 @@ class ResultsManager:
         # create a list of subfolders under results dir
         self.get_results(sim_params, model_params)
         # Build dataframe array and train array
-        train_list = list()
+        self.train_list = list()
         iteration = 0
         if sim_params.is_data_sample:
             keys = random.sample(range(len(self.res_folder_dict)), 50)
@@ -119,29 +119,35 @@ class ResultsManager:
                     # split dataframe to chunks:
                     # number_of_chunks = stat_df.shape[0] / chunk_size + stat_df.shape[0] % chunk_size
                     number_of_chunks = stat_df.shape[0] / model_params.chunk_size
-                    # for stat_df_chunk in np.array_split(stat_df, number_of_chunks):
-                    stat_df_chunk = random.sample(np.array_split(stat_df, number_of_chunks), 1)[0]
-                    if "stat_bbr" in csv_file:
-                        train_list.append(["bbr", 0])
-                    elif "stat_cubic" in csv_file:
-                        train_list.append(["cubic", 1])
-                    elif "stat_reno" in csv_file:
-                        train_list.append(["reno", 2])
-                        """
-                    elif "single_connection_stat_vegas" in csv_file:
-                        train_list.append(["vegas", 3])
-                    elif "single_connection_stat_bic" in csv_file:
-                        train_list.append(["bic", 4])
-                    elif "single_connection_stat_westwood" in csv_file:
-                        train_list.append(["westwood", 5])
-                        """
+                    if not sim_params.is_full_session:
+                        stat_df_chunk = random.sample(np.array_split(stat_df, number_of_chunks), 1)[0]
+                        self.classify_chunk(csv_file, stat_df_chunk, iter_name)
                     else:
-                        continue
-                    self.normalizer.add_result(stat_df_chunk, iter_name)
-                    print("added %s to list" % iter_name)
-        self.train_df = pd.DataFrame(train_list, columns=["id", "label"])
+                        for stat_df_chunk in np.array_split(stat_df, number_of_chunks):
+                            self.classify_chunk(csv_file, stat_df_chunk, iter_name)
 
+        self.train_df = pd.DataFrame(self.train_list, columns=["id", "label"])
         self.normalizer.normalize(self.is_deepcci, self.net_type.get_num_of_classification_parameters())
+
+    def classify_chunk(self, csv_file, stat_df_chunk, iter_name):
+        if "stat_bbr" in csv_file:
+            self.train_list.append(["bbr", 0])
+        elif "stat_cubic" in csv_file:
+            self.train_list.append(["cubic", 1])
+        elif "stat_reno" in csv_file:
+            self.train_list.append(["reno", 2])
+            """
+        elif "single_connection_stat_vegas" in csv_file:
+            train_list.append(["vegas", 3])
+        elif "single_connection_stat_bic" in csv_file:
+            train_list.append(["bic", 4])
+        elif "single_connection_stat_westwood" in csv_file:
+            train_list.append(["westwood", 5])
+            """
+        else:
+            return
+        self.normalizer.add_result(stat_df_chunk, iter_name)
+        print("added %s to list" % iter_name)
 
     def get_results(self, sim_params, model_params):
         if sim_params.is_diverse_data:

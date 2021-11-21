@@ -10,7 +10,7 @@ class NetEnum(Enum):
     FULLY_CONNECTED_NET = 3
 
 class SimParams:
-    def __init__(self, data_path, absolute_path, results_path, model_path, diverse_data_path, csv_filename, is_data_sample, is_diverse_data, sleep_duration, save_model_pt):
+    def __init__(self, data_path, absolute_path, results_path, model_path, diverse_data_path, csv_filename, is_data_sample, is_diverse_data, is_full_session, sleep_duration, save_model_pt):
         self.data_path = data_path
         self.absolute_path = absolute_path
         self.results_path = results_path
@@ -19,6 +19,7 @@ class SimParams:
         self.csv_filename = csv_filename
         self.is_data_sample = is_data_sample
         self.is_diverse_data = is_diverse_data
+        self.is_full_session = is_full_session
         self.sleep_duration = sleep_duration
         self.save_model_pt = save_model_pt
 
@@ -66,8 +67,9 @@ def get_net_types():
     for net_enum in NetEnum:
         if net_enum == NetEnum.MY_NET:
             #for unused_parameters in [CBIQ_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS, OUT_THROUGHPUT_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS, CAPTURE_UNUSED_PARAMETERS, ALL_PARAMETERS_UNUSED_PARAMETERS, DEEPCCI_UNUSED_PARAMETERS]:
-            #for unused_parameters in [ALL_PARAMETERS_UNUSED_PARAMETERS]:
-            for unused_parameters in [CBIQ_UNUSED_PARAMETERS]:
+            #for unused_parameters in [CBIQ_UNUSED_PARAMETERS]:
+            #for unused_parameters in [CBIQ_UNUSED_PARAMETERS, DEEPCCI_UNUSED_PARAMETERS, ALL_PARAMETERS_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS, OUT_THROUGHPUT_UNUSED_PARAMETERS, CAPTURE_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS]:
+            for unused_parameters in [CBIQ_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS]:
                 net_types.append(NetType(net_enum, unused_parameters))
         elif net_enum == NetEnum.DEEPCCI_NET:
             net_types.append(NetType(net_enum, DEEPCCI_UNUSED_PARAMETERS))
@@ -86,13 +88,19 @@ if __name__ == '__main__':
     num_of_congestion_controls = 3
     # 10 seconds (bottleneck vs no bottleneck graphs):
     num_of_time_samples = 10000 # 60000
+    """
     data_paths = [D_10S_3CC_0F_B_PATH, D_10S_3CC_0F_NB_PATH]
     absolute_result_paths = [os.path.join(ABSOLUTE_PATH,
                                r'graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/bottleneck'),
                             os.path.join(ABSOLUTE_PATH,
                                          r'graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/no bottleneck')
                             ]
-    chunk_sizes = [10000]
+    chunk_sizes = [1000]
+    """
+    data_paths = [D_10S_3CC_09F_B_PATH_NEW]
+    absolute_result_paths = [os.path.join(ABSOLUTE_PATH,
+                               r'graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/1_sub_all')]
+    chunk_sizes = [100]
     """
     # 60 seconds (chunk sizes graphs):
     num_of_time_samples = 60000 # 10000
@@ -108,9 +116,10 @@ if __name__ == '__main__':
     diverse_data_path = [r'filtered_0', r'filtered_0.5', r'filtered_0.9']
     if IS_SAMPLE_RATE:
         csv_filename = "random"
+        csv_filename = "ConnStat"
     else:
         csv_filename = "single_connection"
-    bg_flows = [75]  # [0, 15, 30, 75]
+    bg_flows = [0]  # [0, 15, 30, 75]
     filters = [0]
     sleep_duration = 0
     for data_path, absolute_result_path in zip(data_paths, absolute_result_paths):
@@ -123,6 +132,6 @@ if __name__ == '__main__':
                         else:
                             deepcci_num_of_time_samples = int(chunk_size / 1000)
                         results_path = get_results_path(absolute_result_path, bg_flow, filter, net_type.get_net(), chunk_size)
-                        sim_params = SimParams(data_path, absolute_result_path, results_path, model_path, diverse_data_path, csv_filename, IS_DATA_SAMPLE, IS_DIVERSE_DATA, sleep_duration, SAVE_MODEL_PT)
+                        sim_params = SimParams(data_path, absolute_result_path, results_path, model_path, diverse_data_path, csv_filename, IS_DATA_SAMPLE, IS_DIVERSE_DATA, IS_FULL_SESSION, sleep_duration, SAVE_MODEL_PT)
                         model_params = ModelParams(num_of_congestion_controls, num_of_time_samples, net_type, bg_flow, chunk_size, IS_BATCH)
                         model_training.main_train_and_validate(sim_params, model_params, DEVICE)

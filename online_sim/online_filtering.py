@@ -32,7 +32,9 @@ def get_delta(curr_timedelta, base_timedelta):
 
 
 class ConnStat:
-    def __init__(self, in_df=None, out_df=None, interval_accuracy=3, is_sample=False, prob=0.9):
+    def __init__(self, in_df=None, out_df=None, interval_accuracy=3, is_sample=False, prob=0.1):
+        self.is_sample = is_sample
+        self.prob = prob
         self.in_conn_df = self.create_df(in_df, is_sample, prob)
         self.out_conn_df = self.create_df(out_df, is_sample, prob)
         self.conn_df = None
@@ -40,8 +42,6 @@ class ConnStat:
         self.build_df()
 
     def build_df(self):
-        self.in_conn_df = self.in_conn_df.sort_values(by=['date_time'])
-        self.out_conn_df = self.out_conn_df.sort_values(by=['date_time'])
         time_gap_series = pd.to_datetime(self.in_conn_df['date_time']).diff()
         time_gap_series = time_gap_series.convert_dtypes()
         time_gap_series = time_gap_series.fillna(0)
@@ -63,12 +63,12 @@ class ConnStat:
         self.conn_df = tdi.to_frame(name="Time")
         # Throughput calculation:
         # Count inbound throughput and attach it to main conn df
-        self.in_conn_df = self.calculate_throughput(self.in_conn_df, 'In Throughput')
+        self.in_conn_df = self.calculate_throughput(self.in_conn_df, 'In Throughput', self.is_sample, self.prob)
         self.in_conn_df['Time'] = self.in_conn_df['date_time'].map(lambda time_str: time_str_to_timedelta(time_str))
         temp_df = self.in_conn_df[['Time', 'In Throughput', time_gap_series.name]]
         self.conn_df = pd.merge(self.conn_df, temp_df, on='Time', how='left')
         # Count outbound throughput and attach it to main conn df
-        self.out_conn_df = self.calculate_throughput(self.out_conn_df, 'Out Throughput')
+        self.out_conn_df = self.calculate_throughput(self.out_conn_df, 'Out Throughput',  self.is_sample, self.prob)
         self.out_conn_df['Time'] = self.out_conn_df['date_time'].map(lambda time_str: time_str_to_timedelta(time_str))
         temp_df = self.out_conn_df[['Time', 'Out Throughput']]
         self.conn_df = pd.merge(self.conn_df, temp_df, on='Time', how='left')
@@ -85,7 +85,7 @@ class ConnStat:
         self.conn_df = self.conn_df.set_index('timestamp')
         self.conn_df = self.conn_df.drop(columns=['Time'])
         # Reorder column to make the DF similar to original single connection stat
-        self.conn_df = self.conn_df[[time_gap_series.name, 'In Throughput', 'Out Throughput', 'CBIQ']]
+        self.conn_df = self.conn_df[[time_gap_series.name, 'In Throughput', 'Out Throughput', 'CBIQ', 'deepcci','in_seq_num','out_seq_num']]
         return
 
     def create_df(self, filename, is_sample, prob):
@@ -93,29 +93,33 @@ class ConnStat:
         df = df.sort_values(by=['date_time'])
         self.limit_timestamp = len(df.index)
         df['trunk'] = df['date_time'].str[:-3]
+        if is_sample:
+            df = self.reduce_packets(df, prob)
         #  deepcci
         deepcci_df = pd.DataFrame(df.groupby('trunk')['length'].count())
         deepcci_df = deepcci_df.rename(columns={"length": 'deepcci'})
         deepcci_df.rename_axis('trunk')
         df = pd.merge(df, deepcci_df, on='trunk', how='left')
         df = df.drop(columns=['trunk'])
-        if is_sample:
-            df = self.reduce_packets(df, prob)
         return df
 
     def reduce_packets(self, df, prob):
         # Randomly drop 90% of the packets
-        df = df.drop(df.sample(frac=prob).index)
+        df = df.sample(frac=prob)
         return df
 
-    def calculate_throughput(self, conn_df, column):
+    def calculate_throughput(self, conn_df, column, is_sample, prob):
         # Count all the bytes that arrive at any msec
         bytes_per_timeslot_df = pd.DataFrame(conn_df.groupby('date_time')["length"].sum())
         bytes_per_timeslot_df = bytes_per_timeslot_df.rename(columns={"length": column})
         # Merge with conn_df
-        temp_df = pd.merge(conn_df, bytes_per_timeslot_df, on='date_time', how='left')        # Translate from Bytes per time tick to Mbps
+        temp_df = pd.merge(conn_df, bytes_per_timeslot_df, on='date_time', how='left')
+        # Translate from Bytes per time tick to Mbps
         # Throughput calculation: from Bytes to bits, divided by accuracy (1000 for msec) and by probability
-        temp_df[column] = temp_df[column].map(lambda num: num * 8 / (10 ** (6 - self.interval_accuracy)*(1)))
+        if is_sample:
+            temp_df[column] = temp_df[column].map(lambda num: num * 8 / (10 ** (6 - self.interval_accuracy) * prob))
+        else:
+            temp_df[column] = temp_df[column].map(lambda num: num * 8 / (10 ** (6 - self.interval_accuracy)))
         values = {column: 0}
         temp_df = temp_df.fillna(value=values)
         # The returned value should include at most one row per msec
@@ -138,23 +142,55 @@ class ConnStat:
 
 
     def calculate_cbiq(self):
-        in_conn_df = self.remove_retransmissions(self.in_conn_df)
-        in_seq = self.create_seq_df(in_conn_df, 'in_seq_num')
-        conn_df = pd.merge(self.conn_df, in_seq, on='Time', how='left')
-        conn_df = conn_df.fillna(method='ffill')
+        #in_conn_df = self.remove_retransmissions(self.in_conn_df)
+        in_seq = self.create_seq_df(self.in_conn_df, 'in_seq_num')
+        self.conn_df = pd.merge(self.conn_df, in_seq, on='Time', how='left')
+        # conn_df = conn_df.fillna(method='ffill')
         # Add out sequence column to conn DF, DO NOT interpolate missing fields
-        out_conn_df = self.remove_retransmissions(self.out_conn_df)
-        out_temp_df = self.create_seq_df(out_conn_df, 'out_seq_num')
-        conn_df = pd.merge(conn_df, out_temp_df, on='Time', how='left')
-        conn_df = conn_df.fillna(method='ffill')
+        #out_conn_df = self.remove_retransmissions(self.out_conn_df)
+        out_seq= self.create_seq_df(self.out_conn_df, 'out_seq_num')
+        self.conn_df = pd.merge(self.conn_df, out_seq, on='Time', how='left')
         # clacullate CBIQ. Since out seq is not filled, only timeticks that have out seq
         # Will be calculated
-        conn_df['CBIQ'] = conn_df['in_seq_num'] - conn_df['out_seq_num']
-        conn_df = conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
-        conn_df = conn_df.interpolate()
+        # conn_df['CBIQ'] = conn_df['in_seq_num'] - conn_df['out_seq_num']
+        #conn_df = conn_df.fillna(method='ffill')
+        self.conn_df['CBIQ'] = self.conn_df['in_seq_num'].sub(self.conn_df['out_seq_num'])#, fill_value=0)
+        #conn_df = conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
+        """
+        if self.is_sample:
+            conn_df = conn_df.interpolate()
+        else:
+            conn_df = conn_df.fillna(method='ffill')
+        """
+        self.conn_df['CBIQ'][self.conn_df['CBIQ'] < 0] = 0
         # Convert to integer (interpolation created float values)
-        conn_df['CBIQ'] = conn_df['CBIQ'].fillna(0)
-        self.conn_df['CBIQ'] = conn_df['CBIQ'].map(lambda x: int(x))
+        self.conn_df['CBIQ'] = self.conn_df['CBIQ'].fillna(0)
+        # self.conn_df = self.conn_df.fillna(method='ffill')
+        self.conn_df['in_seq_num'] = self.conn_df['in_seq_num'].fillna(0)
+        self.conn_df['out_seq_num'] = self.conn_df['out_seq_num'].fillna(0)
+        self.conn_df['CBIQ'] = self.conn_df['CBIQ'].map(lambda x: int(x))
+
+    def calculate_cbiq2(self):
+        in_temp_df = self.create_seq_df(self.in_conn_df, 'in_seq_num')
+        self.conn_df = pd.merge(self.conn_df, in_temp_df, on='Time', how='left')
+        out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
+        self.conn_df = pd.merge(self.conn_df, out_temp_df, on='Time', how='left')
+        self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
+        self.conn_df = self.conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
+        # if self.conn_df['CBIQ'].first_valid_index() is None:
+        self.conn_df['CBIQ'] = 0 # self.conn_df['Out Throughput'][self.conn_df['Out Throughput']!=0].sum()
+        """
+        else:
+            self.conn_df = self.conn_df.fillna(method='ffill')
+            self.conn_df = self.conn_df.fillna(method='bfill')
+        """
+        #self.conn_df = self.conn_df.interpolate()
+        # Convert to integer (interpolation created float values)
+        in_thoruhgput_cumsum = self.conn_df['In Throughput'].cumsum()
+        out_thoruhgput_cumsum = self.conn_df['Out Throughput'].cumsum()
+        self.conn_df['CBIQ'] = self.conn_df['CBIQ'] + in_thoruhgput_cumsum - out_thoruhgput_cumsum
+        self.conn_df['CBIQ'] = self.conn_df['CBIQ'].fillna(0)
+        self.conn_df['CBIQ'] = self.conn_df['CBIQ'].map(lambda x: int(x))
 
     def remove_retransmissions(self, conn_df):
         # Remove retransmissions
@@ -599,7 +635,7 @@ if __name__ == '__main__':
                 if not os.path.exists(out_dir):
                     os.mkdir(out_dir)
                 for scs in scs_list:
-                    sample_csv_file_name = '%s_sample_stat_%s_%d.csv' % (scs.method, algo_name, monitored_if)
+                    sample_csv_file_name = '%s_sample_stat_%s_%d.csv' % ("ConnStat", algo_name, monitored_if)
                     csv_file_name = os.path.join(out_dir, sample_csv_file_name)
                     if not os.path.exists(csv_file_name):
                         with open(csv_file_name, 'w') as f:
