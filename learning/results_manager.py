@@ -99,7 +99,6 @@ class ResultsManager:
         else:
             keys = range(len(self.res_folder_dict))
         for (iter_name, res_folder) in self.res_folder_dict.items():
-            iteration += 1
             if not(iteration in keys):
                 continue
             for csv_file in res_folder.csv_files_list:
@@ -125,7 +124,7 @@ class ResultsManager:
                     else:
                         for stat_df_chunk in np.array_split(stat_df, number_of_chunks):
                             self.classify_chunk(csv_file, stat_df_chunk, iter_name)
-
+            iteration += 1
         self.train_df = pd.DataFrame(self.train_list, columns=["id", "label"])
         self.normalizer.normalize(self.is_deepcci, self.net_type.get_num_of_classification_parameters())
 

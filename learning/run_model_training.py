@@ -69,7 +69,7 @@ def get_net_types():
             #for unused_parameters in [CBIQ_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS, OUT_THROUGHPUT_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS, CAPTURE_UNUSED_PARAMETERS, ALL_PARAMETERS_UNUSED_PARAMETERS, DEEPCCI_UNUSED_PARAMETERS]:
             #for unused_parameters in [CBIQ_UNUSED_PARAMETERS]:
             #for unused_parameters in [CBIQ_UNUSED_PARAMETERS, DEEPCCI_UNUSED_PARAMETERS, ALL_PARAMETERS_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS, OUT_THROUGHPUT_UNUSED_PARAMETERS, CAPTURE_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS]:
-            for unused_parameters in [CBIQ_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS]:
+            for unused_parameters in [CBIQ_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS]:
                 net_types.append(NetType(net_enum, unused_parameters))
         elif net_enum == NetEnum.DEEPCCI_NET:
             net_types.append(NetType(net_enum, DEEPCCI_UNUSED_PARAMETERS))
@@ -97,10 +97,11 @@ if __name__ == '__main__':
                             ]
     chunk_sizes = [1000]
     """
-    data_paths = [D_10S_3CC_09F_B_PATH_NEW]
+    data_paths = [D_10S_3CC_0F_B_PATH_NEW_R]
     absolute_result_paths = [os.path.join(ABSOLUTE_PATH,
-                               r'graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/1_sub_all')]
-    chunk_sizes = [100]
+                               r'graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/1_retransmissions')]
+                               #r'graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/DEBUG')]
+    chunk_sizes = [10000]
     """
     # 60 seconds (chunk sizes graphs):
     num_of_time_samples = 60000 # 10000
@@ -119,7 +120,7 @@ if __name__ == '__main__':
         csv_filename = "ConnStat"
     else:
         csv_filename = "single_connection"
-    bg_flows = [0]  # [0, 15, 30, 75]
+    bg_flows = [15]  # [0, 15, 30, 75]
     filters = [0]
     sleep_duration = 0
     for data_path, absolute_result_path in zip(data_paths, absolute_result_paths):

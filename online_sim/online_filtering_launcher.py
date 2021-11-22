@@ -12,7 +12,7 @@ MAX_PROCESSES = 14 # 14
 #raw_data_path = '/remote_disk/raw_data/physical/60 seconds/0_bg_flows'#/discrete_data'
 #raw_data_path = '/remote_disk/raw_data/physical/6 congestion controls/10_sec_6_algos/rtr01'
 raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/10 seconds/discrete_bg/sim14'
-raw_data_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/3CC/0BG/bottleneck/DEBUG_1_DATAFRAME'
+#raw_data_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/10 seconds/bottleneck/DEBUG_1_DATAFRAME/RAW'
 #raw_data_path = '/remote_disk/raw_data/physical/6 congestion controls/60_sec_6_algos/rtr02'
 
 #raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/60 seconds'
@@ -29,8 +29,8 @@ raw_data_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_
 #dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/3CC/0BG/no bottleneck'
 #dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/6CC/no bottleneck'
 #dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/3CC/diverseBG/bottleneck'
-dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/10 seconds/bottleneck/1_sub_all'
-dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/3CC/0BG/bottleneck/DEBUG_1_DATAFRAME/STATS'
+dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/10 seconds/bottleneck/1_retransmissions'
+#dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/10 seconds/bottleneck/DEBUG_1_DATAFRAME/STATS'
 #dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/6CC/no bottleneck'
 
 # abs_path = '/data_disk/physical_res'

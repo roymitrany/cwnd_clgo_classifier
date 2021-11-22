@@ -142,13 +142,13 @@ class ConnStat:
 
 
     def calculate_cbiq(self):
-        #in_conn_df = self.remove_retransmissions(self.in_conn_df)
-        in_seq = self.create_seq_df(self.in_conn_df, 'in_seq_num')
+        in_conn_df = self.remove_retransmissions(self.in_conn_df)
+        in_seq = self.create_seq_df(in_conn_df, 'in_seq_num')
         self.conn_df = pd.merge(self.conn_df, in_seq, on='Time', how='left')
         # conn_df = conn_df.fillna(method='ffill')
         # Add out sequence column to conn DF, DO NOT interpolate missing fields
-        #out_conn_df = self.remove_retransmissions(self.out_conn_df)
-        out_seq= self.create_seq_df(self.out_conn_df, 'out_seq_num')
+        out_conn_df = self.remove_retransmissions(self.out_conn_df)
+        out_seq= self.create_seq_df(out_conn_df, 'out_seq_num')
         self.conn_df = pd.merge(self.conn_df, out_seq, on='Time', how='left')
         # clacullate CBIQ. Since out seq is not filled, only timeticks that have out seq
         # Will be calculated
