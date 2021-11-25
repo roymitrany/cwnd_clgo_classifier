@@ -66,10 +66,11 @@ def get_net_types():
     net_types = []
     for net_enum in NetEnum:
         if net_enum == NetEnum.MY_NET:
-            #for unused_parameters in [CBIQ_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS, OUT_THROUGHPUT_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS, CAPTURE_UNUSED_PARAMETERS, ALL_PARAMETERS_UNUSED_PARAMETERS, DEEPCCI_UNUSED_PARAMETERS]:
-            #for unused_parameters in [CBIQ_UNUSED_PARAMETERS]:
-            #for unused_parameters in [CBIQ_UNUSED_PARAMETERS, DEEPCCI_UNUSED_PARAMETERS, ALL_PARAMETERS_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS, OUT_THROUGHPUT_UNUSED_PARAMETERS, CAPTURE_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS]:
-            for unused_parameters in [CBIQ_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS]:
+            # for unused_parameters in [CBIQ_UNUSED_PARAMETERS, DEEPCCI_UNUSED_PARAMETERS, ALL_PARAMETERS_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS, OUT_THROUGHPUT_UNUSED_PARAMETERS, CAPTURE_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS]:
+            for unused_parameters in [CBIQ_WITHOUT_SEQ_NUMM_UNUSED_PARAMETERS, DEEPCCI_UNUSED_PARAMETERS, ALL_PARAMETERS_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS, OUT_THROUGHPUT_UNUSED_PARAMETERS, CAPTURE_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS]:
+            # for unused_parameters in [ALL_PARAMETERS_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS, OUT_THROUGHPUT_UNUSED_PARAMETERS, CAPTURE_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS]:
+            # for unused_parameters in [CBIQ_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS]:
+            # for unused_parameters in [CBIQ_UNUSED_PARAMETERS, DEEPCCI_UNUSED_PARAMETERS]:
                 net_types.append(NetType(net_enum, unused_parameters))
         elif net_enum == NetEnum.DEEPCCI_NET:
             net_types.append(NetType(net_enum, DEEPCCI_UNUSED_PARAMETERS))
@@ -85,9 +86,9 @@ def get_results_path(absolute_path, bg_flow, filter, net_type, chunk_size):
 if __name__ == '__main__':
     # Automatic graphs generation:
     # sleep(60*60*30)
-    num_of_congestion_controls = 3
+    num_of_congestion_controls = 6
     # 10 seconds (bottleneck vs no bottleneck graphs):
-    num_of_time_samples = 10000 # 60000
+    num_of_time_samples = 60000 # 60000
     """
     data_paths = [D_10S_3CC_0F_B_PATH, D_10S_3CC_0F_NB_PATH]
     absolute_result_paths = [os.path.join(ABSOLUTE_PATH,
@@ -97,11 +98,13 @@ if __name__ == '__main__':
                             ]
     chunk_sizes = [1000]
     """
-    data_paths = [D_10S_3CC_0F_B_PATH_NEW_R]
+    data_paths = [D_60S_60_6CC_0F_B_R_PATH]
     absolute_result_paths = [os.path.join(ABSOLUTE_PATH,
-                               r'graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/1_retransmissions')]
+                               # r'graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/bottleneck/with retransmissions full session')]
+                               r'graphs/thesis_prime/physical/60 seconds/bottleneck cbiq vs chunk sizes')]
                                #r'graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/DEBUG')]
-    chunk_sizes = [10000]
+    chunk_sizes = [60000, 30000, 10000, 5000, 1000, 100, 10, 1]
+    # chunk_sizes = [10000]
     """
     # 60 seconds (chunk sizes graphs):
     num_of_time_samples = 60000 # 10000
@@ -116,11 +119,11 @@ if __name__ == '__main__':
                               r'graphs/thesis_prime/classification of different datasets using a single trained model- in multiple routers- Results15/model/state_dict.pt')
     diverse_data_path = [r'filtered_0', r'filtered_0.5', r'filtered_0.9']
     if IS_SAMPLE_RATE:
-        csv_filename = "random"
-        csv_filename = "ConnStat"
+        csv_filename = "ConnStat" # "random"
     else:
         csv_filename = "single_connection"
-    bg_flows = [15]  # [0, 15, 30, 75]
+    # bg_flows = [0, 15, 30, 60, 75]
+    bg_flows = [0]
     filters = [0]
     sleep_duration = 0
     for data_path, absolute_result_path in zip(data_paths, absolute_result_paths):

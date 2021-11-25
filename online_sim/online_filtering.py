@@ -59,7 +59,7 @@ class ConnStat:
         out_start_time = self.out_conn_df['date_time'].iloc[0]
         start_timedelta = min(in_start_time, out_start_time)
         millies = 10 ** (3 - self.interval_accuracy)
-        tdi = pd.timedelta_range(start_timedelta, periods=10000, freq='%dL' % millies)
+        tdi = pd.timedelta_range(start_timedelta, periods=60000, freq='%dL' % millies)
         self.conn_df = tdi.to_frame(name="Time")
         # Throughput calculation:
         # Count inbound throughput and attach it to main conn df
@@ -131,7 +131,6 @@ class ConnStat:
         self.conn_df = pd.merge(self.conn_df, in_deepcci_df, on='Time', how='left')
         self.conn_df['deepcci'] = self.conn_df['deepcci'].fillna(0)
 
-
     def create_seq_df(self, conn_df, col_name):
         seq_df = conn_df.drop_duplicates(subset=["date_time"], keep='first')
         seq_df = seq_df[['date_time', 'seq_num']]
@@ -140,22 +139,17 @@ class ConnStat:
         seq_df = seq_df.drop(columns=['date_time'])
         return seq_df
 
-
     def calculate_cbiq(self):
         in_conn_df = self.remove_retransmissions(self.in_conn_df)
         in_seq = self.create_seq_df(in_conn_df, 'in_seq_num')
         self.conn_df = pd.merge(self.conn_df, in_seq, on='Time', how='left')
-        # conn_df = conn_df.fillna(method='ffill')
         # Add out sequence column to conn DF, DO NOT interpolate missing fields
         out_conn_df = self.remove_retransmissions(self.out_conn_df)
         out_seq= self.create_seq_df(out_conn_df, 'out_seq_num')
         self.conn_df = pd.merge(self.conn_df, out_seq, on='Time', how='left')
         # clacullate CBIQ. Since out seq is not filled, only timeticks that have out seq
         # Will be calculated
-        # conn_df['CBIQ'] = conn_df['in_seq_num'] - conn_df['out_seq_num']
-        #conn_df = conn_df.fillna(method='ffill')
         self.conn_df['CBIQ'] = self.conn_df['in_seq_num'].sub(self.conn_df['out_seq_num'])#, fill_value=0)
-        #conn_df = conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
         """
         if self.is_sample:
             conn_df = conn_df.interpolate()
@@ -165,31 +159,8 @@ class ConnStat:
         self.conn_df['CBIQ'][self.conn_df['CBIQ'] < 0] = 0
         # Convert to integer (interpolation created float values)
         self.conn_df['CBIQ'] = self.conn_df['CBIQ'].fillna(0)
-        # self.conn_df = self.conn_df.fillna(method='ffill')
         self.conn_df['in_seq_num'] = self.conn_df['in_seq_num'].fillna(0)
         self.conn_df['out_seq_num'] = self.conn_df['out_seq_num'].fillna(0)
-        self.conn_df['CBIQ'] = self.conn_df['CBIQ'].map(lambda x: int(x))
-
-    def calculate_cbiq2(self):
-        in_temp_df = self.create_seq_df(self.in_conn_df, 'in_seq_num')
-        self.conn_df = pd.merge(self.conn_df, in_temp_df, on='Time', how='left')
-        out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
-        self.conn_df = pd.merge(self.conn_df, out_temp_df, on='Time', how='left')
-        self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
-        self.conn_df = self.conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
-        # if self.conn_df['CBIQ'].first_valid_index() is None:
-        self.conn_df['CBIQ'] = 0 # self.conn_df['Out Throughput'][self.conn_df['Out Throughput']!=0].sum()
-        """
-        else:
-            self.conn_df = self.conn_df.fillna(method='ffill')
-            self.conn_df = self.conn_df.fillna(method='bfill')
-        """
-        #self.conn_df = self.conn_df.interpolate()
-        # Convert to integer (interpolation created float values)
-        in_thoruhgput_cumsum = self.conn_df['In Throughput'].cumsum()
-        out_thoruhgput_cumsum = self.conn_df['Out Throughput'].cumsum()
-        self.conn_df['CBIQ'] = self.conn_df['CBIQ'] + in_thoruhgput_cumsum - out_thoruhgput_cumsum
-        self.conn_df['CBIQ'] = self.conn_df['CBIQ'].fillna(0)
         self.conn_df['CBIQ'] = self.conn_df['CBIQ'].map(lambda x: int(x))
 
     def remove_retransmissions(self, conn_df):

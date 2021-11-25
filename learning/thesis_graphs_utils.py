@@ -1209,7 +1209,7 @@ def get_bottleneck_result(results_path, txt_filename):
     if not os.path.isdir(results_path):
         return
     x_axis = re.findall(r'\d+', results_path)
-    res_file = os.path.join(results_path, "10000", txt_filename)
+    res_file = os.path.join(results_path, "100", txt_filename)
     try:
         with open(res_file) as f:
             accuracy = f.readlines()
@@ -1242,6 +1242,152 @@ def create_bottleneck_comparison_graph(results_path, txt_filename, plot_name):
     axes.set(xlabel='Parameter', ylabel='F1')
     axes.grid()
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+def create_cbiq_throughput_graph(results_path, txt_filename, plot_name):
+    f1_list = []
+    graph_legend = ["All Parameters", "Capture Arrival Time", "CBIQ", "Deepcci", "Throughput", "In Throughput", "Out Throughput"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        f1_list.append(get_bottleneck_result(res_dir, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    plt.figure(figsize=(10, 5))
+    f1 = [x[0][1] for x in f1_list]
+    ind = np.arange(len(f1))
+    width = 0.3
+    plt.bar(ind, f1, width)
+    plt.xticks(ind, graph_legend_aligned)
+    axes = plt.gca()
+    axes.set(xlabel='Parameter', ylabel='F1')
+    axes.grid()
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+# New folder architecture:
+
+def get_f1_vs_session_duration_results(results_path, txt_filename):
+    x_axis = re.findall(r'\d+', results_path)
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir or "not_in_use" in res_dir:
+            continue
+    res_file = os.path.join(res_dir, txt_filename)
+    with open(res_file) as f:
+        accuracy = (int(x_axis[-1]), float(f.readlines()[-1]))
+    return accuracy
+
+
+def create_f1_vs_session_duration_graph(results_path, txt_filename, plot_name):
+    accuracy_list = []
+    graph_legend = ["CBIQ"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        result_path = os.path.join(results_path, dir_name, res_dir)
+        accuracy_list.append(get_f1_vs_session_duration_results(result_path, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    accuracy = sorted(accuracy_list, key=lambda tup: tup[0])
+    x_axis = [x[0] for x in accuracy]
+    y_axis = [x[1] for x in accuracy]
+    # plt.xlim(1.1 * max(x_axis), 0)
+    plt.plot(x_axis, y_axis)
+    axes = plt.gca()
+    axes.set(xlabel='session sample size [ms]', ylabel='F1')
+    axes.grid()
+    plt.legend(graph_legend_aligned)#, loc=(0.75,0.5))
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+def get_f1_vs_background_flows_results(results_path, txt_filename):
+    x_axis = re.findall(r'\d+', results_path)
+    res_file = os.path.join(results_path, txt_filename)
+    with open(res_file) as f:
+        accuracy = (int(x_axis[1]), float(f.readlines()[-1]))
+    return accuracy
+
+def create_f1_vs_background_flows_graph(results_path, txt_filename, plot_name):
+    accuracy_list = []
+    graph_legend = ["CBIQ"]
+    graph_legend_aligned = []
+    dirs_names = os.listdir(results_path)
+    for dir_name in dirs_names:
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "not_in_use" in res_dir:
+            continue
+        while os.path.isdir(res_dir):
+            dir_name = os.listdir(res_dir)[0]
+            if os.path.isdir(os.path.join(res_dir, dir_name)):
+                res_dir = os.path.join(res_dir, dir_name)
+            else:
+                break
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        result_path = os.path.join(results_path, dir_name, res_dir)
+        accuracy_list.append(get_f1_vs_background_flows_results(result_path, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    accuracy = sorted(accuracy_list, key=lambda tup: tup[0])
+    x_axis = [x[0] for x in accuracy]
+    y_axis = [x[1] for x in accuracy]
+    # plt.xlim(1.1 * max(x_axis), 0)
+    plt.plot(x_axis, y_axis)
+    axes = plt.gca()
+    axes.set(xlabel='background flows', ylabel='F1')
+    axes.grid()
+    plt.legend(graph_legend_aligned)  # , loc=(0.75,0.5))
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
+def get_cbiq_vs_parameters_session_duration_results(results_path, txt_filename):
+    accuracy_list = []
+    x_axis = re.findall(r'\d+', results_path)
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir or "not_in_use" in res_dir:
+            continue
+        res_file = os.path.join(res_dir, txt_filename)
+        x_axis = re.findall(r'\d+', res_file)
+        with open(res_file) as f:
+            accuracy_list.append((int(x_axis[-1]), float(f.readlines()[-1])))
+    return accuracy_list
+
+def create_cbiq_vs_parameters_session_sample_graph(results_path, txt_filename, plot_name):
+    f1_list = []
+    graph_legend = ["All Parameters", "Capture Arrival Time", "CBIQ", "Deepcci", "In Throughput"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        f1_list.append(get_cbiq_vs_parameters_session_duration_results(res_dir, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    plt.figure(figsize=(10, 5))
+    for i in range(len(f1_list)):
+        accuracy = sorted(f1_list[i], key=lambda tup: tup[0])
+        x_axis = [x[0] for x in accuracy]
+        y_axis = [x[1] for x in accuracy]
+        plt.plot(x_axis, y_axis)
+    plt.legend(graph_legend_aligned)
+    axes = plt.gca()
+    axes.set(xlabel='Parameter', ylabel='F1')
+    axes.grid()
+
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
+
 
 if __name__ == '__main__':
     """
@@ -1277,10 +1423,10 @@ if __name__ == '__main__':
     create_physical_full_session_vs_sesion_sample(result_path, "validation_accuracy", "f1 vs filter size")
     """
 
-
+    """
     result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification- Results26-29/discrete_bg/60 seconds/diverse chunk sizes/15 background flows/0 filter"
     create_physical_f1_vs_small_chunk_size(result_path, "validation_accuracy", "f1 vs chunk size")
-
+    """
 
     """
     result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification/discrete_bg/diverse chunk sizes/15 background flows/diverse seconds/session_sample CBIQ initialised to 0/0 filter"
@@ -1297,6 +1443,23 @@ if __name__ == '__main__':
     create_physical_f1_vs_physical_filtering(result_path,"validation_accuracy","f1 vs filter size")
     """
 
-    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/bottleneck/75 background flows/0 filter/my_net"
-    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/no bottleneck/75 background flows/0 filter/my_net"
+    """
+    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/bottleneck/with retransmissions/0 background flows/0 filter/my_net"
+    # result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/no bottleneck/75 background flows/0 filter/my_net"
     create_bottleneck_comparison_graph(result_path, "validation_accuracy","f1 for each parameter")
+    """
+
+    # New folder architecture:
+
+    """
+    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/60 seconds/bottleneck chunk sizes/0 background flows/0 filter/my_net/CBIQ"
+    create_f1_vs_session_duration_graph(result_path, "validation_accuracy", "f1 vs session sample")
+    """
+
+    """
+    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/60 seconds/bottleneck"
+    create_f1_vs_background_flows_graph(result_path, "validation_accuracy", "f1 vs background flows")
+    """
+
+    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/60 seconds/bottleneck cbiq vs chunk sizes/0 background flows/0 filter/my_net"
+    create_cbiq_vs_parameters_session_sample_graph(result_path, "validation_accuracy", "f1 vs background flows")

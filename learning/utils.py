@@ -201,7 +201,7 @@ class Graph_Creator:
         for type in range(accuracy_per_type_df.shape[1]):
             accuracy_per_type_df[type].plot(kind='line', ax=ax, title='accuracy per type')
         ax.legend(["bbr", "cubic", "reno"])
-        self.write_to_file("accuracy_per_type", accuracy_per_type)
+        self.write_to_file("accuracy_per_type.csv", accuracy_per_type)
 
     def create_graphs(self):
         if self.is_batch:

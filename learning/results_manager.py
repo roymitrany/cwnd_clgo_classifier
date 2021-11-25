@@ -94,17 +94,16 @@ class ResultsManager:
         # Build dataframe array and train array
         self.train_list = list()
         iteration = 0
-        if sim_params.is_data_sample:
-            keys = random.sample(range(len(self.res_folder_dict)), 50)
+        if sim_params.is_full_session:
+            keys = random.sample(range(len(self.res_folder_dict)), 5)
         else:
             keys = range(len(self.res_folder_dict))
         for (iter_name, res_folder) in self.res_folder_dict.items():
             if not(iteration in keys):
+                iteration = iteration + 1
                 continue
             for csv_file in res_folder.csv_files_list:
                 csv_filename = os.path.join(res_folder.res_path, csv_file)
-                if not ("bbr" in csv_filename or "reno" in csv_filename or "cubic" in csv_filename):
-                    continue
                 with open(csv_filename) as f:
                     row_count = sum(1 for row in f)
                     stat_df = pd.read_csv(csv_filename, index_col=None, header=0)
@@ -119,14 +118,23 @@ class ResultsManager:
                     # number_of_chunks = stat_df.shape[0] / chunk_size + stat_df.shape[0] % chunk_size
                     number_of_chunks = stat_df.shape[0] / model_params.chunk_size
                     if not sim_params.is_full_session:
-                        stat_df_chunk = random.sample(np.array_split(stat_df, number_of_chunks), 1)[0]
+                        stat_df_chunk_indexes = self.get_chnuks_indexe(number_of_chunks)
+                        stat_df_chunk = stat_df[stat_df_chunk_indexes * model_params.chunk_size : (stat_df_chunk_indexes+1) * model_params.chunk_size]
                         self.classify_chunk(csv_file, stat_df_chunk, iter_name)
                     else:
+                        inner_iteration = 0
                         for stat_df_chunk in np.array_split(stat_df, number_of_chunks):
+                            if inner_iteration > 100:
+                                break
                             self.classify_chunk(csv_file, stat_df_chunk, iter_name)
+                            inner_iteration = inner_iteration + 1
             iteration += 1
         self.train_df = pd.DataFrame(self.train_list, columns=["id", "label"])
         self.normalizer.normalize(self.is_deepcci, self.net_type.get_num_of_classification_parameters())
+
+    def get_chnuks_indexe(self, number_of_chunks):
+        rnd = random.randint(0, int(number_of_chunks - 1))
+        return rnd
 
     def classify_chunk(self, csv_file, stat_df_chunk, iter_name):
         if "stat_bbr" in csv_file:
@@ -136,12 +144,12 @@ class ResultsManager:
         elif "stat_reno" in csv_file:
             self.train_list.append(["reno", 2])
             """
-        elif "single_connection_stat_vegas" in csv_file:
-            train_list.append(["vegas", 3])
-        elif "single_connection_stat_bic" in csv_file:
-            train_list.append(["bic", 4])
-        elif "single_connection_stat_westwood" in csv_file:
-            train_list.append(["westwood", 5])
+        elif "stat_vegas" in csv_file:
+            self.train_list.append(["vegas", 3])
+        elif "stat_bic" in csv_file:
+            self.train_list.append(["bic", 4])
+        elif "stat_htcp" in csv_file:
+            self.train_list.append(["htcp", 5])
             """
         else:
             return

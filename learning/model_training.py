@@ -1,3 +1,5 @@
+from time import sleep
+
 from learning.my_net import *
 from learning.deepcci_net import *
 from learning.fully_connected_net import *
@@ -118,8 +120,8 @@ def _main(sim_params, model_params, net_type, DEVICE):
 
 def main_train_and_validate(sim_params, model_params, DEVICE):
     net_type = model_params.net_type
+    sleep(sim_params.sleep_duration)
     model, net, plot_file_name, criterion, is_deepcci = _main(sim_params, model_params, net_type, DEVICE)
-    # sleep(sleep_duration)
     model.apply(init_weights)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.9)
