@@ -2,7 +2,7 @@ import os
 from enum import Enum
 from time import sleep
 from learning import model_training
-from learning.consts import  *
+from learning.consts import *
 
 class NetEnum(Enum):
     MY_NET = 1
@@ -67,12 +67,15 @@ def get_net_types():
     for net_enum in NetEnum:
         if net_enum == NetEnum.MY_NET:
             # for unused_parameters in [CBIQ_UNUSED_PARAMETERS, DEEPCCI_UNUSED_PARAMETERS, ALL_PARAMETERS_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS, OUT_THROUGHPUT_UNUSED_PARAMETERS, CAPTURE_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS]:
-            for unused_parameters in [CBIQ_WITHOUT_SEQ_NUMM_UNUSED_PARAMETERS, DEEPCCI_UNUSED_PARAMETERS, ALL_PARAMETERS_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS, OUT_THROUGHPUT_UNUSED_PARAMETERS, CAPTURE_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS]:
+            for unused_parameters in [CBIQ_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS]:
+            # for unused_parameters in [CBIQ_WITHOUT_SEQ_NUM_UNUSED_PARAMETERS, DEEPCCI_UNUSED_PARAMETERS, ALL_PARAMETERS_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS, OUT_THROUGHPUT_UNUSED_PARAMETERS, CAPTURE_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS]:
+            # for unused_parameters in [CBIQ_WITHOUT_SEQ_NUM_UNUSED_PARAMETERS]:
             # for unused_parameters in [ALL_PARAMETERS_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS, OUT_THROUGHPUT_UNUSED_PARAMETERS, CAPTURE_UNUSED_PARAMETERS, THROUGHPUT_UNUSED_PARAMETERS]:
             # for unused_parameters in [CBIQ_UNUSED_PARAMETERS, IN_THROUGHPUT_UNUSED_PARAMETERS]:
             # for unused_parameters in [CBIQ_UNUSED_PARAMETERS, DEEPCCI_UNUSED_PARAMETERS]:
                 net_types.append(NetType(net_enum, unused_parameters))
         elif net_enum == NetEnum.DEEPCCI_NET:
+            continue
             net_types.append(NetType(net_enum, DEEPCCI_UNUSED_PARAMETERS))
         else:
             continue
@@ -85,36 +88,14 @@ def get_results_path(absolute_path, bg_flow, filter, net_type, chunk_size):
 
 if __name__ == '__main__':
     # Automatic graphs generation:
-    # sleep(60*60*30)
     num_of_congestion_controls = 6
-    # 10 seconds (bottleneck vs no bottleneck graphs):
     num_of_time_samples = 60000 # 60000
-    """
-    data_paths = [D_10S_3CC_0F_B_PATH, D_10S_3CC_0F_NB_PATH]
-    absolute_result_paths = [os.path.join(ABSOLUTE_PATH,
-                               r'graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/bottleneck'),
-                            os.path.join(ABSOLUTE_PATH,
-                                         r'graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/no bottleneck')
-                            ]
-    chunk_sizes = [1000]
-    """
+    # data_paths = [D_60S_60_6CC_0F_B_R_PATH, D_60S_60_6CC_0F_NB_R_PATH]
     data_paths = [D_60S_60_6CC_0F_B_R_PATH]
-    absolute_result_paths = [os.path.join(ABSOLUTE_PATH,
-                               # r'graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/bottleneck/with retransmissions full session')]
-                               r'graphs/thesis_prime/physical/60 seconds/bottleneck cbiq vs chunk sizes')]
-                               #r'graphs/thesis_prime/physical/10 seconds/bottleneck vs no bottleneck/DEBUG')]
-    chunk_sizes = [60000, 30000, 10000, 5000, 1000, 100, 10, 1]
-    # chunk_sizes = [10000]
-    """
-    # 60 seconds (chunk sizes graphs):
-    num_of_time_samples = 60000 # 10000
-    data_paths = [D_60S_3CC_0F_0BG_B_PATH, D_60S_3CC_0F_0BG_NB_PATH]
-    absolute_result_paths = os.path.join(ABSOLUTE_PATH,
-                               r'graphs/thesis_prime/physical/60 seconds/bottleneck vs no bottleneck/bottleneck',
-                               os.path.join(ABSOLUTE_PATH,
-                               r'graphs/thesis_prime/physical/60 seconds/bottleneck vs no bottleneck/no bottleneck')
-    chunk_sizes = [1, 10, 100, 500, 1000, 5000, 10000, 30000, 60000]
-    """
+    # absolute_result_paths = [R_60S_60_6CC_0F_B_R_PATH, R_60S_60_6CC_0F_NB_R_PATH]
+    absolute_result_paths = ["/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/60 seconds/cbiq vs throughput"]
+    # chunk_sizes = [60000, 30000, 10000, 5000, 1000, 100, 10, 1]
+    chunk_sizes = [1, 10, 50, 100, 200, 300, 400, 500, 1000]
     model_path = os.path.join(ABSOLUTE_PATH,
                               r'graphs/thesis_prime/classification of different datasets using a single trained model- in multiple routers- Results15/model/state_dict.pt')
     diverse_data_path = [r'filtered_0', r'filtered_0.5', r'filtered_0.9']

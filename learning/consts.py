@@ -8,13 +8,14 @@ DEBUG = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/phy
 
 ABSOLUTE_PATH = r'/home/dean/PycharmProjects/cwnd_clgo_classifier/'
 
-D_60S_6CC_0F_B_R_PATH = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/6 cc'
 D_60S_60_6CC_0F_B_R_PATH = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/bottleneck'
+D_60S_60_6CC_0F_NB_R_PATH = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/no bottleneck'
 
-
+R_60S_60_6CC_0F_B_R_PATH = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/60 seconds/bottleneck vs no bottleneck/bottleneck"
+R_60S_60_6CC_0F_NB_R_PATH = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/60 seconds/bottleneck vs no bottleneck/no bottleneck"
 
 CBIQ_UNUSED_PARAMETERS = ("CBIQ", ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'deepcci'])
-CBIQ_WITHOUT_SEQ_NUMM_UNUSED_PARAMETERS = ("CBIQ", ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'In Throughput', 'Out Throughput', 'deepcci'])
+CBIQ_WITHOUT_SEQ_NUM_UNUSED_PARAMETERS = ("CBIQ", ['CBIQ', 'Capture Time Gap', 'in_seq_num', 'out_seq_num', 'In Throughput', 'Out Throughput', 'deepcci'])
 DEEPCCI_UNUSED_PARAMETERS = ("Deepcci", ['timestamp', 'CBIQ', 'In Throughput', 'Out Throughput', 'Capture Time Gap'])
 IN_THROUGHPUT_UNUSED_PARAMETERS = ("In Throughput", ['timestamp', 'CBIQ',  'in_seq_num', 'out_seq_num', 'deepcci', 'Out Throughput', 'Capture Time Gap'])
 OUT_THROUGHPUT_UNUSED_PARAMETERS = ("Out Throughput", ['timestamp', 'CBIQ',  'in_seq_num', 'out_seq_num','deepcci', 'In Throughput', 'Capture Time Gap'])

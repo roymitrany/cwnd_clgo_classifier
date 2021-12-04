@@ -1353,7 +1353,7 @@ def get_cbiq_vs_parameters_session_duration_results(results_path, txt_filename):
     x_axis = re.findall(r'\d+', results_path)
     for dir_name in os.listdir(results_path):
         res_dir = os.path.join(results_path, dir_name)
-        if not os.path.isdir(res_dir) or "old" in res_dir or "not_in_use" in res_dir:
+        if not os.path.isdir(res_dir) or "old" in res_dir or "not in use" in res_dir:
             continue
         res_file = os.path.join(res_dir, txt_filename)
         x_axis = re.findall(r'\d+', res_file)
@@ -1367,7 +1367,7 @@ def create_cbiq_vs_parameters_session_sample_graph(results_path, txt_filename, p
     graph_legend_aligned = []
     for dir_name in os.listdir(results_path):
         res_dir = os.path.join(results_path, dir_name)
-        if not os.path.isdir(res_dir) or "old" in res_dir:
+        if not os.path.isdir(res_dir) or "old" in res_dir or "not in use" in res_dir:
             continue
         for graph_type in graph_legend:
             if graph_type in dir_name:
@@ -1388,6 +1388,46 @@ def create_cbiq_vs_parameters_session_sample_graph(results_path, txt_filename, p
 
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
+
+def get_bottleneck_vs_no_bottelneck_result(results_path, txt_filename):
+    my_net_all_parameters_accuracy_list = []
+    inner_dir = os.listdir(results_path)[0]
+    x_axis = re.findall(r'\d+', inner_dir)
+    res_file = os.path.join(results_path, inner_dir, txt_filename)
+    try:
+        with open(res_file) as f:
+            accuracy = f.readlines()
+            my_net_all_parameters_accuracy_list.append((int(x_axis[0]), float(accuracy[-1])))
+    except:
+        return
+    return my_net_all_parameters_accuracy_list
+
+def create_bottleneck_vs_no_bottleneck_graph(results_path, txt_filename, plot_name):
+    f1_list = []
+    graph_legend = ["All Parameters", "Capture Arrival Time", "CBIQ", "Deepcci", "In Throughput"]
+    graph_legend_aligned = []
+    for dir_name in os.listdir(results_path):
+        res_dir = os.path.join(results_path, dir_name)
+        if not os.path.isdir(res_dir) or "old" in res_dir or "not in use" in res_dir:
+            continue
+        for graph_type in graph_legend:
+            if graph_type in dir_name:
+                graph_legend_aligned.append(graph_type)
+        f1 = get_bottleneck_vs_no_bottelneck_result(res_dir, txt_filename)
+        if f1 is not None:
+            f1_list.append(get_bottleneck_vs_no_bottelneck_result(res_dir, txt_filename))
+    plt.cla()  # clear the current axes
+    plt.clf()  # clear the current figure
+    plt.figure(figsize=(10, 5))
+    f1 = [x[0][1] for x in f1_list]
+    ind = np.arange(len(f1))
+    width = 0.3
+    plt.bar(ind, f1, width)
+    plt.xticks(ind, graph_legend_aligned)
+    axes = plt.gca()
+    axes.set(xlabel='Parameter', ylabel='F1')
+    axes.grid()
+    plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 if __name__ == '__main__':
     """
@@ -1461,5 +1501,15 @@ if __name__ == '__main__':
     create_f1_vs_background_flows_graph(result_path, "validation_accuracy", "f1 vs background flows")
     """
 
+    """
     result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/60 seconds/bottleneck cbiq vs chunk sizes/0 background flows/0 filter/my_net"
+    create_cbiq_vs_parameters_session_sample_graph(result_path, "validation_accuracy", "f1 vs background flows")
+    """
+
+    """
+    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/60 seconds/bottleneck vs no bottleneck/no bottleneck/0 background flows/0 filter/my_net"
+    create_bottleneck_vs_no_bottleneck_graph(result_path, "validation_accuracy", "f1 score")
+    """
+
+    result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical/60 seconds/cbiq vs throughput/0 background flows/0 filter/my_net"
     create_cbiq_vs_parameters_session_sample_graph(result_path, "validation_accuracy", "f1 vs background flows")
