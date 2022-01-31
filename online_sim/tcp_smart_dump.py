@@ -11,7 +11,6 @@ print("startinggg tcp_smart_dump, before inport")
 import sys
 
 # print(sys.path)
-import sys
 
 sys.path.insert(0, '..')
 import subprocess
@@ -38,10 +37,10 @@ srv_intf = sys.argv[3]
 clnt_intf_list = sys.argv[4:]
 inft_index_list = []
 ipr = IPRoute()
-interval_duration = 10
+interval_duration = int(total_duration)/10
 # num_of_samples = int(traffic_duration / interval_duration)
 server_intf_index = -1
-res_root_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "online")
+res_root_dir = os.path.join(Path(os.getcwd()).parent, "raw_data")
 debug_file_name = "./debug_files/%d_ebpf_debug.txt" % int(time.time())
 debug_file = open(debug_file_name, 'w')
 init_time = time.time()
@@ -161,7 +160,7 @@ while True:
                 "For each connection we can expect 2 interfaces, one ingress and one egress traffic"
                 "For now, we assume that there is only one egress port (server facing) in the router"
                 for intf_index in df_dict[conn_index]:
-                    debug_file.write('-----%screating dataframe \n' % str(time.time()))
+                    debug_file.write('-----%screating dataframe for %s\n' % (str(time.time()),intf_index))
                     debug_file.flush()
                     df = pd.DataFrame(df_dict[conn_index][intf_index],
                                       columns=['conn_index', 'date_time', 'length', 'ts_val', 'seq_num'])
