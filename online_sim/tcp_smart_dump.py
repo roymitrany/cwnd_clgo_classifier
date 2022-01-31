@@ -14,6 +14,7 @@ import sys
 import sys
 
 sys.path.insert(0, '..')
+sys.path.insert(0, 'cwnd_clgo_classifier')
 import subprocess
 import traceback
 from os import popen
@@ -38,7 +39,7 @@ srv_intf = sys.argv[3]
 clnt_intf_list = sys.argv[4:]
 inft_index_list = []
 ipr = IPRoute()
-interval_duration = 10
+interval_duration = int(total_duration)/10
 # num_of_samples = int(traffic_duration / interval_duration)
 server_intf_index = -1
 res_root_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "online")
@@ -70,7 +71,12 @@ while True:
         server_intf_index = ipr.link_lookup(ifname=srv_intf)[0]
         inft_index_list.append(server_intf_index)
         print("server interface %s is: %d" % (srv_intf, server_intf_index), file=debug_file)
-        ipr.tc("add", "clsact", server_intf_index)
+        try:
+            ipr.tc("add", "clsact", server_intf_index)
+        except Exception as err:
+            debug_file.write("fail to add clsact to server interface\n")
+            print(err, file=debug_file)
+
         debug_file.write("kkkkk\n")
         debug_file.flush()
 
@@ -93,7 +99,11 @@ while True:
             intf_index = ipr.link_lookup(ifname=intf)[0]
             inft_index_list.append(intf_index)
             print("if %s is: %d" % (intf, intf_index), file=debug_file)
-            ipr.tc("add", "clsact", intf_index)
+            try:
+                ipr.tc("add", "clsact", intf_index)
+            except Exception as err:
+                debug_file.write("fail to add clsact to server interface\n")
+                print(err, file=debug_file)
 
             # ingress
             debug_file.write('adding  ingress filter for interface: %d\n' % intf_index)
