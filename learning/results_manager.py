@@ -168,9 +168,10 @@ class ResultsManager:
                     self.res_folder_dict[sub_dir_name] = ResFolder(res_dir, csv_files_list)
         else:
             for dir_name in os.listdir(sim_params.data_path):
-                bg = "NumBG_" + str(model_params.bg_flow)
-                if bg not in dir_name:
-                    continue
+                if not sim_params.is_mininet:
+                    bg = "NumBG_" + str(model_params.bg_flow)
+                    # if bg not in dir_name:
+                    #     continue
                 res_dir = os.path.join(sim_params.data_path, dir_name)
                 if not os.path.isdir(res_dir):
                     continue

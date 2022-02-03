@@ -143,6 +143,9 @@ class deepcci_net(nn.Module):
         x = self.maxpool_layer_5(x)
 
         x = self.first_BN_layer(x)
+        if not self.max_pool_size > 1:
+            x = x.mean(2, keepdims=True)
+
         # 1
         x = x.transpose(1, 2)
         x = x.transpose(0, 1)

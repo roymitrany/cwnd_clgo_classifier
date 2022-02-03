@@ -4,7 +4,7 @@ import subprocess
 import sys
 import asyncio
 
-MAX_PROCESSES = 2 # 14
+# MAX_PROCESSES = 2 # 14
 MAX_PROCESSES = 14 # 14
 
 #raw_data_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/asymetric traffic/raw_data'
@@ -12,10 +12,13 @@ MAX_PROCESSES = 14 # 14
 #raw_data_path = '/remote_disk/raw_data/physical/60 seconds/0_bg_flows'#/discrete_data'
 #raw_data_path = '/remote_disk/raw_data/physical/6 congestion controls/10_sec_6_algos/rtr01'
 raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/10 seconds/discrete_bg/sim14'
-raw_data_path = '/remote_disk/raw_data/physical/6 congestion controls/60_sec_6_algos/rtr02'
+# raw_data_path = '/remote_disk/raw_data/physical/6 congestion controls/60_sec_6_algos/rtr02'
 #raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/10 seconds no bottleneck'
 #raw_data_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/10 seconds/bottleneck/DEBUG_1_DATAFRAME/RAW'
-#raw_data_path = '/remote_disk/raw_data/physical/6 congestion controls/60_sec_6_algos/rtr02'
+raw_data_path = '/remote_disk/raw_data/physical/6 congestion controls/60_sec_6_algos/rtr02'
+raw_data_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/cloud/raw_data'
+raw_data_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/cloud/60sec'
+
 
 #raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/60 seconds'
 #raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/60 seconds'
@@ -33,6 +36,11 @@ raw_data_path = '/remote_disk/raw_data/physical/6 congestion controls/60_sec_6_a
 #dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/3CC/diverseBG/bottleneck'
 dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/10 seconds/0 filter/3 cc/no bottleneck/with retransmission'
 dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/no bottleneck'
+dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0.5 filter'
+dst_path = "/remote_disk/physical data/60 seconds/0.9 filter"
+dst_path = "/remote_disk/physical data filter/60 seconds rtr02/0.99 filter"
+dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/cloud'
+dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/cloud_60_sec'
 #dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/10 seconds/bottleneck/DEBUG_1_DATAFRAME/STATS'
 #dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/6CC/no bottleneck'
 

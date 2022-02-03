@@ -252,7 +252,7 @@ if __name__ == '__main__':
     # Simulation's parameters initializing:
     measured_dict = {}
     unmeasured_dict = {}
-    simulation_duration = 60 + START_AFTER / 1000 # 60 # 80 # 120  # seconds.
+    simulation_duration = 6 + START_AFTER / 1000 # 60 # 80 # 120  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (
@@ -287,11 +287,11 @@ if __name__ == '__main__':
     # for queue_size in range(100, 1000, 100):
     # while iteration < 250:
     process_results = True
-    for srv_bw in numpy.linspace(50, 100, 5):
-        for host_bw in numpy.linspace(srv_bw, srv_bw + 100, 5):
+    for srv_bw in numpy.linspace(50, 100, 50):
+        for host_bw in numpy.linspace(srv_bw, srv_bw + 100, 50):
             # for queue_size in numpy.linspace(100, 1000, 10):
             iteration = 0
-            while iteration < 10:
+            while iteration < 2:
 
                 measured_dict['reno'] = 1
                 measured_dict['bbr'] = 1

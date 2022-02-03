@@ -5,8 +5,8 @@ from learning.deepcci_net import *
 from learning.fully_connected_net import *
 from torch.nn import Linear, CrossEntropyLoss, Conv2d
 
-NUM_OF_EPOCHS = 100
-NUM_OF_BATCHES = 10
+NUM_OF_EPOCHS = 10
+NUM_OF_BATCHES = 50
 BATCH_SIZE = 32
 IS_BATCH = True
 

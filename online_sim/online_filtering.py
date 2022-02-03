@@ -32,7 +32,7 @@ def get_delta(curr_timedelta, base_timedelta):
 
 
 class ConnStat:
-    def __init__(self, in_df=None, out_df=None, interval_accuracy=3, is_sample=False, prob=0.1):
+    def __init__(self, in_df=None, out_df=None, interval_accuracy=3, is_sample=False, prob=0):
         self.is_sample = is_sample
         self.prob = prob
         self.in_conn_df = self.create_df(in_df, is_sample, prob)
@@ -225,7 +225,7 @@ class SampleConnStat(ABC):
         out_start_time = self.out_conn_df['date_time'].iloc[0]
         start_timedelta = min(in_start_time, out_start_time)
         millies = 10 ** (3 - self.interval_accuracy)
-        tdi = pd.timedelta_range(start_timedelta, periods=10000, freq='%dL' % millies)
+        tdi = pd.timedelta_range(start_timedelta, periods=60000, freq='%dL' % millies)
         self.conn_df = tdi.to_frame(name="Time")
 
         # count inbound throughput and attach it to main conn df
@@ -534,7 +534,7 @@ if __name__ == '__main__':
                   'unknown']  # Should be in line with algo_list keys in rtr_sim.py main function
     #for folder in folders_list:
     # Look for all raw results in the folder
-    result_files = glob.glob(os.path.join(raw_data_dir, folder, "*_6450[0-9]_*"))
+    result_files = glob.glob(os.path.join(raw_data_dir, folder, "*_645[0-9][0-9]_*"))
     # If there are not enough csv files in the folder, this folder is not interesting and should be removed
     if len(result_files) < 4:
         print("not enough csv files in %s, deleting folder" % folder, file=debug_file)
@@ -566,8 +566,8 @@ if __name__ == '__main__':
     ### Ugly PATCH!!! relevant only for physical deployment!!!
     # for  router 1, out if is 5
     # for router 2, out of is 4
-    if '5' in if_dict.keys():
-        server_if = 5
+    if '2' in if_dict.keys():
+        server_if = 2
     elif '4' in if_dict.keys():
         server_if = 4
     else:
@@ -596,7 +596,7 @@ if __name__ == '__main__':
                 except ValueError:
                     break # break the inner loop, continue the outer loop to the next connection in the folder
                 # Determine the cwnd algo from the source port
-                search_obj = re.search(r'[0-9]+_[0-9]+_6450([0-9])_[0-9]+_52[0-9][0-9]', str(res_file))
+                search_obj = re.search(r'[0-9]+_[0-9]+_645[0-9]([0-9])_[0-9]+_52[0-9][0-9]', str(res_file))
                 if not search_obj:
                     break
                 algo_id = int(search_obj.group(1)) - 1
