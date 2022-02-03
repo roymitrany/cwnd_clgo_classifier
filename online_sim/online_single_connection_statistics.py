@@ -1,6 +1,7 @@
 import sys
-#print(sys.path)
-sys.path.append('/home/another/PycharmProjects/cwnd_clgo_classifier')
+sys.path.append('/home/roy/cwnd_clgo_classifier')
+#sys.path.append('/home/roy/cwnd_clgo_classifier/simulation')
+print(sys.path)
 from datetime import datetime
 
 import pandas as pd
@@ -8,13 +9,14 @@ import matplotlib.pyplot as plt
 
 from matplotlib import cycler, gridspec
 
-from simulation.tcpdump_statistics import TcpdumpStatistics
+import simulation.tcpdump_statistics
+#from simulation.tcpdump_statistics import TcpdumpStatistics
 
 
-def time_str_to_timedelta(time_str):
+'''def time_str_to_timedelta(time_str):
     my_time = datetime.strptime(time_str, "%H:%M:%S.%f")
     my_timedelta = my_time - datetime(1900, 1, 1)
-    return my_timedelta
+    return my_timedelta'''
 
 
 def get_delta(curr_timedelta, base_timedelta):
@@ -35,9 +37,28 @@ class SingleConnStatistics:
         self.in_conn_df = self.remove_retransmissions(self.in_conn_df)
         self.out_conn_df = self.remove_retransmissions(self.out_conn_df)
 
+        # Add timedelta to in and out conn DFs
+        self.in_conn_df['Time'] = pd.to_timedelta(self.in_conn_df['date_time'])
+        self.out_conn_df['Time'] = pd.to_timedelta(self.out_conn_df['date_time'])
+
         # If we want accurate capture time, we need to do it before we round times by interval accuracy
         capture_time_column_name = "Capture Time Gap"
-        self.calc_capture_delta_time(capture_time_column_name)
+        # calculate the packet arrival time difference
+        # since we want to maintain the data based on time intervals, we should expect some intervals to include
+        # a lot of packets, and others with only few of them.
+        # It is hard to process such information, so we will
+        # extract the maximal time gap between two sent packets for each interval.
+        time_gap_series = self.in_conn_df['Time'].diff()
+        time_gap_series = pd.to_numeric(time_gap_series)
+        time_gap_series = time_gap_series.clip(lower=0)
+        time_gap_series = time_gap_series/1000000 #convert from nano to milli
+        #time_gap_series = time_gap_series.astype('int64')
+        print('a')
+
+
+        # Join it to th conn df
+        time_gap_series.name = capture_time_column_name
+        self.in_conn_df = self.in_conn_df.join(time_gap_series)
 
         # Round time by interval accuracy
         self.in_conn_df['date_time'] = self.in_conn_df['date_time'].map(
@@ -47,9 +68,7 @@ class SingleConnStatistics:
 
         # Create a DF with all possible time ticks between min time to max time
         in_start_time = self.in_conn_df['date_time'].iloc[0]
-        in_end_time = self.in_conn_df['date_time'].iloc[-1]
         out_start_time = self.out_conn_df['date_time'].iloc[0]
-        out_end_time = self.out_conn_df['date_time'].iloc[-1]
         start_timedelta = min(in_start_time, out_start_time)
         millies = 10 ** (3 - self.interval_accuracy)
         tdi = pd.timedelta_range(start_timedelta, periods=10000, freq='%dL' % millies)
@@ -57,12 +76,15 @@ class SingleConnStatistics:
 
 
         # Complete the capture delta time setup by getting the maximal value for each time slot
-        capture_delta_df = pd.DataFrame(self.in_conn_df.groupby('date_time')[capture_time_column_name].max())
-        self.conn_df = self.conn_df.join(capture_delta_df[capture_time_column_name])
+        capture_delta_df = self.in_conn_df.groupby(by=['date_time'], as_index=False)[['date_time', capture_time_column_name]].max()
+        capture_delta_df['Time'] = pd.to_timedelta(capture_delta_df['date_time'])
+        capture_delta_df = capture_delta_df.drop(columns=['date_time'])
+        self.conn_df = pd.merge(self.conn_df, capture_delta_df, on='Time', how='left')
+        #self.conn_df = self.conn_df.join(capture_delta_df[capture_time_column_name])
 
         self.count_throughput(self.in_conn_df, 'In Throughput')
         self.count_throughput(self.out_conn_df, 'Out Throughput')
-        self.count_throughput(in_passed_df, 'In Goodput')
+        #self.count_throughput(in_passed_df, 'In Goodput')
 
 
 
@@ -90,7 +112,7 @@ class SingleConnStatistics:
             qdisc_df.columns = ['Time', 'Total Bytes in Queue', 'Num of Packets', 'Num of Drops']
             reference_start_time = qdisc_df['Time'][0]
             qdisc_df = qdisc_df.drop_duplicates(subset=['Time'],keep='last')
-            qdisc_df['Time'] = qdisc_df['Time'].map(lambda time_str: time_str_to_timedelta(time_str))
+            qdisc_df['Time'] = pd.to_timedelta(qdisc_df['Time'])
             qdisc_df = qdisc_df.set_index('Time')
             self.conn_df = self.conn_df.join(qdisc_df, lsuffix='_caller')
             self.conn_df = self.conn_df.fillna(method='ffill')
@@ -110,8 +132,9 @@ class SingleConnStatistics:
 
     def remove_retransmissions(self, conn_df):
         # Remove retransmissions
-        while True:
+        for n in range(100):
             t_series = conn_df['seq_num'].diff()
+            t_series.fillna(0)
             if t_series.min() >=0:
                 break
             conn_df = conn_df.join(t_series,rsuffix='_diff')
@@ -121,29 +144,11 @@ class SingleConnStatistics:
 
 
     def join_time_df(self, time_df, time_col_name):
-            time_df['Time'] = time_df[time_col_name].map(lambda time_str: time_str_to_timedelta(time_str))
-            time_df = time_df.set_index('Time')
-            self.conn_df = self.conn_df.join(time_df, lsuffix='_caller')
+            time_df['Time'] = pd.to_timedelta(time_df[time_col_name])
+            self.conn_df = pd.merge(self.conn_df, time_df, on='Time', how='left')
             self.conn_df = self.conn_df.fillna(method='ffill')
             self.conn_df = self.conn_df.drop(columns=['date_time'])
 
-    def calc_capture_delta_time(self, column):
-        # calculate the packet arrival time difference
-        # since we want to maintain the data based on time intervals, we should expect some intervals to include
-        # a lot of packets, and others with only few of them.
-        # It is hard to process such information, so we will
-        # extract the maximal time gap between two sent packets for each interval.
-        time_gap_series = pd.to_datetime(self.in_conn_df['date_time']).diff()
-        time_gap_series = time_gap_series.convert_dtypes()
-        time_gap_series = time_gap_series.fillna(0)
-        time_gap_series = time_gap_series/1000000 #convert from nano to milli
-        time_gap_series = time_gap_series.astype('int64')
-        print('a')
-
-
-        # Join it to th conn df
-        time_gap_series.name = column
-        self.in_conn_df = self.in_conn_df.join(time_gap_series)
 
 
     def count_ts_val(self, conn_df, column):
@@ -166,8 +171,11 @@ class SingleConnStatistics:
         self.conn_df = self.conn_df.join(bytes_per_timeslot_df[column])
 
     def count_throughput(self, conn_df, column):
-        bytes_per_timeslot_df = pd.DataFrame(conn_df.groupby('date_time')['length'].sum())
-        self.conn_df = self.conn_df.join(bytes_per_timeslot_df)
+        bytes_per_timeslot_df = conn_df.groupby(by=['date_time'], as_index=False)[['date_time', 'length']].sum()
+        bytes_per_timeslot_df['Time'] = pd.to_timedelta(bytes_per_timeslot_df['date_time'])
+        bytes_per_timeslot_df = bytes_per_timeslot_df.drop(columns=['date_time'])
+        self.conn_df = pd.merge(self.conn_df, bytes_per_timeslot_df, on='Time', how='left')
+        #self.conn_df = self.conn_df.join(bytes_per_timeslot_df)
         self.conn_df = self.conn_df.rename(columns={"length": column})
         # Translate from Bytes per time tick to Mbps
         self.conn_df[column] = self.conn_df[column].map(lambda num: num * 8 / 10 ** (6 - self.interval_accuracy))
@@ -224,11 +232,9 @@ class OnlineSingleConnStatistics(SingleConnStatistics):
 
 if __name__ == '__main__':
     intv_accuracy = 3
-    abs_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/online_classification/tso_0_background_flows/7.29.2021@15-39-13_1_reno_1_bbr_1_cubic"
-    in_file = abs_path + "/1627562363_167772170_64501_167837706_5201_6.csv"
-    out_file = abs_path + "/1627562363_167772170_64501_167837706_5201_5.csv"
-    rtr_file = abs_path + "/1625497372_qdisc.csv"
+    abs_path = "/tmp/8.25.2021@10-51-48_aaa"
+    in_file = abs_path + "/1629877918_167772161_64502_167772417_5201_3.csv"
+    out_file = abs_path + "/1629877918_167772161_64502_167772417_5201_4.csv"
     q_line_obj = OnlineSingleConnStatistics(in_file=in_file, out_file=out_file, interval_accuracy= intv_accuracy, rtr_q_filename=None)
     q_line_obj.conn_df.to_csv(abs_path + '/single_connection_stat_debug.csv')
-    # q_line_obj = OfflineSingleConnStatistics(in_file, out_file, rtr_file, intv_accuracy)
-    # q_line_obj.conn_df.to_csv(abs_path + "/single_connection_stat_2.csv")
+

@@ -33,7 +33,7 @@ class AlgoStreams:
 
 
 class Iperf3Simulator:
-    def __init__(self, simulation_topology, simulation_name, seconds=60, iperf_start_after=0,
+    def __init__(self, simulation_topology, simulation_name, seconds=10, iperf_start_after=0,
                  background_noise=0, interval_accuracy=1, iteration=0):
         """
         :param interval_accuracy:
@@ -120,14 +120,10 @@ class Iperf3Simulator:
         # Run the online_sim command with all the interfaces. Server interface should always be the first one!
         ebpf_cmd = os.path.join(Path(os.getcwd()).parent, "online_sim", "tcp_smart_dump.py")
         cmd = "%s %d %s %s %s&>debug_files/%s_rtr_ebpf_out.txt" % (
-            #ebpf_cmd, simulation_duration, self.simulation_name, "r1-r2", intf_name_str, time.time())
-            ebpf_cmd, simulation_duration, self.simulation_name, "r2-srv", "r1-r2", time.time())
+            ebpf_cmd, simulation_duration, self.simulation_name, "r1-r2", intf_name_str, time.time())
         print(cmd)
         rtr_ebpf_proc = rtr.popen(cmd, shell=True)
 
-        # Disable TSO for router
-        #cmd = "ethtool -K r1-r2 tso off"
-        #rtr.cmd(cmd)
 
         sleep(2)
         # Traffic generation loop:
@@ -158,7 +154,7 @@ class Iperf3Simulator:
         for process in srv_procs:
             process.send_signal(SIGINT)
 
-        #CLI(self.net)
+        # CLI(self.net)
         self.net.stop()
 
 
@@ -181,10 +177,8 @@ def create_sim_name1(bg_num, srv_bw, queue_size):
 
 
 def arrange_res_files():
-    #des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "no_tso_0_75_bg_flows")
-    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "no_tso_0_75_bg_flows_60_seconds")
-    des_res_dir = '/data_disk/no_tso_0_75_bg_flows_60_seconds'
-    curr_root_dir ='/data_disk/online'
+    des_res_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "3_bg_flows")
+    curr_root_dir = os.path.join(Path(os.getcwd()).parent, "classification_data", "online")
     result_files = list(Path(curr_root_dir).rglob("*_6450[0-9]_*"))
     count = 0
     for res_file in result_files:
@@ -202,20 +196,17 @@ def arrange_res_files():
     file_names = os.listdir(curr_root_dir)
     for file_name in file_names:
         # shutil.move(folderr, des_res_dir)
-        print('saving %s in %s' %(file_name, des_res_dir))
         shutil.move(os.path.join(curr_root_dir, file_name), des_res_dir)
 
 
-
 if __name__ == '__main__':
-    #sleep(60*60*10)
     # interval accuracy: a number between 0 to 3. For value n, the accuracy will be set to 1/10^n
     interval_accuracy = 3
 
     # Simulation's parameters initializing:
     measured_dict = {}
     unmeasured_dict = {}
-    simulation_duration = 20#100  # 60 # 80 # 120  # seconds.
+    simulation_duration = 100  # 60 # 80 # 120  # seconds.
     # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
 
     # queue_size = 800  # 2 * (
@@ -230,12 +221,10 @@ if __name__ == '__main__':
     iteration = 0
 
     queue_size = 500
-    bg_num = 5
-    srv_bw= 100
-    for i in range(1,2):
-    #for bg_num in [20,10,5,1,0]:
-    #    for srv_bw in range(100, 1100, 100):
-    #        for i in range(1,4):
+    #for iiii in range(1):
+    for bg_num in [20,10,5,1,0]:
+        for srv_bw in range(100, 1100, 100):
+            for i in range(1,4):
                 host_bw = i*srv_bw
                 for queue_size in range(100, 1100, 100):
                     measured_dict['reno'] = 1
