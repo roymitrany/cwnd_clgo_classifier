@@ -35,8 +35,7 @@ R_60S_6CC_075F_B_PATH = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/
 R_60S_6CC_09F_B_PATH = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/section 4/60 seconds/filters/90 filter"
 R_60S_6CC_099F_B_PATH = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/section 4/60 seconds/filters/99 filter"
 
-CBIQ_UNUSED_PARAMETERS = ("CBIQ", ['Capture Time Gap', 'In Throughput', 'Out Throughput', 'deepcci'])
-CBIQ_WITHOUT_SEQ_NUM_UNUSED_PARAMETERS = ("CBIQ", ['CBIQ', 'Capture Time Gap', 'in_seq_num', 'out_seq_num', 'In Throughput', 'Out Throughput', 'deepcci'])
+CBIQ_UNUSED_PARAMETERS = ("CBIQ", ['CBIQ', 'Capture Time Gap', 'in_seq_num', 'out_seq_num', 'In Throughput', 'Out Throughput', 'deepcci'])
 DEEPCCI_UNUSED_PARAMETERS = ("Deepcci", ['timestamp', 'CBIQ',  'in_seq_num', 'out_seq_num', 'In Throughput', 'Out Throughput', 'Capture Time Gap'])
 IN_THROUGHPUT_UNUSED_PARAMETERS = ("In Throughput", ['timestamp', 'CBIQ',  'in_seq_num', 'out_seq_num', 'deepcci', 'Out Throughput', 'Capture Time Gap'])
 OUT_THROUGHPUT_UNUSED_PARAMETERS = ("Out Throughput", ['timestamp', 'CBIQ',  'in_seq_num', 'out_seq_num','deepcci', 'In Throughput', 'Capture Time Gap'])
@@ -55,9 +54,7 @@ MININET_DEEPCCI_UNUSED_PARAMETERS = ("Deepcci", ["CBIQ", "In Throughput", "Out T
 
 SLEEP_DURATION = 60*60*1
 
-NUM_OF_CLASSIFICATION_PARAMETERS = 8 # 6
-# NUM_OF_CLASSIFICATION_PARAMETERS = 10 # 6
-
+NUM_OF_CLASSIFICATION_PARAMETERS = 8
 IS_BATCH = True
 IS_DIVERSE_DATA = False
 IS_DATA_SAMPLE = False

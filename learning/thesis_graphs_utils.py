@@ -1,21 +1,8 @@
-import os
-import torch
-import torch.utils as torch_utils
-import numpy
 import re
 import statistics
 import matplotlib.pyplot as plt
-# import project functions
-from learning.env import *
 from learning.results_manager import *
 from learning.env import *
-
-# Results1:
-"""
-from learning.thesis_graphs_utils import *
-result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/Accuracy VS Epochs- Results1- Results1/"
-create_accuracy_vs_epoch_graph(result_path, "validation_accuracy", "Results1", True)
-"""
 
 
 def create_accuracy_vs_epoch_graph(results_path, txt_filename, plot_name, short_epoch=False):
@@ -54,15 +41,6 @@ def create_accuracy_vs_epoch_graph(results_path, txt_filename, plot_name, short_
     axes.grid()
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
-
-# Results2:
-"""
-from learning.thesis_graphs_utils import *
-result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/Accuracy VS Session Duration (15 background tcp flows)- Results2"
-create_acuuracy_vs_session_duration_graph(result_path, "validation_accuracy", "accuracy_vs_session_duration")
-"""
-
-
 def create_f1_vs_session_duration_graph(results_path, txt_filename, plot_name):
     my_net_accuracy_list, my_net_all_parameters_accuracy_list, deepcci_net_accuracy_list = get_f1_vs_session_duration(
         results_path, txt_filename, plot_name, None)
@@ -92,14 +70,6 @@ def create_f1_vs_session_duration_graph(results_path, txt_filename, plot_name):
     axes.set(xlabel='session duration[seconds]', ylabel='f1')
     axes.grid()
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
-
-
-# Results3:
-"""
-from learning.thesis_graphs_utils import *
-result_path = "/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/f1 vs number of flows (10 seconds)- Results3/"
-create_f1_vs_number_of_flows_graph(result_path, "validation_accuracy", "Results3", 10000)
-"""
 
 
 def create_f1_vs_number_of_flows_graph(results_path, txt_filename, plot_name, session_duration):
@@ -148,19 +118,8 @@ def create_f1_vs_number_of_flows_graph(results_path, txt_filename, plot_name, se
             plt.legend((p1, p3), ('CBIQ', 'Deepcci'))
     axes = plt.gca()
     axes.set(xlabel='number of flows', ylabel='f1')
-    # axes.set_xlim([0, len(my_net_accuracy_list)])
-    # plt.xticks(number_of_flows)
-    # axes.set_ylim([0, numpy.amax(my_net_accuracy_list)])
     axes.grid()
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
-
-
-# Results10:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/new topology- f1 vs number of background flows (20 seconds)- Results10/"
-create_f1_vs_background_flows_multiple_session_duration_graph(result_path,"validation_accuracy","f1 for 15 Background Flows", "20")
-"""
 
 
 def create_f1_vs_background_flows_multiple_session_duration_graph(results_path, txt_filename, plot_name,
@@ -193,14 +152,6 @@ def create_f1_vs_background_flows_multiple_session_duration_graph(results_path, 
     axes.grid()
     plt.legend(graph_legend_aligned)
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
-
-
-# Results11:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/new topology- classification of different datasets- in multiple routers- Results11/15_background_flows/20seconds/"
-create_multiple_rtr_graph(result_path,"validation_accuracy","f1 for 15 Background Flows")
-"""
 
 
 def create_multiple_rtr_graph(results_path, txt_filename, plot_name):
@@ -239,14 +190,6 @@ def create_multiple_rtr_graph(results_path, txt_filename, plot_name):
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
-# Results12:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/pre- trained model- f1 vs number of background flows (different session duration)- Results12/"
-create_f1_vs_background_flows_for_pre_trained_model_and_session_durations(result_path,"validation_f1","f1 vs number of background flows (different session duration)")
-"""
-
-
 def create_f1_vs_background_flows_for_pre_trained_model_and_session_durations(results_path, txt_filename, plot_name):
     my_net_all_parameters_accuracy_list = []
     graph_legend = ["10 seconds", "20 seconds", "60 seconds"]
@@ -279,14 +222,6 @@ def create_f1_vs_background_flows_for_pre_trained_model_and_session_durations(re
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
-# Results13:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/pre- trained model- f1 vs number of background flows for dirverse training (multiple rtr, 20 seconds)- Results13/20seconds/"
-create_f1_vs_number_of_flows(result_path,"validation_f1","f1 vs number of background flows (20 seconds)")
-"""
-
-
 def create_f1_vs_number_of_flows(results_path, txt_filename, plot_name):
     my_net_all_parameters_accuracy_list = []
     graph_legend = ["All Parameters", "CBIQ", "Deepcci", "Throughput"]
@@ -317,14 +252,6 @@ def create_f1_vs_number_of_flows(results_path, txt_filename, plot_name):
     plt.legend(graph_legend_aligned)
     # plt.title(plot_name)
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
-
-
-# Results14:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/pre- trained model- f1 vs number of background flows (20 seconds)- Results14/All_Parameters/20seconds/"
-create_f1_vs_background_flows_for_pre_trained_model(result_path,"validation_f1","f1 vs number of background flows (20 seconds)")
-"""
 
 
 def create_f1_vs_background_flows_for_pre_trained_model(results_path, txt_filename, plot_name):
@@ -375,14 +302,6 @@ def create_f1_vs_background_flows_for_pre_trained_model(results_path, txt_filena
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
-# Results15:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/classification of different datasets using a single trained model- in multiple routers- Results15/10 seconds, 75 background flows/"
-create_diverse_multiple_rtr_graph(result_path,"validation_f1","f1 for 75 Background Flows", "10")
-"""
-
-
 def create_diverse_multiple_rtr_graph(results_path, txt_filename, plot_name, session_duration):
     f1_list = []
     graph_legend = ["5parameters", "cbiq", "deepcci", "throughput"]
@@ -414,14 +333,6 @@ def create_diverse_multiple_rtr_graph(results_path, txt_filename, plot_name, ses
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
-# Results16:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/f1- for each parameter seperately/10 seconds with 75 background flows/"
-create_result_for_each_parameter_graph(result_path,"validation_accuracy","f1 for 75 Background Flows")
-"""
-
-
 def create_result_for_each_parameter_graph(results_path, txt_filename, plot_name):
     f1_list = []
     graph_legend = ["CBIQ", "In Throughput", "Out Throughput", "Number of Drops", "Number of Retransmits",
@@ -449,14 +360,6 @@ def create_result_for_each_parameter_graph(results_path, txt_filename, plot_name
     axes.set(xlabel='Parameter', ylabel='F1')
     axes.grid()
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
-
-
-# Results17:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/networks comparison- Results17/10 seconds with 75 background flows/"
-create_networks_comparison_graph(result_path,"validation_accuracy","f1 for 75 Background Flows")
-"""
 
 
 def create_networks_comparison_graph(results_path, txt_filename, plot_name):
@@ -487,14 +390,6 @@ def create_networks_comparison_graph(results_path, txt_filename, plot_name):
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
-# Results18:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/networks comparison/9499 chunk size/background flows/30 background flows/"
-create_online_classification_graph(result_path,"validation_accuracy","f1 for 30 Background Flows")
-"""
-
-
 def create_online_classification_graph(results_path, txt_filename, plot_name):
     f1_list = []
     graph_legend = ["CBIQ", "Throughput", "All Parameters", "Deepcci"]
@@ -521,14 +416,6 @@ def create_online_classification_graph(results_path, txt_filename, plot_name):
     axes.set(xlabel='Parameter', ylabel='F1')
     axes.grid()
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
-
-
-# Results19:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/networks comparison/9499 chunk size/parameters/"
-create_f1_vs_background_flows_for_online_classification_graph(result_path,"validation_accuracy","f1 vs number of background flows (10 seconds)")
-"""
 
 
 def create_f1_vs_background_flows_for_online_classification_graph(results_path, txt_filename, plot_name):
@@ -565,14 +452,6 @@ def create_f1_vs_background_flows_for_online_classification_graph(results_path, 
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
-# Results20:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/sampling rate/9499 chunk size/background flows/0 background flows"
-create_f1_vs_background_flows_for_online_classification_with_sampling_graph(result_path,"validation_accuracy","f1 vs number of background flows")
-"""
-
-
 def create_f1_vs_background_flows_for_online_classification_with_sampling_graph(results_path, txt_filename, plot_name):
     f1_list = []
     graph_legend = ["CBIQ", "Throughput", "All Parameters", "Deepcci"]
@@ -599,14 +478,6 @@ def create_f1_vs_background_flows_for_online_classification_with_sampling_graph(
     axes.set(xlabel='Parameter', ylabel='F1')
     axes.grid()
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
-
-
-# Results21:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/sampling rate/9499 chunk size/every tenth packet- global sampling/parameters/"
-create_f1_vs_parameter_for_online_classification_with_sampling_graph(result_path,"validation_accuracy","f1 vs number of background flows")
-"""
 
 
 def create_f1_vs_parameter_for_online_classification_with_sampling_graph(results_path, txt_filename, plot_name):
@@ -843,13 +714,6 @@ def get_online_filtered_cbiq(results_path, txt_filename):
         pass
 
 
-"""
-from learning.thesis_graphs_utils import *
-result_path="/data_disk/cbiq_debugging"
-create_online_filtered_cbiq_graphs(result_path,"random_sample_stat_bbr")
-"""
-
-
 def create_online_filtered_cbiq_graphs(results_path, txt_filename):
     cbiq_accuracy_lists = []
     graph_legend = ["in_ffill_out_ffill", "in_ffill_out_ffill_after_cbiq_calculation",
@@ -879,14 +743,6 @@ def create_online_filtered_cbiq_graphs(results_path, txt_filename):
     plt.legend(graph_legend_aligned)  # , loc=(0.75,0.5))
     plot_name = "online_filtered_cbiq_graphs"
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
-
-
-# Results22:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/sampling rate/10000 chunk size/online_filtering/random_filtering/in_and_out_interpolation/30 background flows"
-create_f1_vs_online_filtering(result_path,"validation_accuracy","f1 vs filter size")
-"""
 
 
 def create_f1_vs_online_filtering(results_path, txt_filename, plot_name):
@@ -973,16 +829,6 @@ def get_accuracy_result_for_online_filtering(results_path, txt_filename):
     return accuracy_list
 
 
-# Results23:
-"""
-from learning.thesis_graphs_utils import *
-# Path for original online classification:
-# result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online_classification/networks comparison/9499 chunk size/background flows/30 background flows/"
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/online vs offline- Results23/0 background flows/"
-create_online_vs_offline_graph(result_path,"validation_accuracy","f1 for 0 Background Flows and 10 Seconds sessions")
-"""
-
-
 def create_online_vs_offline_graph(results_path, txt_filename, plot_name):
     f1_list = []
     graph_legend = ["CBIQ", "Throughput", "Deepcci"]
@@ -1018,14 +864,6 @@ def create_online_vs_offline_graph(results_path, txt_filename, plot_name):
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
-# Results24:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification/discrete_bg/15 background flows"
-create_physical_f1_vs_online_filtering(result_path,"validation_accuracy","f1 vs filter size")
-"""
-
-
 def create_physical_f1_vs_online_filtering(results_path, txt_filename, plot_name):
     accuracy_list = []
     graph_legend = ["Deepcci", "CBIQ", "Throughput"]
@@ -1051,14 +889,6 @@ def create_physical_f1_vs_online_filtering(results_path, txt_filename, plot_name
     axes.grid()
     plt.legend(graph_legend_aligned)  # , loc=(0.75,0.5))
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
-
-
-# Results25:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification/discrete_bg/15 background flows/diverse seconds/session_sample/0 filter"
-create_physical_f1_vs_chunk_size(result_path,"validation_accuracy","f1 vs filter size")
-"""
 
 
 def create_physical_f1_vs_chunk_size(results_path, txt_filename, plot_name):
@@ -1089,14 +919,6 @@ def create_physical_f1_vs_chunk_size(results_path, txt_filename, plot_name):
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
-# Results26:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification/discrete_bg/diverse background flows/1 seconds/0 filter"
-create_physical_f1_vs_background_flows(result_path,"validation_accuracy","f1 vs filter size")
-"""
-
-
 def create_physical_f1_vs_background_flows(results_path, txt_filename, plot_name):
     accuracy_list = []
     graph_legend = ["Deepcci", "CBIQ"]
@@ -1122,14 +944,6 @@ def create_physical_f1_vs_background_flows(results_path, txt_filename, plot_name
     axes.grid()
     plt.legend(graph_legend_aligned)  # , loc=(0.75,0.5))
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
-
-
-# Results27:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification/discrete_bg/full session vs sample/15 background flows/1 seconds/0 filter"
-create_physical_full_session_vs_sesion_sample(result_path,"validation_accuracy","f1 vs filter size")
-"""
 
 
 def create_physical_full_session_vs_sesion_sample(results_path, txt_filename, plot_name):
@@ -1167,14 +981,6 @@ def create_physical_full_session_vs_sesion_sample(results_path, txt_filename, pl
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
-# Results28:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification/discrete_bg/rtt classification/session sample/0 background flows/0 filter"
-create_physical_f1_vs_small_chunk_size(result_path,"validation_accuracy","f1 vs filter size")
-"""
-
-
 def create_physical_f1_vs_small_chunk_size(results_path, txt_filename, plot_name):
     accuracy_list = []
     graph_legend = ["Deepcci", "CBIQ"]
@@ -1203,14 +1009,6 @@ def create_physical_f1_vs_small_chunk_size(results_path, txt_filename, plot_name
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
 
 
-# Results29:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification/discrete_bg/diverse chunk sizes/15 background flows/diverse seconds/session_sample CBIQ initialised to 0/0 filter"
-create_physical_f1_for_each_cc_vs_chunk_size(result_path,"validation_accuracy_per_type","f1 for each cc")
-"""
-
-
 def create_physical_f1_for_each_cc_vs_chunk_size(results_path, txt_filename, plot_name):
     accuracy_list = []
     for dir_name in os.listdir(results_path):
@@ -1235,14 +1033,6 @@ def create_physical_f1_for_each_cc_vs_chunk_size(results_path, txt_filename, plo
     axes.grid()
     plt.legend(["bbr", "cubic", "reno"])  # , loc=(0.75,0.5))
     plt.savefig(os.path.join(results_path, plot_name), dpi=600)
-
-
-# Results30:
-"""
-from learning.thesis_graphs_utils import *
-result_path="/home/dean/PycharmProjects/cwnd_clgo_classifier/graphs/thesis_prime/physical_classification- Results26-29/discrete_bg/diverse filter/15 background flows/1 seconds"
-create_physical_f1_vs_physical_filtering(result_path,"validation_accuracy","f1 vs filter size")
-"""
 
 
 def create_physical_f1_vs_physical_filtering(results_path, txt_filename, plot_name):

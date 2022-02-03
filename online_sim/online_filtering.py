@@ -149,13 +149,11 @@ class ConnStat:
         self.conn_df = pd.merge(self.conn_df, out_seq, on='Time', how='left')
         # clacullate CBIQ. Since out seq is not filled, only timeticks that have out seq
         # Will be calculated
-        self.conn_df['CBIQ'] = self.conn_df['in_seq_num'].sub(self.conn_df['out_seq_num'])#, fill_value=0)
-        """
+        self.conn_df['CBIQ'] = self.conn_df['in_seq_num'].sub(self.conn_df['out_seq_num'])
         if self.is_sample:
-            conn_df = conn_df.interpolate()
+            self.conn_df = self.conn_df.interpolate()
         else:
-            conn_df = conn_df.fillna(method='ffill')
-        """
+            self.conn_df = self.conn_df.fillna(method='ffill')
         self.conn_df['CBIQ'][self.conn_df['CBIQ'] < 0] = 0
         # Convert to integer (interpolation created float values)
         self.conn_df['CBIQ'] = self.conn_df['CBIQ'].fillna(0)
@@ -277,8 +275,6 @@ class SampleConnStat(ABC):
         self.conn_df = self.conn_df.interpolate(limit_area="inside")
         self.conn_df['in_seq_num'] = self.conn_df['in_seq_num'].fillna(0)
         """
-        #self.conn_df = self.conn_df.interpolate()
-
         # Add out sequence column to conn DF, DO NOT interpolate missing fields
         out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
         #out_temp_df.to_csv(os.path.join(abs_path, folder, "out_seq_%d_%s.csv"%(cnt, self.method)))
@@ -291,24 +287,16 @@ class SampleConnStat(ABC):
         self.conn_df = self.conn_df.interpolate(limit_area="inside")
         self.conn_df['out_seq_num'] = self.conn_df['out_seq_num'].fillna(0)
         """
-        #self.conn_df = self.conn_df.interpolate()
-
         # clacullate CBIQ. Since out seq is not filled, only timeticks that have out seq
         # Will be calculated
         self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
-
         self.conn_df = self.conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
-        #self.conn_df = self.conn_df.fillna(method='ffill')
         self.conn_df = self.conn_df.interpolate()
 
         # Convert to integer (interpolation created float values)
         self.conn_df['CBIQ'] = self.conn_df['CBIQ'].fillna(0)
         self.conn_df['CBIQ'] = self.conn_df['CBIQ'].map(lambda x: int(x))
 
-
-
-    # Create a df with one sequence number for each timeslot. If a DF contains more than one
-    # Row for a timeslot, use the first one. Set timedelta as index
     def create_seq_df(self, conn_df, col_name):
         seq_df = conn_df.drop_duplicates(subset=["date_time"], keep='first')
         seq_df = seq_df[['date_time', 'seq_num']]
@@ -372,32 +360,8 @@ class RandomSampleConnStat(SampleConnStat):
 
     def reduce_packets(self, df, ref_df):
         # Randomly drop 90% of the packets
-        #df = df.drop(df.sample(frac=1 - self.prob).index)
-        #df = df.sample(frac=self.prob)# - self.prob).index)
+        df = df.sample(frac=self.prob)# - self.prob).index)
         return df
-
-    def calculate_cbiq2(self):
-        in_temp_df = self.create_seq_df(self.in_conn_df, 'in_seq_num')
-        self.conn_df = pd.merge(self.conn_df, in_temp_df, on='Time', how='left')
-        out_temp_df = self.create_seq_df(self.out_conn_df, 'out_seq_num')
-        self.conn_df = pd.merge(self.conn_df, out_temp_df, on='Time', how='left')
-        self.conn_df['CBIQ'] = self.conn_df['in_seq_num'] - self.conn_df['out_seq_num']
-        self.conn_df = self.conn_df.drop(columns=['in_seq_num', 'out_seq_num'])
-        # if self.conn_df['CBIQ'].first_valid_index() is None:
-        self.conn_df['CBIQ'] = 0 # self.conn_df['Out Throughput'][self.conn_df['Out Throughput']!=0].sum()
-        """
-        else:
-            self.conn_df = self.conn_df.fillna(method='ffill')
-            self.conn_df = self.conn_df.fillna(method='bfill')
-        """
-        #self.conn_df = self.conn_df.interpolate()
-        # Convert to integer (interpolation created float values)
-        in_thoruhgput_cumsum = self.conn_df['In Throughput'].cumsum()
-        out_thoruhgput_cumsum = self.conn_df['Out Throughput'].cumsum()
-        self.conn_df['CBIQ'] = self.conn_df['CBIQ'] + in_thoruhgput_cumsum - out_thoruhgput_cumsum
-        self.conn_df['CBIQ'] = self.conn_df['CBIQ'].fillna(0)
-        self.conn_df['CBIQ'] = self.conn_df['CBIQ'].map(lambda x: int(x))
-
 
 class SelectiveSampleConnStat(SampleConnStat):
     def __init__(self, in_file=None, out_file=None, interval_accuracy=3, prob=0):#.9):
@@ -408,7 +372,6 @@ class SelectiveSampleConnStat(SampleConnStat):
         super(SelectiveSampleConnStat, self).__init__(in_file, out_file, interval_accuracy)
 
     def calculate_throughput(self, conn_df, column):
-
         # Count all the bytes that arrive at any msec
         bytes_per_timeslot_df = pd.DataFrame(conn_df.groupby('date_time')["length"].sum())
         bytes_per_timeslot_df = bytes_per_timeslot_df.rename(columns={"length": column})
@@ -459,7 +422,6 @@ class SelectiveSampleConnStat(SampleConnStat):
             ret_df = pd.concat(df_list)
             self.in_reduced_df = ref_df.reset_index()
             self.out_reduced_df = ret_df.reset_index()
-            #df = df.drop(df.sample(frac=1-self.prob).index)
         return ret_df
 
 
@@ -528,11 +490,10 @@ def remove_retransmissions(conn_df, filename):
 
 
 if __name__ == '__main__':
-    #sleep(60*60*10)
     intv_accuracy = 3
     algo_list = ['reno', 'bbr', 'cubic', 'vegas', 'htcp', 'bic',
                   'unknown']  # Should be in line with algo_list keys in rtr_sim.py main function
-    #for folder in folders_list:
+    # for folder in folders_list:
     # Look for all raw results in the folder
     result_files = glob.glob(os.path.join(raw_data_dir, folder, "*_645[0-9][0-9]_*"))
     # If there are not enough csv files in the folder, this folder is not interesting and should be removed
@@ -541,10 +502,6 @@ if __name__ == '__main__':
         shutil.rmtree(os.path.join(raw_data_dir, folder))
 
     # if there are already sample files in the folder, continue
-    '''result_files1 = glob.glob(os.path.join(abs_path, folder, "%s_sample*"%method))
-    if len(result_files1) > 0:
-        print("folder %s already analyzed" % folder, file=debug_file)
-        continue'''
     # find the destination interface
     if_dict = {}
     for res_file in result_files:
@@ -555,15 +512,6 @@ if __name__ == '__main__':
                 if_dict[if_num] += 1
             else:
                 if_dict[if_num] = 1
-    # The first interface with more than one in the value is the server interface
-    '''server_if = 0
-    for key, val in if_dict.items():
-        if val > 1:
-            server_if = int(key)
-    # If no interface was spotted more than once, end the iteration
-    if server_if == 0:
-        sys.exit()'''
-    ### Ugly PATCH!!! relevant only for physical deployment!!!
     # for  router 1, out if is 5
     # for router 2, out of is 4
     if '2' in if_dict.keys():

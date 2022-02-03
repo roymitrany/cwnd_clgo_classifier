@@ -5,7 +5,7 @@ from learning.deepcci_net import *
 from learning.fully_connected_net import *
 from torch.nn import Linear, CrossEntropyLoss, Conv2d
 
-NUM_OF_EPOCHS = 10
+NUM_OF_EPOCHS = 100
 NUM_OF_BATCHES = 50
 BATCH_SIZE = 32
 IS_BATCH = True
@@ -96,8 +96,6 @@ def run(model, criterion, optimizer, scheduler, sim_params, model_params, is_dee
 def test_model(model, criterion, is_deepcci, training_files_path, unused_parameters, is_batch, diverse_training_folder):
     normalization_type = AbsoluteNormalization1()
     _, validation_loader = create_data(training_files_path=training_files_path, normalization_type=normalization_type, unused_parameters=unused_parameters, is_deepcci=is_deepcci, is_batch=is_batch, diverse_training_folder=diverse_training_folder)
-    validation_loss, validation_accuracy = ([None] * NUM_OF_EPOCHS for i in range(2))
-    validation_accuracy_per_type = [None] * NUM_OF_EPOCHS
     validation_loss, validation_accuracy, validation_accuracy_per_type = validate(validation_loader, model, criterion, is_deepcci)
     return numpy.mean(validation_loss), numpy.mean(validation_accuracy), numpy.mean(validation_accuracy_per_type, axis=0)
 

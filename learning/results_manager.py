@@ -143,14 +143,6 @@ class ResultsManager:
             self.train_list.append(["cubic", 1])
         elif "stat_reno" in csv_file:
             self.train_list.append(["reno", 2])
-            """
-        elif "stat_vegas" in csv_file:
-            self.train_list.append(["vegas", 3])
-        elif "stat_bic" in csv_file:
-            self.train_list.append(["bic", 4])
-        elif "stat_htcp" in csv_file:
-            self.train_list.append(["htcp", 5])
-            """
         else:
             return
         self.normalizer.add_result(stat_df_chunk, iter_name)
@@ -170,8 +162,8 @@ class ResultsManager:
             for dir_name in os.listdir(sim_params.data_path):
                 if not sim_params.is_mininet:
                     bg = "NumBG_" + str(model_params.bg_flow)
-                    # if bg not in dir_name:
-                    #     continue
+                    if bg not in dir_name:
+                        continue
                 res_dir = os.path.join(sim_params.data_path, dir_name)
                 if not os.path.isdir(res_dir):
                     continue
@@ -183,13 +175,3 @@ class ResultsManager:
 
     def get_normalized_df_list(self):
         return self.normalizer.normalized_df_list
-
-# For testing only
-if __name__ == '__main__':
-    normaliz = AbsoluteNormalization2()
-    res_mgr = ResultsManager(testing_results_path, normaliz, 30)
-    norm_dfl = res_mgr.get_normalized_df_list()
-    len_list = list()
-    for df in norm_dfl:
-        len_list.append(df['In Throughput'].count())
-    print("done")
