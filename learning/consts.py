@@ -6,6 +6,9 @@ DEBUG = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/phy
 
 # Classification data:
 
+DATA_EXAMPLE = r'/home/dean/PycharmProjects/cwnd_clgo_classifier/learning/data'
+RESULT_EXAMPLE = r'/home/dean/PycharmProjects/cwnd_clgo_classifier/learning/result'
+
 ABSOLUTE_PATH = r'/home/dean/PycharmProjects/cwnd_clgo_classifier/'
 
 D_60S_60_6CC_0F_B_R_PATH = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/60 seconds/0 filter/bottleneck'

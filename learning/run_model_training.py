@@ -87,8 +87,8 @@ if __name__ == '__main__':
     # Automatic graphs generation:
     num_of_congestion_controls = 3
     num_of_time_samples = 60000
-    data_paths = [D_60S_60_6CC_0F_B_R_PATH, D_60S_60_6CC_0F_NB_R_PATH]
-    absolute_result_paths = [R_60S_60_6CC_0F_B_R_PATH, R_60S_60_6CC_0F_NB_R_PATH]
+    data_paths = [DATA_EXAMPLE]
+    absolute_result_paths = [RESULT_EXAMPLE]
     chunk_sizes = [1, 10, 50, 100, 200, 300, 400, 500, 1000, 10000, 60000]
     model_path = os.path.join(ABSOLUTE_PATH,
                               r'graphs/thesis_prime/classification of different datasets using a single trained model- in multiple routers- Results15/model/state_dict.pt')
