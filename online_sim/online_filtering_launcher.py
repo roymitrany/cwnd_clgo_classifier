@@ -4,8 +4,8 @@ import asyncio
 
 MAX_PROCESSES = 14
 
-raw_data_path = '/remote_disk/raw_data/physical/3 congestion controls/10 seconds/discrete_bg/sim14'
-dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data/cloud_60_sec'
+raw_data_path = '/remote_disk/raw_data'
+dst_path = '/home/dean/PycharmProjects/cwnd_clgo_classifier/classification_data/physical data'
 folders_list = os.listdir(raw_data_path)
 
 async def process_folder(folder, sem):

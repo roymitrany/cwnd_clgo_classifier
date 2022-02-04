@@ -1,17 +1,13 @@
-#!/usr/bin/python3
 import sys
 sys.path.append(".")
 import os.path
-import threading
 from pathlib import Path
 import random
 import numpy
 from multiprocessing import Process
-from enum import Enum
 from signal import SIGINT, SIGKILL
 from time import sleep
 
-from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.log import setLogLevel
 from mininet.net import Mininet
@@ -72,15 +68,8 @@ class Iperf3Simulator:
             tn.minute) + "-" + str(tn.second)
 
         # Create results directory, with name includes num of clients for each algo, and time:
-        """
-        if (iteration % 3) is not 0:
-            self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_train", time_str + "_" + self.simulation_name)
-        else:
-            self.res_dirname = os.path.join(Path(os.getcwd()).parent, "classification_data", "bbr_cubic_reno_sampling_rate_0.001_rtt_0.1sec_with_tsval_test", time_str + "_" + self.simulation_name)
-        """
         self.res_dirname = os.path.join(Path(os.getcwd()).parent,
                                         "classification_data",
-                                        # "with_data_repetition", "queue_size_500", "tcp_noise", "START_AFTER", "75_bbr_cubic_reno_background_flows", time_str + "_" + self.simulation_name)
                                         "with_data_repetition", "queue_size_500", "thesis_new_topology", "0_background_flows_new", time_str + "_" + self.simulation_name)
         os.mkdir(self.res_dirname, 0o777)
 
@@ -130,7 +119,6 @@ class Iperf3Simulator:
         srv_ip = srv.IP()
         popens = {}
         srv_procs = []
-        #rtr = self.net.getNodeByName(self.simulation_topology.rtr1)
         rtr = self.net.getNodeByName(self.simulation_topology.rtr2)
         self.net['r1'].cmd("ip route add 10.1.0.0/24 via 10.100.0.2 dev r1-r2")
 
@@ -166,8 +154,6 @@ class Iperf3Simulator:
                 capture_filename = os.path.join(self.res_dirname, "client_%s.txt" % client)
                 interface_name = "r1-%s" % client
                 client_mac = self.net.getNodeByName(client).MAC()
-                # cmd = "tcpdump -n -i %s 'tcp port %d'>%s&" % (interface_name, test_port, capture_filename)
-                # cmd = "tcpdump -n -i r2-r1 'tcp port %d'>%s&" % (test_port, capture_filename)
                 cmd = "tcpdump -n -i r2-r1 'ether host %s'>%s&" % (client_mac, capture_filename)
                 rtr.cmd(cmd)
 
@@ -193,7 +179,6 @@ class Iperf3Simulator:
         client_counter = 0
         for client in self.simulation_topology.host_list:
             cwnd_algo = client[0:client.find("_")]
-            # cmd = 'iperf3 -c %s -t %d -p %d -C %s' % (srv_ip, self.seconds, 5201 + client_counter, self.congestion_control_algorithm[client_counter % 2])
             start_after = random.randint(0, self.iperf_start_after) / 1000
             cmd = 'sleep %f && iperf3 -c %s -t %d -p %d -C %s' % (
                 start_after, srv_ip, self.seconds, 5201 + client_counter, cwnd_algo)
@@ -245,60 +230,34 @@ def create_sim_name(cwnd_algo_dict):
 
 
 if __name__ == '__main__':
-    # interval accuracy: a number between 0 to 3. For value n, the accuracy will be set to 1/10^n
-    #sleep(60 * 60 * 12)
-
     interval_accuracy = 3
     # Simulation's parameters initializing:
     measured_dict = {}
     unmeasured_dict = {}
-    simulation_duration = 6 + START_AFTER / 1000 # 60 # 80 # 120  # seconds.
-    # total_bw = max(host_bw * sum(algo_dict.itervalues()), srv_bw).
-
-    # queue_size = 800  # 2 * (
-    # srv_bw * total_delay) / tcp_packet_size  # Rule of thumb: queue_size = (bw [Mbit/sec] * RTT [sec]) / size_of_packet.
-    # Tell mininet to print useful information:
+    simulation_duration = 6 + START_AFTER / 1000
     setLogLevel('info')
-    # bw is in Mbps, delay in msec, queue size in packets:
-    # for host_bw in range(100, 140, 5):
 
-    """for host_delay in range(4500, 5500, 250):  # 250): # original step was 5.
-        for srv_bw in range(150, 210, 20):  # 10): # original step was 5.
-            for queue_size in range(100, 500, 100):  # 100): # original step was 5.
-                # for _ in itertools.repeat(None, 100):"""
-    """
-    background_noise = 1000
-    for host_bw in range(70, 80, 10):
-        for host_delay in range(4500, 4700, 200):
-            for srv_bw in range(450, 470, 20):
-    """
-    # background_noise = 1000
     background_noise = 0
-    host_delay = 25 #2.5
-    srv_delay = 25 #2.5
+    host_delay = 250
+    srv_delay = 250
     iteration = 0
 
-    host_bw = 50
-    srv_bw = 50
+    host_bw = 500
+    srv_bw = 500
     queue_size = 500
-    # for host_bw in range(10, 100, 20):
-    # for host_delay in range(4500, 5000, 100):
-    # for srv_bw in range(10, 100, 20):
-    # for queue_size in range(100, 1000, 100):
-    # while iteration < 250:
     process_results = True
     for srv_bw in numpy.linspace(50, 100, 50):
         for host_bw in numpy.linspace(srv_bw, srv_bw + 100, 50):
-            # for queue_size in numpy.linspace(100, 1000, 10):
             iteration = 0
             while iteration < 2:
 
                 measured_dict['reno'] = 1
                 measured_dict['bbr'] = 1
                 measured_dict['cubic'] = 1
-                #unmeasured_dict['reno'] = 5#25
-                #unmeasured_dict['bbr'] = 5#25
-                #unmeasured_dict['cubic'] = 5#25
+                # Background flows:
+                unmeasured_dict['reno'] = 5
+                unmeasured_dict['bbr'] = 5
+                unmeasured_dict['cubic'] = 5
                 algo_streams = AlgoStreams(measured_dict, unmeasured_dict)
 
                 total_delay = 2 * (host_delay + srv_delay)
@@ -308,13 +267,10 @@ if __name__ == '__main__':
                 simulation_name = create_sim_name(measured_dict)
                 iteration += 1
                 simulator = Iperf3Simulator(simulation_topology, simulation_name, simulation_duration,
-                                            # iperf_start_after=0,
                                             iperf_start_after=START_AFTER,
                                             background_noise=background_noise,
                                             interval_accuracy=interval_accuracy, iteration=iteration)
-                # iperf_start_after=500, background_noise=100)
                 simulator.StartSimulation()
-                # simulator.process_results(generate_graphs=True, keep_dump_files=True)
 
                 simulator.process_results(generate_graphs=False, keep_dump_files=False)
                 clean_sim()
