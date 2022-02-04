@@ -20,13 +20,11 @@ def reshape_deepcci_data(input_data, validation_data, input_labeling, validation
     validation_labeling = validation_labeling.reshape(validation_size, deepcci_num_of_time_samples)
     # converting training dataframes into torch format
     input_data = torch.from_numpy(input_data)
-    #input_data = input_data.permute(0, 2, 1)
     input_data = input_data.reshape(len(input_data), 1, chunk_size)
     # converting the target into torch format
     input_labeling = torch.from_numpy(input_labeling)
     # converting validation dataframes into torch format
     validation_data = torch.from_numpy(validation_data)
-    #validation_data = validation_data.permute(0, 2, 1)
     validation_data = validation_data.reshape(len(validation_data), 1, chunk_size)
     # converting the target into torch format
     validation_labeling = torch.from_numpy(validation_labeling)
@@ -141,14 +139,11 @@ def accuracy_per_type(output, target, topk=(1,)):
             num_of_traget = curr_target == c
             correct = pred.eq(curr_target.view(1, -1).expand_as(pred)) * num_of_traget
             acc[c] = correct[:1].view(-1).float().sum(0, keepdim=True).mul_(100.0 / (num_of_traget.sum())).item()
-            #acc[c] = ((pred == curr_target) * (curr_target == c)).float() / (max(curr_target == c).sum(), 1)
     return acc
 
 
 class Graph_Creator:
     def __init__(self, loss, accuracy, accuracy_per_type, num_of_epochs, is_batch, plot_file_name="Graph.png", plot_fig_name="Statistics"):
-        #loss = np.array(loss, dtype=np.float32)
-        #accuracy = np.array(accuracy, dtype=np.float32)
         # clear plt before starting new statistics, otherwise it add up to the previous one
         self.is_batch = is_batch
         self.loss = loss
@@ -163,7 +158,6 @@ class Graph_Creator:
         #ax1.set_ylim([0, numpy.amax(loss)])
         ax2.set(xlabel='epoch', ylabel='accuracy')
         ax2.set_xlim([0, num_of_epochs])
-        #ax2.set_ylim([0, numpy.amax(accuracy)])
         self.fig1 = fig1
         self.loss_ax = ax1
         self.accuracy_ax = ax2
@@ -176,23 +170,20 @@ class Graph_Creator:
             fig2.suptitle(plot_fig_name)
             ax4.set(xlabel='epoch', ylabel='loss')
             ax4.set_xlim([0, num_of_epochs])
-            #ax4.set_ylim([0, numpy.amax(loss)])
             ax5.set(xlabel='epoch', ylabel='accuracy')
             ax5.set_xlim([0, num_of_epochs])
-            #ax5.set_ylim([0, numpy.amax(accuracy)])
             self.fig2 = fig2
             self.batches_loss_ax = ax4
             self.batches_accuracy_ax = ax5
         self.plot_file_name = plot_file_name
 
     def create_loss_plot(self, loss, ax):
-        loss_df = pd.DataFrame(loss)#.transpose()
+        loss_df = pd.DataFrame(loss)
         loss_df.plot(kind='line', ax=ax, title='loss')
         self.write_to_file("loss", loss)
 
     def create_accuracy_plot(self, accuracy, ax):
-        # accuracy = accuracy.squeeze()
-        accuracy_df = pd.DataFrame(accuracy)#.transpose()
+        accuracy_df = pd.DataFrame(accuracy)
         accuracy_df.plot(kind='line', ax=ax, title='accuracy')
         self.write_to_file("accuracy", accuracy)
 
@@ -234,6 +225,5 @@ class Graph_Creator:
 
     def save_and_show(self, fig):
         fig.savefig(self.plot_file_name, dpi=600)
-        # plt.show()
         plt.close(fig)
 
