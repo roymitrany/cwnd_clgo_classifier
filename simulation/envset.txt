@@ -1,1 +1,0 @@
-export PYTHONPATH=:/home/another/PycharmProjects/cwnd_clgo_classifier:'/home/another/PycharmProjects/cwnd_clgo_classifier'
