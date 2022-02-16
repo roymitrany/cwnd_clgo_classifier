@@ -9,12 +9,18 @@
 
 #define IP_ICMP 1
 #define IP_TCP  6
+#define MAP_SIZE 5000000
 
 struct Key {
 	u32 global_index;         //Global count of the packet
 	u32 ifindex;              //The interface that captured the packet
 };
 
+struct MilliKey{
+    u64 conn_hash;
+    u64 ifindex;
+    u64 time_slot;
+};
 struct SegmentData {
 	u32 src_ip;               //source ip
 	u32 dst_ip;               //destination ip
@@ -38,8 +44,9 @@ struct OptChars {
   unsigned char p[40];
 };
 
-BPF_HASH(pkt_array, struct Key, struct SegmentData,5000000);
-BPF_HASH(pkt_array_ext, struct Key, struct SegmentDataExt,5000000);
+BPF_HASH(timeslot_array, struct MilliKey, u32, MAP_SIZE);
+BPF_HASH(pkt_array, struct Key, struct SegmentData, MAP_SIZE);
+BPF_HASH(pkt_array_ext, struct Key, struct SegmentDataExt, MAP_SIZE);
 BPF_ARRAY(pkt_out_count, uint32_t, 1);
 BPF_ARRAY(pkt_count, uint32_t, 1);
 BPF_ARRAY(debug_val, long, 1);
@@ -67,8 +74,10 @@ int handle_egress(struct __sk_buff *skb)
 
     uint32_t* global_count = 0;
     uint32_t* mode = 0;
+    uint32_t* capture_flag = 0;
     long* pkt_index = 0;
     struct Key 	key;
+    struct MilliKey milli_key;
     struct SegmentData segment_data;
     struct SegmentDataExt segment_data_ext;
 
@@ -134,12 +143,25 @@ int handle_egress(struct __sk_buff *skb)
 
     struct tcp_t *tcp = cursor_advance(cursor, sizeof(*tcp));
 
-    // Extract TCP source port. If not 64501 (which corresponds with online)simulation.py)
-    // then filter out.
+    // An example of how to filter by port. Unused right noe
     // TODO: make this condition more configurable. Maybe as parameter?
     uint16_t src_port = tcp->src_port;
     if (src_port < 64501 || src_port > 64599){
+        //goto ACT_OK;
+    }
+
+    // If a frame was already captured for this flow, interface and time slot, ignore
+    // this frame. We want only one frame per slot
+    milli_key.conn_hash = ip->src + ip->dst + tcp->src_port + tcp->dst_port;
+    milli_key.ifindex = skb->ifindex;
+    milli_key.time_slot = bpf_ktime_get_ns()/1000000;
+    capture_flag = timeslot_array.lookup(&milli_key);
+    if (capture_flag){
         goto ACT_OK;
+    }
+    else        // if the map for the key doesn't exist, create one
+    {
+        timeslot_array.update(&milli_key, &one);
     }
 
     // Extract TSVal out of TCP options
@@ -161,8 +183,7 @@ int handle_egress(struct __sk_buff *skb)
 
     tsval = 111;
     if(options_length>=10) {
-        ///long lll = 699;
-        ///debug_val.update(&intkey, &options_offset);    
+        ///debug_val.update(&intkey, &options_offset);
         long ddd = 777;
         debug_val.update(&intkey, &ddd);
         u16 loc = 0;

@@ -5,9 +5,6 @@ print(sys.path)
 from datetime import datetime
 
 import pandas as pd
-import matplotlib.pyplot as plt
-
-from matplotlib import cycler, gridspec
 
 import simulation.tcpdump_statistics
 #from simulation.tcpdump_statistics import TcpdumpStatistics

@@ -17,7 +17,7 @@ sys.path.insert(0, 'cwnd_clgo_classifier')
 import subprocess
 import traceback
 from os import popen
-import shlex
+#import bcc
 from signal import SIGINT
 
 from bcc import BPF
@@ -34,11 +34,12 @@ interval_accuracy = 3
 # traffic_duration = int(sys.argv[1])
 simulation_name = sys.argv[1]
 total_duration = sys.argv[2]
-srv_intf = sys.argv[3]
-clnt_intf_list = sys.argv[4:]
+srv_intf1 = sys.argv[3]
+srv_intf2 = sys.argv[4]
+clnt_intf_list = sys.argv[5:]
 inft_index_list = []
 ipr = IPRoute()
-interval_duration = int(total_duration)/10
+interval_duration = int(total_duration)-10
 # num_of_samples = int(traffic_duration / interval_duration)
 server_intf_index = -1
 res_root_dir = os.path.join(Path(os.getcwd()).parent, "raw_data")
@@ -67,9 +68,12 @@ while True:
         debug_file.write("jjjjjj\n")
 
         # handle server facing interface first, read egress traffic only
-        server_intf_index = ipr.link_lookup(ifname=srv_intf)[0]
+        server_intf_index = ipr.link_lookup(ifname=srv_intf1)[0]
         inft_index_list.append(server_intf_index)
-        print("server interface %s is: %d" % (srv_intf, server_intf_index), file=debug_file)
+        print("server interface %s is: %d" % (srv_intf1, server_intf_index), file=debug_file)
+        server_intf_index = ipr.link_lookup(ifname=srv_intf2)[0]
+        inft_index_list.append(server_intf_index)
+        print("server interface %s is: %d" % (srv_intf2, server_intf_index), file=debug_file)
         try:
             ipr.tc("add", "clsact", server_intf_index)
         except Exception as err:
@@ -85,7 +89,8 @@ while True:
         # debug_file.write("Egress BPF Filter Added for interface intf!!!!\n")
         # debug_file.flush()
         ffilter = b.load_func("out_filter", BPF.SOCKET_FILTER)
-        BPF.attach_raw_socket(ffilter, srv_intf)
+        BPF.attach_raw_socket(ffilter, srv_intf1)
+        BPF.attach_raw_socket(ffilter, srv_intf2)
 
         # frontend part
         socketfd = ffilter.sock
@@ -227,12 +232,12 @@ while True:
 
             debug_file.write('------%sbefore clear arrays\n' % str(time.time()))
             debug_file.flush()
-            pkt_array.items_delete_batch()  # !!! Not supported in ubuntu 18.04
-            # pkt_array.clear()
+            #pkt_array.items_delete_batch()  # !!! Not supported in ubuntu 18.04
+            pkt_array.clear()
             debug_file.write('------%s cleared pkt_ array \n' % str(time.time()))
             debug_file.flush()
-            pkt_array_ext.items_delete_batch()  # !!! Not supported in ubuntu 18.04
-            # pkt_array_ext.clear()
+            #pkt_array_ext.items_delete_batch()  # !!! Not supported in ubuntu 18.04
+            pkt_array_ext.clear()
             debug_file.write('------%s cleared pkt_ array ext\n' % str(time.time()))
             debug_file.flush()
             pkt_count_table.clear()
